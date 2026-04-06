@@ -73,14 +73,21 @@ pub fn create_token(
     // Length bounds
     require!(name.len() >= 1 && name.len() <= 32, crate::errors::TokenLaunchError::InvalidMetadata);
     require!(symbol.len() >= 1 && symbol.len() <= 10, crate::errors::TokenLaunchError::InvalidMetadata);
-    require!(uri.len() >= 1 && uri.len() <= 200, crate::errors::TokenLaunchError::InvalidMetadata);
+    require!(uri.len() <= 200, crate::errors::TokenLaunchError::InvalidMetadata);
 
-    // Must contain at least one visible (non-whitespace) character
+    // Name and symbol must contain at least one visible (non-whitespace) character
     require!(name.chars().any(|c| !c.is_whitespace()), crate::errors::TokenLaunchError::InvalidMetadata);
     require!(symbol.chars().any(|c| !c.is_whitespace()), crate::errors::TokenLaunchError::InvalidMetadata);
 
-    // URI must start with https:// to block javascript:/data: injection
-    require!(uri.starts_with("https://"), crate::errors::TokenLaunchError::InvalidMetadata);
+    // Block dangerous URI schemes (javascript:/data: injection); allow empty, https, http, ipfs, ar
+    require!(
+        uri.is_empty()
+            || uri.starts_with("https://")
+            || uri.starts_with("http://")
+            || uri.starts_with("ipfs://")
+            || uri.starts_with("ar://"),
+        crate::errors::TokenLaunchError::InvalidMetadata
+    );
 
     // Validate programs
     require_keys_eq!(
