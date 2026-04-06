@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.next/
+.cache/
+.DS_Store
+.env
+*.log
+target/

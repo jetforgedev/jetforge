@@ -1,0 +1,12 @@
+{
+  "mint": "6HNxWpuCYaMu5fi9j7XnsyR3zuSGa8td9xqhtCjn1J9o",
+  "bondingCurvePDA": "EMyxGm3JZnZ9QEM6UVDxWo7NZVnbGSEoKHfAgdjUozGK",
+  "creator": "87GhPyfAxCcngBdft3x373Yvxrtny1KdrPFbSSsLLRym",
+  "buyer": "JC4FcTEgQ8vUhXBRUmYHEkszBAzHoNYteJhBRpmFLoBi",
+  "txs": {
+    "createToken": "5V9RUffgCmWAuYBYSxD5cudUy1kD5KY1L3KUQL84P7NMRDNaXCP9QvdQfMUw3wpAW7urD4GHj8CPNNDzCawijdiC",
+    "buy": "5vcTjkmtf66N3TWaXMGBvmTDg1CXDoiwWqvtQ9NzgpG5N6sLDawQQefUzta4XVJHF3qfdBHy8umJ8FfVmn3qPaeQ",
+    "sell": "3SiQ7AzLGe1n6uf2zXrgfLrSoexa7tYuzjfZgbRK7PosGqBnYFmaZaP6fSHa71AQgaL6MHhm2j5vSsqboQPcEo4g",
+    "withdrawCreatorFees": "5i7SL5Js791Tp8NCj1JEhtzcpgGEAoe9DnurvTyEZc9yCruTxZATuuYPDpCLdwENStnT6WFMfbvg2qqwTRBtcYHX"
+  }
+}

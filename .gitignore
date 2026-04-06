@@ -1,0 +1,56 @@
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Next.js ──────────────────────────────────────────────────────────────────
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# ─── Build outputs ────────────────────────────────────────────────────────────
+backend/dist/
+target/
+target/deploy/*.so
+target/idl/
+target/types/
+
+# ─── Environment variables ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+backend/.env
+frontend/.env.local
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# ─── Solana / Anchor ──────────────────────────────────────────────────────────
+.anchor/
+test-ledger/
+*.keypair.json
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+
+# ─── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+.cache/
+*.tgz

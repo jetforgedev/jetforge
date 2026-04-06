@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-04-03T06:57:22.550Z",
+  "mint": "Akj5usidEvxW9rUmfXXshgf3drzb8Gv6zCaxC3JkrHo2",
+  "bondingCurvePDA": "97gmQ5JakmmuqAufpaat3sCppLCzfhxd1xshSZ9Cgk64",
+  "thresholds": {
+    "GRADUATION_THRESHOLD_LAMPORTS": 1000000000,
+    "BUYBACK_THRESHOLD_LAMPORTS": 500000
+  },
+  "steps": [
+    {
+      "step": "1. create_token",
+      "tx": "3fTR5F6YWr71poYgjeRUwBLBGKfGbGQu5D3NQG8CnFSc2m2vzUyTmtddFsw2QaFSsWpaqnSGAtgSz8ZPDqpwJXFw",
+      "note": "mint=Akj5usidEvxW9rUmfXXshgf3drzb8Gv6zCaxC3JkrHo2",
+      "data": {
+        "realSolReserves": "0",
+        "realTokenReserves": "1000000000000000",
+        "complete": false
+      }
+    },
+    {
+      "step": "2. buy #1 (0.4 SOL — fills buyback vault)",
+      "tx": "3p8MZckZAikqvQkT41rpD44Hau6S2eZTB67fSnC8vt3UiwUtYAzEzz9FSR3GQMryH3GcUz2cHazRhGRz2hWjLnC1",
+      "data": {
+        "realSolReserves": "396000000",
+        "totalTrades": "1",
+        "complete": false,
+        "buybackVaultLamports": 1690880,
+        "buybackVaultSOL": "0.001691",
+        "thresholdMet": true
+      }
+    },
+    {
+      "step": "3. execute_buyback",
+      "tx": "2fVosAQj2VyVZFxXpCnzwSsAQ2pZn3T995M8MrCiQwBwrJkmEPhoXRQ2oFCvD7WHDmcPNDTTPSmUKZWWtyJkA6Tz",
+      "note": "✅ buyback triggered — SOL in, tokens burned",
+      "data": {
+        "buybackVaultBefore": 1690880,
+        "buybackVaultAfter": 890880,
+        "solUsedForBuyback": "0.000800",
+        "tokensBurned": "27871910526",
+        "tokenVaultBefore": "986020921317410",
+        "tokenVaultAfter": "985993049406884",
+        "realSolAfterBuyback": "396800000",
+        "virtualSolAfter": "30396800000",
+        "completedByBuyback": false
+      }
+    },
+    {
+      "step": "4. buy-loop (for graduation)",
+      "tx": "4r3kRiopGJxBrjY2GBzivtq6Zt2kxVfPYmzcCHgBQsP5Dc72rruXtys9H2qsQKC3WTFcqBKsKLyHPYP7wgHw8AoS",
+      "data": {
+        "realSolReserves": "1013768000",
+        "complete": true,
+        "totalTrades": "3"
+      }
+    },
+    {
+      "step": "5. graduate",
+      "tx": "2LUXBuGVzzb3i4t1SmwxSndYZ2MdcxN5oDc9NA6JG24KHZa2hwHTHs2N1GcGYatV3EcF9hrz85UUu3d3grghF2AJ",
+      "note": "✅ graduation executed",
+      "data": {
+        "bcSOLDrained": "1.013768",
+        "treasuryReceived": "0.963075",
+        "creatorReceived": "0.050688"
+      }
+    },
+    {
+      "step": "6. withdraw_creator_fees",
+      "tx": "MADhFJezUvbmYNP7GTv4wvjWEcWwba67NZnRYR1YY2hSd2gG7ER8twWaXGpB7MkKm6LFDipy9Gfz58af5cAFtvw",
+      "note": "✅ creator fees withdrawn",
+      "data": {
+        "creatorVaultBefore": 4983680,
+        "creatorVaultAfter": 890880,
+        "creatorReceived": "0.004093 SOL"
+      }
+    },
+    {
+      "step": "7. final on-chain state",
+      "data": {
+        "mint": "Akj5usidEvxW9rUmfXXshgf3drzb8Gv6zCaxC3JkrHo2",
+        "bondingCurvePDA": "97gmQ5JakmmuqAufpaat3sCppLCzfhxd1xshSZ9Cgk64",
+        "virtualSolReserves": "31013768000",
+        "virtualTokenReserves": "1037926308405994",
+        "realSolReserves": "1013768000",
+        "realTokenReserves": "964926117405994",
+        "complete": true,
+        "totalTrades": "3",
+        "totalVolumeSol": "1023200000",
+        "walletSOLSpent": "1.0829"
+      }
+    }
+  ]
+}

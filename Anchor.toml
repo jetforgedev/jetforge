@@ -1,0 +1,40 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+
+[programs.devnet]
+token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+
+[programs.mainnet]
+token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "D:/.solana-config/id.json"
+
+[scripts]
+test = "yarn ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 5000
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+[[test.validator.clone]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+
+[[test.validator.clone]]
+address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"

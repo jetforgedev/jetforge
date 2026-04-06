@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Token {
+  id              String   @id @default(cuid())
+  mint            String   @unique
+  name            String
+  symbol          String
+  description     String?
+  imageUrl        String?
+  websiteUrl      String?
+  twitterUrl      String?
+  telegramUrl     String?
+  creator         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Curve state (cached from on-chain)
+  virtualSolReserves    BigInt @default(30000000000)
+  virtualTokenReserves  BigInt @default(1073000191000000)
+  realSolReserves       BigInt @default(0)
+  realTokenReserves     BigInt @default(1000000000000000)
+  totalSupply           BigInt @default(1000000000000000)
+
+  // Stats
+  marketCapSol    Float    @default(0)
+  priceUsd        Float    @default(0)
+  volume24h       Float    @default(0)
+  trades          Int      @default(0)
+  holders         Int      @default(0)
+  isGraduated     Boolean  @default(false)
+  graduatedAt     DateTime?
+
+  // Relations
+  tradeHistory    Trade[]
+
+  @@index([creator])
+  @@index([isGraduated])
+  @@index([marketCapSol])
+  @@index([createdAt])
+  @@index([volume24h])
+}
+
+model Trade {
+  id          String    @id @default(cuid())
+  signature   String    @unique
+  mint        String
+  trader      String
+  type        TradeType
+  solAmount   BigInt
+  tokenAmount BigInt
+  price       Float
+  fee         BigInt
+  timestamp   DateTime
+  createdAt   DateTime  @default(now())
+
+  token       Token     @relation(fields: [mint], references: [mint])
+
+  @@index([mint])
+  @@index([trader])
+  @@index([timestamp])
+}
+
+enum TradeType {
+  BUY
+  SELL
+}

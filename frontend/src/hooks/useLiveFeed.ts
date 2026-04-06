@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useState, useRef, createContext, useContext } from "react";
+import { io, Socket } from "socket.io-client";
+
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:4000";
+
+// Global socket context
+const SocketContext = createContext<Socket | null>(null);
+
+let globalSocket: Socket | null = null;
+
+export function getGlobalSocket(): Socket {
+  if (!globalSocket || !globalSocket.connected) {
+    globalSocket = io(WS_URL, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+  }
+  return globalSocket;
+}
+
+export function useSocket(): Socket | null {
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    const s = getGlobalSocket();
+    setSocket(s);
+
+    return () => {
+      // Don't disconnect on component unmount - keep global connection
+    };
+  }, []);
+
+  return socket;
+}
+
+export interface FeedItem {
+  id: string;
+  type: "BUY" | "SELL" | "TOKEN_CREATED" | "GRADUATED";
+  mint: string;
+  trader?: string;
+  solAmount?: string;
+  tokenAmount?: string;
+  price?: number;
+  tokenName?: string;
+  tokenSymbol?: string;
+  tokenImageUrl?: string;
+  timestamp: number;
+}
+
+export function useLiveFeed(maxItems = 50) {
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const socket = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.emit("subscribe:feed");
+    setIsConnected(socket.connected);
+
+    const handleConnect = () => setIsConnected(true);
+    const handleDisconnect = () => setIsConnected(false);
+
+    const handleFeedTrade = (data: any) => {
+      const item: FeedItem = {
+        id: `${data.mint}-${data.timestamp}-${Math.random()}`,
+        type: data.type,
+        mint: data.mint,
+        trader: data.trader,
+        solAmount: data.solAmount,
+        tokenAmount: data.tokenAmount,
+        price: data.price,
+        tokenName: data.tokenName,
+        tokenSymbol: data.tokenSymbol,
+        tokenImageUrl: data.tokenImageUrl,
+        timestamp: data.timestamp,
+      };
+      setFeed((prev) => [item, ...prev].slice(0, maxItems));
+    };
+
+    const handleTokenCreated = (data: any) => {
+      const item: FeedItem = {
+        id: `created-${data.mint}-${Date.now()}`,
+        type: "TOKEN_CREATED",
+        mint: data.mint,
+        trader: data.creator,
+        tokenName: data.name,
+        tokenSymbol: data.symbol,
+        tokenImageUrl: data.imageUrl,
+        timestamp: data.timestamp,
+      };
+      setFeed((prev) => [item, ...prev].slice(0, maxItems));
+    };
+
+    const handleGraduation = (data: any) => {
+      const item: FeedItem = {
+        id: `grad-${data.mint}-${Date.now()}`,
+        type: "GRADUATED",
+        mint: data.mint,
+        tokenName: data.tokenName,
+        timestamp: data.timestamp,
+      };
+      setFeed((prev) => [item, ...prev].slice(0, maxItems));
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("feed_trade", handleFeedTrade);
+    socket.on("token_created", handleTokenCreated);
+    socket.on("token_graduated", handleGraduation);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("feed_trade", handleFeedTrade);
+      socket.off("token_created", handleTokenCreated);
+      socket.off("token_graduated", handleGraduation);
+    };
+  }, [socket, maxItems]);
+
+  return { feed, isConnected };
+}
