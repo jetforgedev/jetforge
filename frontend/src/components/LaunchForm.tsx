@@ -7,6 +7,25 @@ import { clsx } from "clsx";
 import { createTokenRecord } from "@/lib/api";
 import { buildCreateTokenTransaction } from "@/lib/program";
 
+// Minimum SOL needed to create a token (rent for mint + bonding curve + 4 vaults)
+const CREATE_TOKEN_MIN_SOL = 0.015;
+
+function friendlyLaunchError(raw: string): string {
+  if (raw.includes("0x1") || raw.includes("custom program error: 0x1") || raw.includes("insufficient funds") || raw.includes("Insufficient"))
+    return `Insufficient SOL balance — you need at least ${CREATE_TOKEN_MIN_SOL} SOL to create a token. Get free devnet SOL at faucet.solana.com`;
+  if (raw.includes("User rejected") || raw.includes("rejected the request"))
+    return "Transaction cancelled.";
+  if (raw.includes("NetworkError") || raw.includes("Failed to fetch") || raw.includes("fetch"))
+    return "Cannot reach Solana network. Check your connection and try again.";
+  if (raw.includes("InvalidMetadata"))
+    return "Invalid token name, symbol or image URL. Name must be 1–32 chars, symbol 1–10 chars.";
+  if (raw.includes("Simulation failed"))
+    return raw.replace("Simulation failed: ", "Launch failed: ");
+  if (raw.includes("BlockhashNotFound") || raw.includes("blockhash"))
+    return "Transaction expired — please try again.";
+  return raw.length > 150 ? raw.slice(0, 150) + "…" : raw;
+}
+
 type Step = 1 | 2 | 3;
 
 interface FormData {
@@ -77,6 +96,12 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
     const loadingToast = toast.loading("Preparing transaction...");
 
     try {
+      // Pre-flight: check wallet has enough SOL for rent + fees
+      const balance = await connection.getBalance(publicKey);
+      if (balance / 1e9 < CREATE_TOKEN_MIN_SOL) {
+        throw new Error(`insufficient funds — need ${CREATE_TOKEN_MIN_SOL} SOL, have ${(balance / 1e9).toFixed(4)} SOL`);
+      }
+
       const name = form.name.trim();
       const symbol = form.symbol.trim().toUpperCase();
 
@@ -155,11 +180,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       toast.dismiss(loadingToast);
       console.error("Launch error:", error);
       const rawMsg: string = error?.error?.message ?? error?.message ?? "Failed to launch token";
-      // Translate low-level network errors into something actionable
-      const msg = (rawMsg.includes("NetworkError") || rawMsg.includes("Failed to fetch") || rawMsg.includes("fetch"))
-        ? "Cannot reach Solana network. Check your connection and try again."
-        : rawMsg.length > 150 ? rawMsg.slice(0, 150) + "…" : rawMsg;
-      toast.error(msg);
+      toast.error(friendlyLaunchError(rawMsg));
     } finally {
       setIsLaunching(false);
     }
