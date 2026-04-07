@@ -270,7 +270,18 @@
       "Bash(powershell -Command \"Get-Command anchor,cargo,solana -ErrorAction SilentlyContinue | Select-Object Name,Source\")",
       "Bash(powershell -Command \"ls $env:USERPROFILE\\\\.cargo\\\\bin\\\\ | Select-Object Name\")",
       "Bash(cmd /c \"cargo --version & rustc --version & solana --version\")",
-      "Bash(cmd /c \"where cargo & where rustc & where solana & where avm\")"
+      "Bash(cmd /c \"where cargo & where rustc & where solana & where avm\")",
+      "Bash(cmd /c \"rustc --version && cargo --version && solana --version\")",
+      "Bash(cmd /c \"where rustc & where cargo & where solana & where cargo-build-sbf\")",
+      "Bash(cmd /c \"dir C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\cargo.exe 2>nul & dir C:\\\\Users\\\\xinno\\\\.rustup 2>nul & dir \"\"C:\\\\Users\\\\xinno\\\\.local\\\\share\\\\solana\"\" 2>nul\")",
+      "Bash(cmd /c \"dir %USERPROFILE% & echo CARGO_HOME=%CARGO_HOME% & echo RUSTUP_HOME=%RUSTUP_HOME%\")",
+      "Bash(powershell -Command \"Get-ChildItem $env:USERPROFILE | Select-Object Name; $env:CARGO_HOME; $env:RUSTUP_HOME; \\(Get-Command rustc -ErrorAction SilentlyContinue\\)?.Source; \\(Get-Command solana -ErrorAction SilentlyContinue\\)?.Source\")",
+      "Bash(powershell -Command \"Get-ChildItem $env:USERPROFILE | Select-Object Name\")",
+      "Bash(powershell -Command \"ls C:\\\\Users\\\\xinno\"\")",
+      "Bash(powershell -Command \"ls C:\\\\Users\\\\xinno\")",
+      "Bash(powershell -Command \"ls C:\\\\Users\\\\xinno\\\\.cargo\\\\bin | Where-Object {$_Name -match ''cargo|rustc|solana|anchor''} | Select-Object Name\")",
+      "Bash(powershell -Command \"dir C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\*.exe | Select-Object -ExpandProperty Name\")",
+      "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\target\\\\deploy\\\\''\")"
     ]
   }
 }
