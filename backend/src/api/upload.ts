@@ -40,9 +40,10 @@ uploadRouter.post("/image", upload.single("image"), (req: Request, res: Response
     return res.status(400).json({ error: "No image file provided" });
   }
 
-  // Build the public URL — use API_URL env or derive from request
+  // Build the public URL — use SITE_URL env var (set to https://jetforge.io on VPS)
   const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+    process.env.SITE_URL ||
+    process.env.FRONTEND_URL ||
     `${req.protocol}://${req.get("host")}`;
 
   const url = `${baseUrl}/uploads/${req.file.filename}`;
