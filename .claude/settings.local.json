@@ -284,7 +284,12 @@
       "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\target\\\\deploy\\\\''\")",
       "Bash(powershell -Command 'Get-Content -')",
       "Bash(powershell -Command \"Get-Content ''D:\\\\token dex\\\\backend\\\\package.json''\")",
-      "Bash(\"C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\..\\\\..\\\\.bun\\\\bin\\\\bun.exe\" add:*)"
+      "Bash(\"C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\..\\\\..\\\\.bun\\\\bin\\\\bun.exe\" add:*)",
+      "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\frontend\\\\src\\\\app\\\\creators''\")",
+      "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\frontend\\\\src\\\\app\\\\creators\\\\[wallet]''\")",
+      "Bash(powershell -Command \"Get-ChildItem ''D:\\\\token dex\\\\frontend\\\\src\\\\app\\\\creators\\\\[wallet]''\")",
+      "Bash(powershell -Command \"\\(Get-Content ''D:\\\\token dex\\\\backend\\\\.env.devnet-public''\\) -replace ''PROGRAM_ID=.*'',''PROGRAM_ID=\"\"7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk\"\"'' | Set-Content ''D:\\\\token dex\\\\backend\\\\.env.devnet-public''\")",
+      "Bash(powershell -Command \"Select-String ''PROGRAM_ID'' ''D:\\\\token dex\\\\backend\\\\.env.devnet-public''\")"
     ]
   }
 }
