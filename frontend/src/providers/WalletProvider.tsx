@@ -44,7 +44,7 @@ export const AppWalletProvider: FC<AppWalletProviderProps> = ({ children }) => {
       <WalletProvider
         wallets={wallets}
         autoConnect={false}
-        onError={(error) => console.warn("Wallet error:", error)}
+        onError={(error: unknown) => console.warn("Wallet error:", error)}
       >
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
