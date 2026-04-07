@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, createContext, useContext } from "react";
 import { io, Socket } from "socket.io-client";
+import { getRecentTrades } from "@/lib/api";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:4000";
 
@@ -57,6 +58,26 @@ export function useLiveFeed(maxItems = 50) {
   const [isConnected, setIsConnected] = useState(false);
   const socket = useSocket();
 
+  // Seed feed with recent trades from DB on mount
+  useEffect(() => {
+    getRecentTrades(20).then(({ trades }) => {
+      const items: FeedItem[] = trades.map((t) => ({
+        id: t.id,
+        type: t.type as "BUY" | "SELL",
+        mint: t.mint,
+        trader: t.trader,
+        solAmount: t.solAmount,
+        tokenAmount: t.tokenAmount,
+        price: t.price,
+        tokenName: t.tokenName,
+        tokenSymbol: t.tokenSymbol,
+        tokenImageUrl: t.tokenImageUrl,
+        timestamp: t.timestamp,
+      }));
+      setFeed(items);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!socket) return;
 
@@ -80,7 +101,10 @@ export function useLiveFeed(maxItems = 50) {
         tokenImageUrl: data.tokenImageUrl,
         timestamp: data.timestamp,
       };
-      setFeed((prev) => [item, ...prev].slice(0, maxItems));
+      setFeed((prev) => {
+        if (prev.some((x) => x.id === item.id)) return prev;
+        return [item, ...prev].slice(0, maxItems);
+      });
     };
 
     const handleTokenCreated = (data: any) => {

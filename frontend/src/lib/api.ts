@@ -163,6 +163,10 @@ export async function getOHLCV(
   return fetchApi(`/tokens/${mint}/ohlcv?interval=${interval}&limit=${limit}`);
 }
 
+export async function getRecentTrades(limit = 20): Promise<{ trades: any[] }> {
+  return fetchApi(`/trades/recent?limit=${limit}`);
+}
+
 // Trade endpoints
 export async function getTrades(
   mint: string,

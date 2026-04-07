@@ -81,6 +81,42 @@ tradesRouter.get("/user/:wallet", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/trades/recent - latest trades across all tokens (for live feed seeding)
+tradesRouter.get("/recent", async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+
+    const trades = await prisma.trade.findMany({
+      orderBy: { timestamp: "desc" },
+      take: limit,
+      include: {
+        token: {
+          select: { name: true, symbol: true, imageUrl: true },
+        },
+      },
+    });
+
+    const formatted = trades.map((trade) => ({
+      id: trade.id,
+      type: trade.type,
+      mint: trade.mint,
+      trader: trade.trader,
+      solAmount: trade.solAmount.toString(),
+      tokenAmount: trade.tokenAmount.toString(),
+      price: trade.price,
+      timestamp: Math.floor(trade.timestamp.getTime() / 1000),
+      tokenName: trade.token?.name,
+      tokenSymbol: trade.token?.symbol,
+      tokenImageUrl: trade.token?.imageUrl ?? undefined,
+    }));
+
+    res.json({ trades: formatted });
+  } catch (error) {
+    console.error("GET /trades/recent error:", error);
+    res.status(500).json({ error: "Failed to fetch recent trades" });
+  }
+});
+
 // GET /api/trades/:mint - trade history for a token
 tradesRouter.get("/:mint", async (req: Request, res: Response) => {
   try {
