@@ -45,27 +45,27 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-[#1a1a1a] bg-[#0a0a0a]/95 backdrop-blur-sm">
       <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-md bg-[#00ff88] flex items-center justify-center">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"
-                fill="#000"
-                stroke="#000"
-                strokeWidth="0.5"
-              />
-              <path d="M8 5L11 6.5V9.5L8 11L5 9.5V6.5L8 5Z" fill="#00ff88" />
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-lg bg-[#00ff88] opacity-15 blur-sm group-hover:opacity-30 transition-opacity" />
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 2 C15 2 22 8 22 16 L15 28 L8 16 C8 8 15 2 15 2Z" fill="#00ff88" />
+              <circle cx="15" cy="13" r="3" fill="#0a0a0a" />
+              <circle cx="15" cy="13" r="1.4" fill="#00ff88" opacity="0.5" />
+              <path d="M8 16 L4 21 L8 19Z" fill="#00cc6e" />
+              <path d="M22 16 L26 21 L22 19Z" fill="#00cc6e" />
+              <path d="M12.5 26 L15 31 L17.5 26Z" fill="#ff6b00" opacity="0.9" />
+              <path d="M13.8 25 L15 29 L16.2 25Z" fill="#ffaa00" opacity="0.75" />
             </svg>
           </div>
-          <span className="font-bold text-lg text-white tracking-tight">
-            Jet<span className="text-[#00ff88]">Forge</span>
-          </span>
+          <div className="flex flex-col leading-none gap-0.5">
+            <span className="font-black text-[15px] text-white tracking-tight leading-none">
+              Jet<span className="text-[#00ff88]">Forge</span>
+            </span>
+            <span className="text-[8px] text-[#444] font-semibold tracking-[0.15em] uppercase leading-none">
+              Solana Launchpad
+            </span>
+          </div>
         </Link>
 
         {/* Navigation */}

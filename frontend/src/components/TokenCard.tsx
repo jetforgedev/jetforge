@@ -76,10 +76,16 @@ function computeRugScore(token: TokenData): { score: number; label: string; colo
   return { score: risk, label: "High Risk", color: "#ff4444", bg: "#ff444415", border: "#ff444430" };
 }
 
+function isTrending(token: TokenData): boolean {
+  const ageHours = (Date.now() - new Date(token.createdAt).getTime()) / 3_600_000;
+  return (token.volume24h >= 0.5) || (token.trades >= 15 && ageHours < 48);
+}
+
 export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCardProps) {
   const graduationPct = Math.min(100, token.graduationProgress || 0);
   const isNearGrad = graduationPct >= 80;
   const rug = computeRugScore(token);
+  const trending = isTrending(token);
 
   return (
     <div className="relative">
@@ -95,7 +101,10 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
       )}
 
       <Link href={`/token/${token.mint}`}>
-        <div className="token-card bg-[#111] border border-[#1a1a1a] rounded-xl p-4 cursor-pointer">
+        <div className={clsx(
+          "token-card bg-[#111] border rounded-xl p-4 cursor-pointer transition-colors",
+          trending ? "border-[#00ff8830] hover:border-[#00ff8850]" : "border-[#1a1a1a]"
+        )}>
           {/* Top row */}
           <div className="flex items-start gap-3 mb-3">
             <TokenAvatar name={token.name} imageUrl={token.imageUrl} mint={token.mint} />
@@ -103,6 +112,11 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="font-semibold text-white text-sm truncate">{token.name}</span>
                 <span className="text-[#555] text-xs font-mono shrink-0">{token.symbol}</span>
+                {trending && (
+                  <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#ff6b0020] border border-[#ff6b0040] text-[#ff9900]">
+                    🔥 Hot
+                  </span>
+                )}
               </div>
               <div className="text-[#666] text-xs truncate">by {truncateAddress(token.creator)}</div>
             </div>

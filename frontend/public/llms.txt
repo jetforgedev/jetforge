@@ -1,0 +1,54 @@
+# JetForge
+
+> JetForge is a fair-launch Solana token launchpad — the pump.fun alternative built on Solana devnet.
+
+## What is JetForge?
+
+JetForge lets anyone launch a Solana SPL token in seconds using a bonding curve pricing model. No presales, no team allocations — every token starts at the same price and graduates to a DEX when it reaches the liquidity threshold.
+
+## How it works
+
+1. **Launch** — Connect a Solana wallet and pay a small fee to deploy your token on-chain. Set a name, symbol, description, and image.
+2. **Trade** — Anyone can buy or sell tokens instantly against the bonding curve. Price increases as more SOL flows in.
+3. **Graduate** — When a token raises enough SOL (85 SOL target), it graduates to a decentralized exchange (DEX) for open trading.
+
+## Key Features
+
+- Bonding curve pricing (constant product AMM)
+- Real-time price charts (candlestick, OHLCV)
+- Live trade feed via WebSocket
+- Anti-rug score per token
+- Whale alert system
+- Token comments / live chat
+- Creator verification badges
+- Watchlist (localStorage)
+- King of the Hill — top token by 24h volume
+- Portfolio tracker per wallet
+- Creator leaderboard
+
+## Technology
+
+- **Blockchain**: Solana (devnet)
+- **Smart contract**: Anchor framework
+- **Frontend**: Next.js 16, React, TailwindCSS
+- **Backend**: Express.js, Prisma, PostgreSQL
+- **Real-time**: Socket.IO WebSockets
+- **Indexer**: Solana `onLogs` subscription parsing Anchor events
+
+## API
+
+Public REST API available at `https://jetforge.io/api`:
+
+- `GET /api/tokens` — list tokens (sort: new, trending, graduating, graduated)
+- `GET /api/tokens/:mint` — single token details
+- `GET /api/tokens/:mint/ohlcv` — candlestick price data
+- `GET /api/trades/:mint` — trade history for a token
+- `GET /api/stats` — platform stats (total tokens, 24h volume, 24h trades)
+- `GET /api/leaderboard/tokens` — top tokens by volume/marketcap/trades
+- `GET /api/leaderboard/traders` — top traders by volume
+
+## Links
+
+- Website: https://jetforge.io
+- Launch a token: https://jetforge.io/launch
+- Leaderboard: https://jetforge.io/leaderboard
