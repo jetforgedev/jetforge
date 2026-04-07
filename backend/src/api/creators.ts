@@ -166,6 +166,8 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
       (acc, t) => acc + Number(t.realSolReserves) / 1e9, 0
     );
     const graduatedCount = tokens.filter((t) => t.isGraduated).length;
+    // All-time earnings = 40% of 1% fee on total volume (cumulative, never decreases)
+    const allTimeEarningsSol = totalVolumeSol * 0.004;
     const badge = getCreatorBadge(tokens.length, totalVolumeSol, graduatedCount);
 
     res.json({
@@ -173,8 +175,10 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
       tokensLaunched: tokens.length,
       totalVolumeSol: totalVolumeSol.toFixed(4),
       totalRaisedSol: totalRaisedSol.toFixed(4),
-      // Real on-chain claimable earnings across all token vaults
-      estimatedEarningsSol: totalClaimableEarnings.toFixed(4),
+      // All-time cumulative earnings from trading fees (0.4% of all volume)
+      estimatedEarningsSol: allTimeEarningsSol.toFixed(4),
+      // Currently claimable SOL sitting in on-chain vaults right now
+      claimableEarningsSol: totalClaimableEarnings.toFixed(4),
       graduatedTokens: graduatedCount,
       badge: badge.badge,
       badgeLabel: badge.label,

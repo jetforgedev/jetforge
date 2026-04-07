@@ -73,12 +73,11 @@ export default function CreatorProfilePage({ params }: PageProps) {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-6">
           {[
-            { label: "Tokens Launched", value: creator.tokensLaunched, accent: false },
-            { label: "Graduated", value: creator.graduatedTokens, accent: creator.graduatedTokens > 0 },
-            { label: "Total Volume", value: `${parseFloat(creator.totalVolumeSol).toFixed(2)} SOL`, accent: false },
-            { label: "Est. Earnings", value: `${parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL`, accent: true },
+            { label: "Tokens Launched", value: creator.tokensLaunched, accent: false, sub: null },
+            { label: "Graduated", value: creator.graduatedTokens, accent: creator.graduatedTokens > 0, sub: null },
+            { label: "Total Volume", value: `${parseFloat(creator.totalVolumeSol).toFixed(2)} SOL`, accent: false, sub: null },
           ].map((s) => (
             <div key={s.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3">
               <div className="text-[#555] text-xs mb-1">{s.label}</div>
@@ -87,6 +86,28 @@ export default function CreatorProfilePage({ params }: PageProps) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Earnings row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div className="bg-[#0d0d0d] border border-[#00ff8830] rounded-lg p-4">
+            <div className="text-[#555] text-xs mb-1">💰 All-Time Earnings</div>
+            <div className="text-[#00ff88] font-mono font-bold text-xl">
+              {parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL
+            </div>
+            <div className="text-[#444] text-[10px] mt-1">
+              0.4% of all trading volume on your tokens · cumulative total
+            </div>
+          </div>
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-4">
+            <div className="text-[#555] text-xs mb-1">🏦 Claimable Now</div>
+            <div className="text-white font-mono font-bold text-xl">
+              {parseFloat(creator.claimableEarningsSol ?? "0").toFixed(4)} SOL
+            </div>
+            <div className="text-[#444] text-[10px] mt-1">
+              Sitting in your on-chain vaults · withdraw from each token page
+            </div>
+          </div>
         </div>
       </div>
 
@@ -99,18 +120,18 @@ export default function CreatorProfilePage({ params }: PageProps) {
           </div>
         ) : (
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_80px_80px_60px_60px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
               <div>Token</div>
-              <div className="text-right">Volume</div>
               <div className="text-right">Raised</div>
               <div className="text-right">Trades</div>
+              <div className="text-right">Claimable</div>
               <div className="text-right">Status</div>
             </div>
             {creator.tokens.map((token: any) => (
               <Link
                 key={token.mint}
                 href={`/token/${token.mint}`}
-                className="grid grid-cols-[1fr_80px_80px_60px_60px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
+                className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {token.imageUrl ? (
@@ -126,14 +147,17 @@ export default function CreatorProfilePage({ params }: PageProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[#888] text-xs">{parseFloat(token.volume24h).toFixed(2)}</span>
-                  <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
-                </div>
-                <div className="text-right">
                   <span className="text-[#888] text-xs">{parseFloat(token.realSolReserves).toFixed(2)}</span>
                   <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
                 </div>
                 <div className="text-right text-[#666] text-xs">{token.trades}</div>
+                <div className="text-right">
+                  {parseFloat(token.claimableEarnings) > 0 ? (
+                    <span className="text-[#00ff88] text-xs font-mono">{parseFloat(token.claimableEarnings).toFixed(4)}</span>
+                  ) : (
+                    <span className="text-[#333] text-xs">—</span>
+                  )}
+                </div>
                 <div className="flex justify-end">
                   {token.isGraduated ? (
                     <span className="px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px]">
