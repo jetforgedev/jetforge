@@ -6,7 +6,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV");
+declare_id!("7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk");
 
 /// Treasury pubkey — used in account constraints for buy/sell/graduate.
 /// Hardcoded so the on-chain constraint cannot be bypassed by an untrusted caller.
