@@ -549,7 +549,12 @@ export default function TokenPage({ params }: PageProps) {
       setWithdrawMsg(`✅ Withdrawn! Tx: ${txSig.slice(0, 16)}...`);
       refetchCreatorVault();
     } catch (e: any) {
-      setWithdrawMsg(`❌ ${e?.message ?? "Transaction failed"}`);
+      const msg: string = e?.message ?? "Transaction failed";
+      if (msg.includes("InsufficientSolReserves") || msg.includes("0x1774")) {
+        setWithdrawMsg("❌ No fees to withdraw yet — fees accumulate as users trade your token.");
+      } else {
+        setWithdrawMsg(`❌ ${msg}`);
+      }
     } finally {
       setWithdrawing(false);
     }
@@ -833,7 +838,7 @@ export default function TokenPage({ params }: PageProps) {
                   {isCreator && (
                     <button
                       onClick={handleWithdraw}
-                      disabled={withdrawing || creatorVaultSol <= 0}
+                      disabled={withdrawing || creatorVaultSol <= 0.001}
                       className="px-2.5 py-1 text-[10px] font-semibold rounded-md bg-[#00ff88] text-black hover:bg-[#00dd77] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       {withdrawing ? "..." : "Withdraw"}
