@@ -10,6 +10,7 @@ use crate::state::{
 // Well-known program IDs (hard-coded to avoid passing them)
 pub const SPL_TOKEN_PROGRAM_ID: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 pub const ASSOC_TOKEN_PROGRAM_ID: Pubkey = pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+pub const TOKEN_METADATA_PROGRAM_ID: Pubkey = pubkey!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
 /// Minimal accounts struct — all PDAs/programs as UncheckedAccount to stay under
 /// the 4096-byte BPF stack-frame limit that Anchor's typed try_accounts blows through.
@@ -42,11 +43,18 @@ pub struct CreateToken<'info> {
     #[account(mut)]
     pub creator_vault: UncheckedAccount<'info>,
 
+    /// CHECK: Metaplex metadata PDA — created in instruction via CPI
+    #[account(mut)]
+    pub metadata: UncheckedAccount<'info>,
+
     /// CHECK: SPL Token program
     pub token_program: UncheckedAccount<'info>,
 
     /// CHECK: Associated Token program
     pub associated_token_program: UncheckedAccount<'info>,
+
+    /// CHECK: Metaplex Token Metadata program
+    pub token_metadata_program: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -352,6 +360,109 @@ pub fn create_token(
         cv_rent,
         0,
         &anchor_lang::system_program::ID,
+    )?;
+
+    // ── 12. Create Metaplex Token Metadata account ───────────────────────────
+    // Derive and validate the metadata PDA
+    let (metadata_key, _meta_bump) = Pubkey::find_program_address(
+        &[
+            b"metadata",
+            TOKEN_METADATA_PROGRAM_ID.as_ref(),
+            mint_key.as_ref(),
+        ],
+        &TOKEN_METADATA_PROGRAM_ID,
+    );
+    require_keys_eq!(
+        ctx.accounts.metadata.key(),
+        metadata_key,
+        crate::errors::TokenLaunchError::InvalidMetadata
+    );
+    require_keys_eq!(
+        ctx.accounts.token_metadata_program.key(),
+        TOKEN_METADATA_PROGRAM_ID,
+        crate::errors::TokenLaunchError::InvalidMetadata
+    );
+
+    // Manually Borsh-encode the CreateMetadataAccountV3 instruction data.
+    // Discriminator 33 = CreateMetadataAccountV3 in mpl-token-metadata.
+    let ix_data = {
+        let name_bytes  = name.as_bytes();
+        let sym_bytes   = symbol.as_bytes();
+        let uri_bytes   = uri.as_bytes();
+
+        let mut data = Vec::with_capacity(
+            1                           // discriminator
+            + 4 + name_bytes.len()      // name (u32 len + bytes)
+            + 4 + sym_bytes.len()       // symbol
+            + 4 + uri_bytes.len()       // uri
+            + 2                         // seller_fee_basis_points
+            + 1                         // creators: None
+            + 1                         // collection: None
+            + 1                         // uses: None
+            + 1                         // is_mutable
+            + 1,                        // collection_details: None
+        );
+
+        data.push(33u8); // CreateMetadataAccountV3 discriminator
+
+        // DataV2 — name
+        data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(name_bytes);
+        // symbol
+        data.extend_from_slice(&(sym_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(sym_bytes);
+        // uri
+        data.extend_from_slice(&(uri_bytes.len() as u32).to_le_bytes());
+        data.extend_from_slice(uri_bytes);
+        // seller_fee_basis_points: 0 (no royalties)
+        data.extend_from_slice(&0u16.to_le_bytes());
+        // creators: None
+        data.push(0u8);
+        // collection: None
+        data.push(0u8);
+        // uses: None
+        data.push(0u8);
+
+        // is_mutable: true (creator can update later)
+        data.push(1u8);
+        // collection_details: None
+        data.push(0u8);
+
+        data
+    };
+
+    // Accounts for CreateMetadataAccountV3:
+    // 0. metadata     [writable]
+    // 1. mint         [readonly]
+    // 2. mint_auth    [readonly, signer]  ← bonding curve PDA
+    // 3. payer        [writable, signer]  ← creator
+    // 4. update_auth  [readonly]          ← creator (holds update rights)
+    // 5. system_prog  [readonly]
+    let metadata_ix = anchor_lang::solana_program::instruction::Instruction {
+        program_id: TOKEN_METADATA_PROGRAM_ID,
+        accounts: vec![
+            anchor_lang::solana_program::instruction::AccountMeta::new(metadata_key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(mint_key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(bonding_curve_key, true),
+            anchor_lang::solana_program::instruction::AccountMeta::new(creator_key, true),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(creator_key, false),
+            anchor_lang::solana_program::instruction::AccountMeta::new_readonly(anchor_lang::system_program::ID, false),
+        ],
+        data: ix_data,
+    };
+
+    // invoke_signed so the bonding curve PDA can sign as mint authority
+    anchor_lang::solana_program::program::invoke_signed(
+        &metadata_ix,
+        &[
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.bonding_curve.to_account_info(),
+            ctx.accounts.creator.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.token_metadata_program.to_account_info(),
+        ],
+        &[bc_seeds],
     )?;
 
     emit!(TokenCreatedEvent {

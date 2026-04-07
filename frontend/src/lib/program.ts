@@ -57,8 +57,10 @@ const IDL: any = {
         { name: "reserveVault", isMut: true, isSigner: false },
         { name: "buybackVault", isMut: true, isSigner: false },
         { name: "creatorVault", isMut: true, isSigner: false },
+        { name: "metadata", isMut: true, isSigner: false },
         { name: "tokenProgram", isMut: false, isSigner: false },
         { name: "associatedTokenProgram", isMut: false, isSigner: false },
+        { name: "tokenMetadataProgram", isMut: false, isSigner: false },
         { name: "systemProgram", isMut: false, isSigner: false },
       ],
       args: [
@@ -341,6 +343,8 @@ export async function buildCreateTokenTransaction(
 
   const program = getProgram(connection, wallet);
 
+  const metadataPDA = getMetadataPDA(mint);
+
   const ix = await program.methods
     .createToken(name, symbol, uri)
     .accounts({
@@ -351,8 +355,10 @@ export async function buildCreateTokenTransaction(
       reserveVault,
       buybackVault,
       creatorVault,
+      metadata: metadataPDA,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
       systemProgram: PublicKey.default,
     })
     .instruction();

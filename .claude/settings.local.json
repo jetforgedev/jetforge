@@ -264,7 +264,13 @@
       "Bash(cmd /c \"dir /a \"\"D:\\\\token dex\\\\frontend\\\\.next\"\"\")",
       "WebFetch(domain:jetforge.io)",
       "WebFetch(domain:api.jetforge.io)",
-      "Bash(ls -la \"D:\\\\token dex\\\\frontend\\\\public\"\" 2>&1 || ls -la \"/d/token dex/frontend/public/ \")"
+      "Bash(ls -la \"D:\\\\token dex\\\\frontend\\\\public\"\" 2>&1 || ls -la \"/d/token dex/frontend/public/ \")",
+      "Bash(where anchor:*)",
+      "Bash(where cargo:*)",
+      "Bash(powershell -Command \"Get-Command anchor,cargo,solana -ErrorAction SilentlyContinue | Select-Object Name,Source\")",
+      "Bash(powershell -Command \"ls $env:USERPROFILE\\\\.cargo\\\\bin\\\\ | Select-Object Name\")",
+      "Bash(cmd /c \"cargo --version & rustc --version & solana --version\")",
+      "Bash(cmd /c \"where cargo & where rustc & where solana & where avm\")"
     ]
   }
 }
