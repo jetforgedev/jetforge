@@ -174,7 +174,7 @@ export default function PortfolioPage({ params }: PageProps) {
             <div className="grid grid-cols-[1fr_80px_100px_80px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[#444] text-[10px] uppercase tracking-wider">
               <div>Token</div>
               <div className="text-right">Balance</div>
-              <div className="text-right">Avg Buy</div>
+              <div className="text-right">SOL Spent</div>
               <div className="text-right">Real. PnL</div>
             </div>
             {activeHoldings.map((h) => {
@@ -206,10 +206,10 @@ export default function PortfolioPage({ params }: PageProps) {
                     <div className="text-[#555] text-[10px]">{h.symbol}</div>
                   </div>
 
-                  {/* Avg buy price */}
+                  {/* SOL Spent */}
                   <div className="text-right">
-                    <div className="text-[#888] text-xs font-mono">{fmtPrice(h.avgBuyPrice)}</div>
-                    <div className="text-[#444] text-[10px]">SOL/token</div>
+                    <div className="text-[#888] text-xs font-mono">{h.solSpent.toFixed(4)}</div>
+                    <div className="text-[#444] text-[10px]">SOL</div>
                   </div>
 
                   {/* Realized PnL */}
