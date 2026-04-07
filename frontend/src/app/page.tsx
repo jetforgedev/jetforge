@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TokenCard } from "@/components/TokenCard";
 import { LiveFeed } from "@/components/LiveFeed";
-import { getTokens, getTopTokens, TokenData } from "@/lib/api";
+import { getTokens, getTopTokens, getPlatformStats, TokenData } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
 import Image from "next/image";
@@ -19,21 +19,22 @@ const TAB_CONFIG = [
 ];
 
 function StatsBar() {
-  const { data: trending } = useQuery({
-    queryKey: ["tokens", "trending", 1],
-    queryFn: () => getTokens("trending", 1, 1),
+  const { data: stats } = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: getPlatformStats,
     staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
-  const stats = [
-    { label: "Total Tokens", value: trending?.pagination.total?.toLocaleString() ?? "—" },
-    { label: "24h Volume", value: "—" },
-    { label: "Live Trades", value: "🟢 Active" },
+  const items = [
+    { label: "Total Tokens", value: stats?.totalTokens?.toLocaleString() ?? "—" },
+    { label: "24h Volume", value: stats ? `${stats.volume24hSol.toLocaleString()} SOL` : "—" },
+    { label: "24h Trades", value: stats?.trades24h?.toLocaleString() ?? "—" },
   ];
 
   return (
     <div className="flex items-center gap-6 text-xs text-[#555] overflow-x-auto pb-2 mb-6">
-      {stats.map((s) => (
+      {items.map((s) => (
         <div key={s.label} className="flex items-center gap-2 shrink-0">
           <span>{s.label}:</span>
           <span className="text-white font-mono font-medium">{s.value}</span>

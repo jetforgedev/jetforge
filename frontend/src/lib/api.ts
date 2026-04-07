@@ -167,6 +167,14 @@ export async function getRecentTrades(limit = 20): Promise<{ trades: any[] }> {
   return fetchApi(`/trades/recent?limit=${limit}`);
 }
 
+export async function getPlatformStats(): Promise<{
+  totalTokens: number;
+  volume24hSol: number;
+  trades24h: number;
+}> {
+  return fetchApi("/stats");
+}
+
 // Trade endpoints
 export async function getTrades(
   mint: string,
