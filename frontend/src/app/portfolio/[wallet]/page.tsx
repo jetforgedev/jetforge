@@ -10,6 +10,15 @@ interface PageProps {
   params: Promise<{ wallet: string }>;
 }
 
+// Format very small prices intelligently
+function fmtPrice(sol: number): string {
+  if (sol === 0) return "0.000000";
+  if (sol >= 0.000001) return sol.toFixed(6);
+  if (sol >= 0.0000001) return sol.toFixed(9);
+  // Scientific notation for extremely small values
+  return sol.toExponential(3);
+}
+
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
@@ -199,7 +208,7 @@ export default function PortfolioPage({ params }: PageProps) {
 
                   {/* Avg buy price */}
                   <div className="text-right">
-                    <div className="text-[#888] text-xs font-mono">{h.avgBuyPrice.toFixed(6)}</div>
+                    <div className="text-[#888] text-xs font-mono">{fmtPrice(h.avgBuyPrice)}</div>
                     <div className="text-[#444] text-[10px]">SOL/token</div>
                   </div>
 
