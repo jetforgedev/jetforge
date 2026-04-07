@@ -1,5 +1,32 @@
 import { Router, Request, Response } from "express";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { prisma } from "../index";
+import { config } from "../config";
+
+const connection = new Connection(config.solana.rpcUrl, "confirmed");
+const PROGRAM_ID = new PublicKey(config.solana.programId);
+
+// Derive creator_vault PDA for a given mint
+function getCreatorVaultPDA(mint: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("creator_vault"), mint.toBuffer()],
+    PROGRAM_ID
+  )[0];
+}
+
+// Fetch on-chain creator vault balance in SOL (above rent minimum)
+async function getCreatorVaultBalance(mintStr: string): Promise<number> {
+  try {
+    const mint = new PublicKey(mintStr);
+    const vault = getCreatorVaultPDA(mint);
+    const lamports = await connection.getBalance(vault);
+    const rentMin = 890880; // minimum rent-exempt for 0-byte account
+    const withdrawable = Math.max(0, lamports - rentMin);
+    return withdrawable / 1e9;
+  } catch {
+    return 0;
+  }
+}
 
 export const creatorsRouter = Router();
 
@@ -122,14 +149,23 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Creator not found" });
     }
 
-    const totalVolumeSol = tokens.reduce(
-      (acc, t) => acc + Number(t.volume24h) / 1e9, 0
+    // Fetch all-time volume from trade records
+    const volumeResult = await prisma.trade.aggregate({
+      where: { token: { creator: wallet } },
+      _sum: { solAmount: true },
+    });
+
+    // Fetch on-chain creator vault balances for all tokens in parallel
+    const vaultBalances = await Promise.all(
+      tokens.map((t) => getCreatorVaultBalance(t.mint))
     );
+    const totalClaimableEarnings = vaultBalances.reduce((a, b) => a + b, 0);
+
+    const totalVolumeSol = Number(volumeResult._sum.solAmount ?? 0n) / 1e9;
     const totalRaisedSol = tokens.reduce(
       (acc, t) => acc + Number(t.realSolReserves) / 1e9, 0
     );
     const graduatedCount = tokens.filter((t) => t.isGraduated).length;
-    const estimatedEarningsSol = totalVolumeSol * 0.004;
     const badge = getCreatorBadge(tokens.length, totalVolumeSol, graduatedCount);
 
     res.json({
@@ -137,12 +173,13 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
       tokensLaunched: tokens.length,
       totalVolumeSol: totalVolumeSol.toFixed(4),
       totalRaisedSol: totalRaisedSol.toFixed(4),
-      estimatedEarningsSol: estimatedEarningsSol.toFixed(4),
+      // Real on-chain claimable earnings across all token vaults
+      estimatedEarningsSol: totalClaimableEarnings.toFixed(4),
       graduatedTokens: graduatedCount,
       badge: badge.badge,
       badgeLabel: badge.label,
       badgeColor: badge.color,
-      tokens: tokens.map((t) => ({
+      tokens: tokens.map((t, i) => ({
         mint: t.mint,
         name: t.name,
         symbol: t.symbol,
@@ -152,6 +189,7 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
         realSolReserves: (Number(t.realSolReserves) / 1e9).toFixed(4),
         isGraduated: t.isGraduated,
         trades: t._count.tradeHistory,
+        claimableEarnings: vaultBalances[i].toFixed(4),
       })),
     });
   } catch (error) {
