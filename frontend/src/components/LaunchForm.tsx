@@ -164,7 +164,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // This is the Metaplex-standard format (name, symbol, image, description).
       // When the program is upgraded to create a Metaplex metadata account,
       // blockchain explorers will automatically read this URL.
-      const uri = `https://jetforge.io/api/metadata/${mintAddressForUri}`;
+      const uri = `https://api.jetforge.io/api/metadata/${mintAddressForUri}`;
 
       // Build the on-chain createToken transaction
       toast.loading("Sending transaction...", { id: loadingToast });
