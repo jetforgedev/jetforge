@@ -212,12 +212,43 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     };
   }, [socket, mint]);
 
-  // Real-time price updates via Socket.IO
-  useEffect(() => {
-    if (!socket || !mint || !candleSeriesRef.current) return;
+  // Refs so socket handlers always read fresh interval + solPrice without re-subscribing
+  const intervalRef = useRef(interval);
+  const solPriceRef = useRef(solPrice);
+  useEffect(() => { intervalRef.current = interval; }, [interval]);
+  useEffect(() => { solPriceRef.current = solPrice; }, [solPrice]);
 
-    socket.on("price_update", (_data: any) => {
-      // TODO: update last candle tick
+  // Real-time candle updates via Socket.IO price_update events
+  useEffect(() => {
+    if (!socket || !mint) return;
+
+    const INTERVAL_MS: Record<string, number> = {
+      "1s": 1_000, "1m": 60_000, "5m": 300_000,
+      "15m": 900_000, "30m": 1_800_000, "1h": 3_600_000, "1d": 86_400_000,
+    };
+
+    socket.on("price_update", (data: any) => {
+      if (data.mint !== mint) return;
+      if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+
+      const ms = INTERVAL_MS[intervalRef.current] ?? 300_000;
+      const priceMultiplier = (solPriceRef.current ?? 1) * 1_000_000;
+
+      // Snap timestamp to candle bucket (Unix seconds)
+      const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
+      const val = data.price * priceMultiplier;
+
+      try {
+        candleSeriesRef.current.update({
+          time: candleTime as any,
+          open: val,
+          high: val,
+          low: val,
+          close: val,
+        });
+      } catch {
+        // lightweight-charts throws if time goes backwards — safe to ignore
+      }
     });
 
     return () => {
