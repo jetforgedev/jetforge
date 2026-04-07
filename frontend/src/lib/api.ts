@@ -111,9 +111,31 @@ async function fetchApi<T>(
 export async function getTokens(
   sort: "trending" | "new" | "graduating" | "graduated" = "new",
   page = 1,
-  limit = 20
+  limit = 20,
+  q?: string
 ): Promise<TokensResponse> {
-  return fetchApi(`/tokens?sort=${sort}&page=${page}&limit=${limit}`);
+  const qs = q ? `&q=${encodeURIComponent(q)}` : "";
+  return fetchApi(`/tokens?sort=${sort}&page=${page}&limit=${limit}${qs}`);
+}
+
+// Comments
+export interface CommentData {
+  id: string;
+  mint: string;
+  wallet: string;
+  text: string;
+  createdAt: string;
+}
+
+export async function getComments(mint: string): Promise<{ comments: CommentData[] }> {
+  return fetchApi(`/comments/${mint}`);
+}
+
+export async function postComment(mint: string, wallet: string, text: string): Promise<CommentData> {
+  return fetchApi(`/comments/${mint}`, {
+    method: "POST",
+    body: JSON.stringify({ wallet, text }),
+  });
 }
 
 export async function getToken(mint: string): Promise<TokenData> {

@@ -39,6 +39,7 @@ model Token {
 
   // Relations
   tradeHistory    Trade[]
+  comments        Comment[]
 
   @@index([creator])
   @@index([isGraduated])
@@ -70,4 +71,17 @@ model Trade {
 enum TradeType {
   BUY
   SELL
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  mint      String
+  wallet    String
+  text      String   @db.VarChar(280)
+  createdAt DateTime @default(now())
+
+  token     Token    @relation(fields: [mint], references: [mint], onDelete: Cascade)
+
+  @@index([mint])
+  @@index([createdAt])
 }

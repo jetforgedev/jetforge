@@ -18,6 +18,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getTopHolders } from "@/lib/api";
 import { PROGRAM_ID, TREASURY, getBuybackVaultPDA, getCreatorVaultPDA, buildWithdrawCreatorFeesTransaction } from "@/lib/program";
 import { useTrades as useLiveTrades } from "@/hooks/useTrades";
+import { TokenComments } from "@/components/TokenComments";
+import { useSocket } from "@/hooks/useLiveFeed";
+import { getCreatorProfile } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ mint: string }>;
@@ -173,6 +176,105 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
 }
 
 const BUYBACK_THRESHOLD_SOL = 0.1;
+const WHALE_THRESHOLD_SOL = 1;
+
+function useWhaleAlert(mint: string) {
+  const socket = useSocket();
+  const [whale, setWhale] = React.useState<{ type: string; sol: number; trader: string } | null>(null);
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (!socket || !mint) return;
+    socket.on("new_trade", (trade: any) => {
+      if (trade.mint !== mint) return;
+      const sol = Number(trade.solAmount) / 1e9;
+      if (sol >= WHALE_THRESHOLD_SOL) {
+        setWhale({ type: trade.type, sol, trader: trade.trader });
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setWhale(null), 6000);
+      }
+    });
+    return () => { socket.off("new_trade"); if (timer.current) clearTimeout(timer.current); };
+  }, [socket, mint]);
+
+  return whale;
+}
+
+function usePriceAlert(mint: string, currentMcapSol: number) {
+  const [target, setTarget] = React.useState<number | null>(() => {
+    try { const v = localStorage.getItem(`alert_${mint}`); return v ? parseFloat(v) : null; } catch { return null; }
+  });
+  const [triggered, setTriggered] = React.useState(false);
+
+  React.useEffect(() => {
+    if (target === null || triggered) return;
+    if (currentMcapSol >= target) {
+      setTriggered(true);
+      if (Notification.permission === "granted") {
+        new Notification("🚀 Price Alert!", { body: `Market cap reached ${target} SOL!` });
+      }
+    }
+  }, [currentMcapSol, target, triggered]);
+
+  const saveTarget = (val: number | null) => {
+    setTarget(val);
+    setTriggered(false);
+    try {
+      if (val === null) localStorage.removeItem(`alert_${mint}`);
+      else localStorage.setItem(`alert_${mint}`, val.toString());
+    } catch {}
+  };
+
+  return { target, setTarget: saveTarget, triggered };
+}
+
+function PriceAlertWidget({ mint, currentMcapSol }: { mint: string; currentMcapSol: number }) {
+  const { target, setTarget, triggered } = usePriceAlert(mint, currentMcapSol);
+  const [inputVal, setInputVal] = React.useState(target?.toString() ?? "");
+  const [open, setOpen] = React.useState(false);
+
+  const save = () => {
+    const v = parseFloat(inputVal);
+    if (isNaN(v) || v <= 0) { setTarget(null); setOpen(false); return; }
+    if (Notification.permission === "default") Notification.requestPermission();
+    setTarget(v);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 text-xs border px-2.5 py-1 rounded-md font-medium transition-colors ${
+          triggered ? "border-[#00ff8840] bg-[#00ff8815] text-[#00ff88]"
+          : target ? "border-[#ffaa0040] bg-[#ffaa0015] text-[#ffaa00]"
+          : "border-[#2a2a2a] text-[#555] hover:text-[#888]"
+        }`}
+      >
+        🔔 {triggered ? "Triggered!" : target ? `Alert: ${target} SOL` : "Set Alert"}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 bg-[#111] border border-[#1a1a1a] rounded-xl p-3 z-30 shadow-xl w-56">
+          <div className="text-[#555] text-xs mb-2">Alert when market cap reaches:</div>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              placeholder="e.g. 50"
+              className="flex-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+            />
+            <span className="text-[#555] text-xs self-center">SOL</span>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button onClick={save} className="flex-1 bg-[#00ff8820] text-[#00ff88] border border-[#00ff8830] rounded-lg py-1.5 text-xs font-semibold">Save</button>
+            {target && <button onClick={() => { setTarget(null); setInputVal(""); setOpen(false); }} className="px-2 text-[#ff4444] border border-[#ff444430] rounded-lg text-xs">✕</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: number; holders: number }) {
   const { trades: liveTrades } = useLiveTrades(mint);
@@ -295,6 +397,17 @@ export default function TokenPage({ params }: PageProps) {
     refetchInterval: 60_000,
   });
 
+  const whale = useWhaleAlert(mint);
+
+  // Verified creator: has at least 1 graduated token
+  const { data: creatorProfile } = useQuery({
+    queryKey: ["creator-profile", token?.creator],
+    queryFn: () => getCreatorProfile(token!.creator),
+    enabled: !!token?.creator,
+    staleTime: 120_000,
+  });
+  const isVerifiedCreator = (creatorProfile?.graduatedTokens ?? 0) >= 1;
+
   if (isLoading) return <TokenSkeleton />;
   if (error || !token) return <TokenSyncing mint={mint} />;
 
@@ -381,6 +494,11 @@ export default function TokenPage({ params }: PageProps) {
               <span className="px-2 py-0.5 bg-[#00ff8810] border border-[#00ff8830] rounded-full text-[#00ff88] text-xs">
                 🛡️ Anti-Rug
               </span>
+              {isVerifiedCreator && (
+                <span className="px-2 py-0.5 bg-[#1d9bf015] border border-[#1d9bf030] rounded-full text-[#1d9bf0] text-xs font-medium" title="Creator has at least 1 graduated token">
+                  ✓ Verified Creator
+                </span>
+              )}
               <span
                 className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                   devPct === 0
@@ -440,9 +558,25 @@ export default function TokenPage({ params }: PageProps) {
             >
               𝕏 Share
             </a>
+            <PriceAlertWidget mint={mint} currentMcapSol={token.marketCapSol} />
           </div>
         </div>
       </div>
+
+      {/* Whale alert banner */}
+      {whale && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold animate-slide-in ${
+          whale.type === "BUY"
+            ? "bg-[#00ff8810] border-[#00ff8830] text-[#00ff88]"
+            : "bg-[#ff444410] border-[#ff444430] text-[#ff4444]"
+        }`}>
+          <span className="text-xl">🐳</span>
+          <span>Whale Alert!</span>
+          <span className="font-mono text-white">{whale.sol.toFixed(2)} SOL</span>
+          <span className="text-[#888] font-normal">{whale.type}</span>
+          <span className="text-[#555] text-xs font-mono font-normal">{whale.trader.slice(0, 4)}...{whale.trader.slice(-4)}</span>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -614,6 +748,9 @@ export default function TokenPage({ params }: PageProps) {
         </div>
         <div className="lg:col-span-2 order-5">
           <TradesList mint={mint} symbol={token.symbol} />
+        </div>
+        <div className="lg:col-span-2 order-6">
+          <TokenComments mint={mint} />
         </div>
       </div>
     </div>

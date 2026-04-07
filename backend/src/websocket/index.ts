@@ -125,3 +125,10 @@ export function broadcastGraduation(io: Server, event: GraduationEvent): void {
   io.to(`token:${event.mint}`).emit("token_graduated", event);
   io.to("global:feed").emit("token_graduated", event);
 }
+
+export function broadcastComment(io: Server, comment: { id: string; mint: string; wallet: string; text: string; createdAt: Date }): void {
+  io.to(`token:${comment.mint}`).emit("new_comment", {
+    ...comment,
+    createdAt: comment.createdAt.toISOString(),
+  });
+}
