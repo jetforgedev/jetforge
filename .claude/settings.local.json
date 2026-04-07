@@ -281,7 +281,10 @@
       "Bash(powershell -Command \"ls C:\\\\Users\\\\xinno\")",
       "Bash(powershell -Command \"ls C:\\\\Users\\\\xinno\\\\.cargo\\\\bin | Where-Object {$_Name -match ''cargo|rustc|solana|anchor''} | Select-Object Name\")",
       "Bash(powershell -Command \"dir C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\*.exe | Select-Object -ExpandProperty Name\")",
-      "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\target\\\\deploy\\\\''\")"
+      "Bash(powershell -Command \"ls ''D:\\\\token dex\\\\target\\\\deploy\\\\''\")",
+      "Bash(powershell -Command 'Get-Content -')",
+      "Bash(powershell -Command \"Get-Content ''D:\\\\token dex\\\\backend\\\\package.json''\")",
+      "Bash(\"C:\\\\Users\\\\xinno\\\\.cargo\\\\bin\\\\..\\\\..\\\\.bun\\\\bin\\\\bun.exe\" add:*)"
     ]
   }
 }
