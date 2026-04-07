@@ -15,12 +15,20 @@ interface PriceChartProps {
   creator?: string;
 }
 
+const INTERVAL_MS: Record<Interval, number> = {
+  "1s": 1_000, "1m": 60_000, "5m": 300_000,
+  "15m": 900_000, "30m": 1_800_000, "1h": 3_600_000, "1d": 86_400_000,
+};
+
 export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
-  const [interval, setInterval] = useState<Interval>("5m");
+  // Track current live candle so we keep correct open/high/low
+  const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
+
+  const [interval, setInterval] = useState<Interval>("1m");
   const socket = useSocket();
 
   const { data: ohlcv, isLoading } = useQuery({
@@ -29,7 +37,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     staleTime: 30_000,
   });
 
-  // Fetch all trades to find dev buy/sell events
+  // Only fetch dev trades if a creator is provided
   const { data: tradesData } = useQuery({
     queryKey: ["trades-markers", mint],
     queryFn: () => getTrades(mint, 1, 500),
@@ -37,31 +45,20 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     enabled: !!creator,
   });
 
-  // Initialize chart — cleanup stored in a shared object so the return fn can access it
-  // even though chart creation is async (dynamic import)
+  // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Shared cleanup state between async init and the React cleanup fn
     const state: { chart: any; observer: ResizeObserver | null; destroyed: boolean } = {
-      chart: null,
-      observer: null,
-      destroyed: false,
+      chart: null, observer: null, destroyed: false,
     };
 
     import("lightweight-charts").then(({ createChart, CrosshairMode }) => {
-      // Component may have unmounted before the import resolved
       if (state.destroyed || !chartContainerRef.current) return;
 
       const chart = createChart(chartContainerRef.current, {
-        layout: {
-          background: { color: "#0d0d0d" },
-          textColor: "#555",
-        },
-        grid: {
-          vertLines: { color: "#111" },
-          horzLines: { color: "#111" },
-        },
+        layout: { background: { color: "#0d0d0d" }, textColor: "#555" },
+        grid: { vertLines: { color: "#111" }, horzLines: { color: "#111" } },
         crosshair: { mode: CrosshairMode.Normal },
         rightPriceScale: { borderColor: "#1a1a1a", textColor: "#555" },
         timeScale: {
@@ -71,10 +68,9 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           rightOffset: 5,
         },
         width: chartContainerRef.current.clientWidth,
-        height: 440,
+        height: 400,
       });
 
-      // Market cap formatter: shows $2.4K, $11.5K, $1.2M instead of raw numbers
       const mcapFormatter = (price: number) => {
         if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(2)}M`;
         if (price >= 1_000)     return `$${(price / 1_000).toFixed(1)}K`;
@@ -122,30 +118,29 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       chartRef.current = null;
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      liveCandle.current = null;
     };
   }, []);
 
-  // Update secondsVisible when interval changes (chart init uses stale closure)
+  // Update secondsVisible when interval changes
   useEffect(() => {
     if (!chartRef.current) return;
     chartRef.current.applyOptions({
       timeScale: { secondsVisible: interval === "1s" },
     });
+    liveCandle.current = null;
   }, [interval]);
 
-  // Update candle + volume data when OHLCV or solPrice changes
-  // Y-axis shows Market Cap in USD: stored price × 1,000,000 × solPrice
-  // Derivation: price = virtualSol/virtualTokens; mcap_SOL = price × TOTAL_SUPPLY/1e9 = price × 1e6
+  // Load OHLCV data
   useEffect(() => {
     if (!candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
-    // When solPrice not loaded yet, show market cap in SOL (×1M factor only)
     const priceMultiplier = (solPrice ?? 1) * 1_000_000;
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
-      open: d.open * priceMultiplier,
-      high: d.high * priceMultiplier,
-      low: d.low * priceMultiplier,
+      open:  d.open  * priceMultiplier,
+      high:  d.high  * priceMultiplier,
+      low:   d.low   * priceMultiplier,
       close: d.close * priceMultiplier,
     }));
 
@@ -158,9 +153,18 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     candleSeriesRef.current.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
     chartRef.current?.timeScale().fitContent();
+
+    // Seed liveCandle with the last known candle so real-time updates continue it
+    if (candles.length > 0) {
+      const last = candles[candles.length - 1];
+      liveCandle.current = {
+        time: last.time as number,
+        open: last.open, high: last.high, low: last.low, close: last.close,
+      };
+    }
   }, [ohlcv, solPrice]);
 
-  // Dev buy/sell markers — refresh whenever trades or ohlcv change
+  // Dev buy/sell markers — small dots only, no text
   useEffect(() => {
     if (!candleSeriesRef.current || !creator || !tradesData?.trades?.length) return;
 
@@ -174,22 +178,18 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       .map((t) => ({
         time: Math.floor(new Date(t.timestamp).getTime() / 1000) as any,
         position: t.type === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
-        color: t.type === "BUY" ? "#00ff88" : "#ff4444",
-        shape: t.type === "BUY" ? ("arrowUp" as const) : ("arrowDown" as const),
-        text: t.type === "BUY" ? "Dev ▲" : "Dev ▼",
-        size: 1,
+        color: t.type === "BUY" ? "#00ff8880" : "#ff444480",
+        shape: "circle" as const,
+        text: "",
+        size: 0.5,
       }))
       .sort((a, b) => a.time - b.time);
 
     candleSeriesRef.current.setMarkers(markers);
   }, [tradesData, creator, ohlcv]);
 
-  // Live trade flash notifications
-  const [flashTrade, setFlashTrade] = useState<{
-    type: "BUY" | "SELL";
-    trader: string;
-    solAmount: string;
-  } | null>(null);
+  // Live trade flash
+  const [flashTrade, setFlashTrade] = useState<{ type: "BUY" | "SELL"; trader: string; solAmount: string } | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -197,11 +197,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
     socket.on("new_trade", (trade: any) => {
       if (trade.mint !== mint) return;
-      setFlashTrade({
-        type: trade.type,
-        trader: trade.trader,
-        solAmount: trade.solAmount,
-      });
+      setFlashTrade({ type: trade.type, trader: trade.trader, solAmount: trade.solAmount });
       if (flashTimer.current) clearTimeout(flashTimer.current);
       flashTimer.current = setTimeout(() => setFlashTrade(null), 4000);
     });
@@ -212,58 +208,65 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     };
   }, [socket, mint]);
 
-  // Refs so socket handlers always read fresh interval + solPrice without re-subscribing
   const intervalRef = useRef(interval);
   const solPriceRef = useRef(solPrice);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { solPriceRef.current = solPrice; }, [solPrice]);
 
-  // Real-time candle updates via Socket.IO price_update events
+  // Real-time candle updates — properly maintain open/high/low/close
   useEffect(() => {
     if (!socket || !mint) return;
 
-    const INTERVAL_MS: Record<string, number> = {
-      "1s": 1_000, "1m": 60_000, "5m": 300_000,
-      "15m": 900_000, "30m": 1_800_000, "1h": 3_600_000, "1d": 86_400_000,
-    };
-
     socket.on("price_update", (data: any) => {
       if (data.mint !== mint) return;
-      if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+      if (!candleSeriesRef.current) return;
 
-      const ms = INTERVAL_MS[intervalRef.current] ?? 300_000;
+      const ms = INTERVAL_MS[intervalRef.current] ?? 60_000;
       const priceMultiplier = (solPriceRef.current ?? 1) * 1_000_000;
-
-      // Snap timestamp to candle bucket (Unix seconds)
       const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
       const val = data.price * priceMultiplier;
 
+      const prev = liveCandle.current;
+
+      let updated: typeof prev;
+
+      if (prev && prev.time === candleTime) {
+        // Same candle — update high, low, close but keep open
+        updated = {
+          time: candleTime,
+          open:  prev.open,
+          high:  Math.max(prev.high, val),
+          low:   Math.min(prev.low,  val),
+          close: val,
+        };
+      } else {
+        // New candle bucket
+        updated = { time: candleTime, open: val, high: val, low: val, close: val };
+      }
+
+      liveCandle.current = updated;
+
       try {
         candleSeriesRef.current.update({
-          time: candleTime as any,
-          open: val,
-          high: val,
-          low: val,
-          close: val,
+          time:  updated.time as any,
+          open:  updated.open,
+          high:  updated.high,
+          low:   updated.low,
+          close: updated.close,
         });
       } catch {
-        // lightweight-charts throws if time goes backwards — safe to ignore
+        // time went backwards — safe to ignore
       }
     });
 
-    return () => {
-      socket.off("price_update");
-    };
+    return () => { socket.off("price_update"); };
   }, [socket, mint]);
 
   const intervals: { label: string; value: Interval }[] = [
-    { label: "1s",  value: "1s"  },
-    { label: "1m",  value: "1m"  },
-    { label: "5m",  value: "5m"  },
-    { label: "15m", value: "15m" },
-    { label: "30m", value: "30m" },
-    { label: "1h",  value: "1h"  },
-    { label: "1d",  value: "1d"  },
+    { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
+    { label: "5m", value: "5m" }, { label: "15m", value: "15m" },
+    { label: "30m", value: "30m" }, { label: "1h", value: "1h" },
+    { label: "1d", value: "1d" },
   ];
 
   return (
@@ -271,41 +274,30 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="text-white text-sm font-semibold">{symbol}</div>
-            <div className="text-[#555] text-xs">Market Cap</div>
-          </div>
-          {/* Current price display */}
+          <span className="text-white text-sm font-semibold">{symbol}</span>
+          <span className="text-[#555] text-xs">Market Cap</span>
           {ohlcv && ohlcv.length > 0 && (() => {
-            // stored close = virtualSol(lamports) / virtualTokens(raw units)
-            // price per token in SOL = close / 1000
             const lastClose = ohlcv[ohlcv.length - 1].close;
             const pricePerTokenSol = lastClose / 1000;
             return (
-              <div className="text-[#888] text-xs font-mono">
+              <span className="text-[#888] text-xs font-mono">
                 Price:{" "}
                 <span className="text-white">
                   {solPrice
                     ? `$${(pricePerTokenSol * solPrice).toFixed(8)}`
                     : `${pricePerTokenSol.toFixed(8)} SOL`}
                 </span>
-              </div>
+              </span>
             );
           })()}
-          {creator && (
-            <div className="flex items-center gap-2 text-[10px] text-[#555]">
-              <span className="text-[#00ff88]">▲</span> Dev Buy
-              <span className="text-[#ff4444] ml-1">▼</span> Dev Sell
-            </div>
-          )}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5">
           {intervals.map((i) => (
             <button
               key={i.value}
               onClick={() => setInterval(i.value)}
               className={clsx(
-                "px-2.5 py-1 text-xs rounded font-medium transition-colors",
+                "px-2 py-1 text-xs rounded font-medium transition-colors",
                 interval === i.value
                   ? "bg-[#00ff8820] text-[#00ff88]"
                   : "text-[#555] hover:text-[#888]"
@@ -319,7 +311,6 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
       {/* Chart */}
       <div className="relative">
-        {/* Live trade flash notification */}
         {flashTrade && (
           <div
             className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold shadow-lg animate-slide-in"
@@ -348,7 +339,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="h-[440px] flex items-center justify-center text-[#333]">
+          <div className="h-[400px] flex items-center justify-center text-[#333]">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
