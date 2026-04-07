@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { prisma, io } from "../index";
+import { prisma } from "../index";
 import { broadcastComment } from "../websocket/index";
 
 export const commentsRouter = Router();
@@ -39,6 +39,8 @@ commentsRouter.post("/:mint", async (req: Request, res: Response) => {
       data: { mint, wallet: data.wallet, text: data.text },
     });
 
+    // Lazy import to avoid circular dependency (io is initialized after router)
+    const { io } = await import("../index");
     broadcastComment(io, comment);
     res.status(201).json(comment);
   } catch (error) {

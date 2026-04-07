@@ -261,7 +261,9 @@
       "Bash(cmd /c \"tasklist | findstr 13852\")",
       "Bash(cmd /c \"type \"\"D:\\\\token dex\\\\frontend\\\\.next\\\\dev\\\\logs\\\\next-development.log\"\"\")",
       "Bash(cmd /c \"dir \"\"D:\\\\token dex\\\\frontend\\\\.next\\\\dev\"\"\")",
-      "Bash(cmd /c \"dir /a \"\"D:\\\\token dex\\\\frontend\\\\.next\"\"\")"
+      "Bash(cmd /c \"dir /a \"\"D:\\\\token dex\\\\frontend\\\\.next\"\"\")",
+      "WebFetch(domain:jetforge.io)",
+      "WebFetch(domain:api.jetforge.io)"
     ]
   }
 }
