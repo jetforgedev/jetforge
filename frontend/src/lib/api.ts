@@ -135,7 +135,7 @@ export async function createTokenRecord(
 
 export async function getOHLCV(
   mint: string,
-  interval: "1m" | "5m" | "15m" | "30m" | "1h" | "1d" = "5m",
+  interval: "1s" | "1m" | "5m" | "15m" | "30m" | "1h" | "1d" = "5m",
   limit = 200
 ): Promise<OHLCVData[]> {
   return fetchApi(`/tokens/${mint}/ohlcv?interval=${interval}&limit=${limit}`);

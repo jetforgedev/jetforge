@@ -25,7 +25,7 @@ export function useTrades(mint: string) {
     socket.on("new_trade", (trade: any) => {
       if (trade.mint === mint) {
         const newTrade: TradeData = {
-          id: `live-${Date.now()}`,
+          id: `live-${trade.signature || Date.now()}`,
           signature: trade.signature || "",
           mint: trade.mint,
           trader: trade.trader,
@@ -38,10 +38,11 @@ export function useTrades(mint: string) {
           createdAt: new Date().toISOString(),
         };
 
-        setLiveTrades((prev) => [newTrade, ...prev].slice(0, 100));
-
-        // Invalidate query to refresh from server periodically
-        queryClient.invalidateQueries({ queryKey: ["trades", mint] });
+        setLiveTrades((prev) => {
+          // Deduplicate by signature before adding
+          if (trade.signature && prev.some((t) => t.signature === trade.signature)) return prev;
+          return [newTrade, ...prev].slice(0, 100);
+        });
       }
     });
 

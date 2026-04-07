@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
 import { useSocket } from "@/hooks/useLiveFeed";
 
-type Interval = "1m" | "5m" | "15m" | "30m" | "1h" | "1d";
+type Interval = "1s" | "1m" | "5m" | "15m" | "30m" | "1h" | "1d";
 
 interface PriceChartProps {
   mint: string;
@@ -67,12 +67,19 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         timeScale: {
           borderColor: "#1a1a1a",
           timeVisible: true,
-          secondsVisible: false,
+          secondsVisible: interval === "1s",
           rightOffset: 5,
         },
         width: chartContainerRef.current.clientWidth,
         height: 440,
       });
+
+      // Market cap formatter: shows $2.4K, $11.5K, $1.2M instead of raw numbers
+      const mcapFormatter = (price: number) => {
+        if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(2)}M`;
+        if (price >= 1_000)     return `$${(price / 1_000).toFixed(1)}K`;
+        return `$${price.toFixed(2)}`;
+      };
 
       const candleSeries = chart.addCandlestickSeries({
         upColor: "#00ff88",
@@ -81,6 +88,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         borderDownColor: "#ff4444",
         wickUpColor: "#00ff8880",
         wickDownColor: "#ff444480",
+        priceFormat: { type: "custom", formatter: mcapFormatter, minMove: 0.01 },
       });
 
       const volumeSeries = chart.addHistogramSeries({
@@ -117,11 +125,22 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     };
   }, []);
 
+  // Update secondsVisible when interval changes (chart init uses stale closure)
+  useEffect(() => {
+    if (!chartRef.current) return;
+    chartRef.current.applyOptions({
+      timeScale: { secondsVisible: interval === "1s" },
+    });
+  }, [interval]);
+
   // Update candle + volume data when OHLCV or solPrice changes
+  // Y-axis shows Market Cap in USD: stored price × 1,000,000 × solPrice
+  // Derivation: price = virtualSol/virtualTokens; mcap_SOL = price × TOTAL_SUPPLY/1e9 = price × 1e6
   useEffect(() => {
     if (!candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
-    const priceMultiplier = solPrice ?? 1;
+    // When solPrice not loaded yet, show market cap in SOL (×1M factor only)
+    const priceMultiplier = (solPrice ?? 1) * 1_000_000;
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
       open: d.open * priceMultiplier,
@@ -179,6 +198,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   }, [socket, mint]);
 
   const intervals: { label: string; value: Interval }[] = [
+    { label: "1s",  value: "1s"  },
     { label: "1m",  value: "1m"  },
     { label: "5m",  value: "5m"  },
     { label: "15m", value: "15m" },
@@ -191,8 +211,28 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
-        <div className="flex items-center gap-3">
-          <div className="text-white text-sm font-semibold">{symbol}/USDT</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="text-white text-sm font-semibold">{symbol}</div>
+            <div className="text-[#555] text-xs">Market Cap</div>
+          </div>
+          {/* Current price display */}
+          {ohlcv && ohlcv.length > 0 && (() => {
+            // stored close = virtualSol(lamports) / virtualTokens(raw units)
+            // price per token in SOL = close / 1000
+            const lastClose = ohlcv[ohlcv.length - 1].close;
+            const pricePerTokenSol = lastClose / 1000;
+            return (
+              <div className="text-[#888] text-xs font-mono">
+                Price:{" "}
+                <span className="text-white">
+                  {solPrice
+                    ? `$${(pricePerTokenSol * solPrice).toFixed(8)}`
+                    : `${pricePerTokenSol.toFixed(8)} SOL`}
+                </span>
+              </div>
+            );
+          })()}
           {creator && (
             <div className="flex items-center gap-2 text-[10px] text-[#555]">
               <span className="text-[#00ff88]">▲</span> Dev Buy

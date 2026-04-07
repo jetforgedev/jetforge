@@ -318,6 +318,7 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
 
     // Map interval to milliseconds
     const intervalMap: Record<string, number> = {
+      "1s":  1000,
       "1m":  60 * 1000,
       "5m":  5 * 60 * 1000,
       "15m": 15 * 60 * 1000,

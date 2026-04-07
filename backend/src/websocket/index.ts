@@ -6,6 +6,7 @@ export interface TradeEvent {
   type: "BUY" | "SELL";
   mint: string;
   trader: string;
+  signature: string;
   solAmount: string;
   tokenAmount: string;
   price: number;
