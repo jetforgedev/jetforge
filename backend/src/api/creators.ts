@@ -3,26 +3,19 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { prisma } from "../index";
 import { config } from "../config";
 
-const connection = new Connection(config.solana.rpcUrl, "confirmed");
-const PROGRAM_ID = new PublicKey(config.solana.programId);
-
-// Derive creator_vault PDA for a given mint
-function getCreatorVaultPDA(mint: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("creator_vault"), mint.toBuffer()],
-    PROGRAM_ID
-  )[0];
-}
-
 // Fetch on-chain creator vault balance in SOL (above rent minimum)
 async function getCreatorVaultBalance(mintStr: string): Promise<number> {
   try {
+    const connection = new Connection(config.solana.rpcUrl, "confirmed");
+    const programId = new PublicKey(config.solana.programId);
     const mint = new PublicKey(mintStr);
-    const vault = getCreatorVaultPDA(mint);
+    const [vault] = PublicKey.findProgramAddressSync(
+      [Buffer.from("creator_vault"), mint.toBuffer()],
+      programId
+    );
     const lamports = await connection.getBalance(vault);
-    const rentMin = 890880; // minimum rent-exempt for 0-byte account
-    const withdrawable = Math.max(0, lamports - rentMin);
-    return withdrawable / 1e9;
+    const rentMin = 890880;
+    return Math.max(0, lamports - rentMin) / 1e9;
   } catch {
     return 0;
   }

@@ -13,17 +13,17 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
     let orderBy: any;
     switch (metric) {
       case "marketcap":
-        orderBy = { marketCapSol: "desc" };
+        orderBy = [{ marketCapSol: "desc" }, { createdAt: "desc" }];
         break;
       case "trades":
-        orderBy = { volume24h: "desc" }; // use volume24h as proxy; trades counted via _count
+        orderBy = [{ trades: "desc" }, { createdAt: "desc" }];
         break;
       case "new":
         orderBy = { createdAt: "desc" };
         break;
       case "volume":
       default:
-        orderBy = { volume24h: "desc" };
+        orderBy = [{ volume24h: "desc" }, { createdAt: "desc" }];
         break;
     }
 
