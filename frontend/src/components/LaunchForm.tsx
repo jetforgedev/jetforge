@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import toast from "react-hot-toast";
 import { clsx } from "clsx";
-import { createTokenRecord } from "@/lib/api";
+import { createTokenRecord, uploadImage } from "@/lib/api";
 import { buildCreateTokenTransaction } from "@/lib/program";
 
 // Minimum SOL needed to create a token (rent for mint + bonding curve + 4 vaults)
@@ -60,11 +60,42 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [isLaunching, setIsLaunching] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [launchedMint, setLaunchedMint] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const update = (key: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  const handleImageFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPEG, PNG, GIF, WebP)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB");
+      return;
+    }
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setImagePreview(localUrl);
+
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file);
+      update("imageUrl", url);
+      setImagePreview(url);
+      toast.success("Image uploaded!");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+      setImagePreview(null);
+      update("imageUrl", "");
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
 
   const validateStep1 = () => {
     if (!form.name.trim()) return "Token name is required";
@@ -366,35 +397,84 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       {/* Step 2: Media & Links */}
       {step === 2 && (
         <div className="space-y-5 animate-fade-in">
+          {/* Image upload */}
           <div>
             <label className="block text-sm font-medium text-[#888] mb-2">
-              Token Image URL
+              Token Image
             </label>
             <input
-              type="url"
-              value={form.imageUrl}
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
               onChange={(e) => {
-                update("imageUrl", e.target.value);
-                setImagePreview(e.target.value);
+                const file = e.target.files?.[0];
+                if (file) handleImageFile(file);
               }}
-              placeholder="https://arweave.net/your-image"
-              className="input-field"
             />
-            {imagePreview && (
-              <div className="mt-3 flex items-center gap-3">
+
+            {/* Drop zone / preview */}
+            {imagePreview ? (
+              <div className="flex items-center gap-4 p-4 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="w-16 h-16 rounded-xl object-cover border border-[#2a2a2a]"
+                  className="w-20 h-20 rounded-xl object-cover border border-[#333] shrink-0"
                   onError={() => setImagePreview(null)}
                 />
-                <span className="text-[#555] text-xs">Image preview</span>
+                <div className="flex-1 min-w-0">
+                  {isUploading ? (
+                    <div className="flex items-center gap-2 text-[#00ff88] text-sm">
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Uploading...
+                    </div>
+                  ) : (
+                    <div className="text-[#00ff88] text-sm font-medium">✓ Image uploaded</div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreview(null);
+                      update("imageUrl", "");
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="text-[#555] text-xs mt-1 hover:text-[#ff4444] transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleImageFile(file);
+                }}
+                className={clsx(
+                  "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors",
+                  isDragging
+                    ? "border-[#00ff88] bg-[#00ff8810]"
+                    : "border-[#2a2a2a] hover:border-[#444] bg-[#0f0f0f]"
+                )}
+              >
+                <div className="text-3xl mb-2">🖼️</div>
+                <div className="text-white text-sm font-medium mb-1">
+                  Drop image here or click to browse
+                </div>
+                <div className="text-[#555] text-xs">
+                  JPEG, PNG, GIF, WebP — max 5 MB
+                </div>
               </div>
             )}
-            <div className="text-[#444] text-xs mt-1">
-              Upload your image to Arweave or IPFS first, then paste the URL here.
-            </div>
           </div>
 
           <div>

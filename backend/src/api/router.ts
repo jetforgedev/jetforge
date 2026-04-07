@@ -6,6 +6,7 @@ import { creatorsRouter } from "./creators";
 import { commentsRouter } from "./comments";
 import { statsRouter } from "./stats";
 import { metadataRouter } from "./metadata";
+import { uploadRouter } from "./upload";
 
 export function createRouter(): Router {
   const router = Router();
@@ -17,6 +18,7 @@ export function createRouter(): Router {
   router.use("/comments", commentsRouter);
   router.use("/stats", statsRouter);
   router.use("/metadata", metadataRouter);
+  router.use("/upload", uploadRouter);
 
   return router;
 }

@@ -1,5 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
+// ─── Image upload ─────────────────────────────────────────────────────────────
+export async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("image", file);
+  const res = await fetch(`${API_URL}/upload/image`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Image upload failed");
+  }
+  const data = await res.json();
+  return data.url as string;
+}
+
 export interface TokenData {
   id: string;
   mint: string;

@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { createServer } from "http";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 
 import { config } from "./config";
@@ -39,6 +41,11 @@ app.get("/health", (_req: Request, res: Response) => {
     environment: process.env.NODE_ENV || "development",
   });
 });
+
+// Serve uploaded images
+const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 // API routes
 app.use("/api", createRouter());
