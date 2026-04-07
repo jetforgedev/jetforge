@@ -254,7 +254,14 @@
       "Bash(curl -s http://localhost:3000)",
       "Bash(find 'D:\\\\token dex' -maxdepth 3 -name .env* -o -name launch.json)",
       "Bash(find 'D:/token dex' -name .env* -not -path */node_modules/*)",
-      "Bash(find 'D:/token dex' -name *.env -not -path */node_modules/*)"
+      "Bash(find 'D:/token dex' -name *.env -not -path */node_modules/*)",
+      "Bash(taskkill /PID 13852 /F)",
+      "Bash(cmd /c \"taskkill /PID 13852 /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\")",
+      "Bash(cmd /c \"tasklist | findstr 13852\")",
+      "Bash(cmd /c \"type \"\"D:\\\\token dex\\\\frontend\\\\.next\\\\dev\\\\logs\\\\next-development.log\"\"\")",
+      "Bash(cmd /c \"dir \"\"D:\\\\token dex\\\\frontend\\\\.next\\\\dev\"\"\")",
+      "Bash(cmd /c \"dir /a \"\"D:\\\\token dex\\\\frontend\\\\.next\"\"\")"
     ]
   }
 }

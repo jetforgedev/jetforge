@@ -26,6 +26,15 @@ export function TradesList({ mint, symbol }: TradesListProps) {
     );
   }
 
+  // Buy/sell pressure from recent 50 trades
+  const buys = trades.filter((t) => t.type === "BUY");
+  const sells = trades.filter((t) => t.type === "SELL");
+  const buyVol = buys.reduce((s, t) => s + Number(t.solAmount), 0);
+  const sellVol = sells.reduce((s, t) => s + Number(t.solAmount), 0);
+  const totalVol = buyVol + sellVol;
+  const buyPct = totalVol > 0 ? (buyVol / totalVol) * 100 : 50;
+  const sellPct = 100 - buyPct;
+
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       {/* Header */}
@@ -33,6 +42,30 @@ export function TradesList({ mint, symbol }: TradesListProps) {
         <span className="text-white text-sm font-semibold">Recent Trades</span>
         <span className="text-[#555] text-xs">{trades.length} trades</span>
       </div>
+
+      {/* Buy/Sell pressure bar */}
+      {trades.length > 0 && (
+        <div className="px-4 py-2.5 border-b border-[#1a1a1a]">
+          <div className="flex justify-between text-[10px] mb-1.5">
+            <span className="text-[#00ff88] font-semibold">
+              BUY {buyPct.toFixed(0)}%
+            </span>
+            <span className="text-[#555] text-[10px]">Buy / Sell Pressure</span>
+            <span className="text-[#ff4444] font-semibold">
+              {sellPct.toFixed(0)}% SELL
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden flex">
+            <div
+              className="h-full bg-[#00ff88] transition-all duration-500"
+              style={{ width: `${buyPct}%` }}
+            />
+            <div
+              className="h-full bg-[#ff4444] transition-all duration-500 flex-1"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Column headers */}
       {trades.length > 0 && (

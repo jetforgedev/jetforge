@@ -17,6 +17,7 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { useQuery } from "@tanstack/react-query";
 import { getTopHolders } from "@/lib/api";
 import { PROGRAM_ID, TREASURY, getBuybackVaultPDA, getCreatorVaultPDA, buildWithdrawCreatorFeesTransaction } from "@/lib/program";
+import { useTrades as useLiveTrades } from "@/hooks/useTrades";
 
 interface PageProps {
   params: Promise<{ mint: string }>;
@@ -172,6 +173,37 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
 }
 
 const BUYBACK_THRESHOLD_SOL = 0.1;
+
+function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: number; holders: number }) {
+  const { trades: liveTrades } = useLiveTrades(mint);
+  const recentCount = liveTrades.length;
+
+  return (
+    <div className="flex items-center gap-4 px-4 py-2.5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl text-xs overflow-x-auto">
+      {recentCount > 0 && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+          <span className="text-[#00ff88] font-semibold">{recentCount}</span>
+          <span className="text-[#555]">trade{recentCount !== 1 ? "s" : ""} since you opened this page</span>
+        </div>
+      )}
+      {recentCount === 0 && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#333]" />
+          <span className="text-[#555]">Waiting for trades…</span>
+        </div>
+      )}
+      <div className="h-3 w-px bg-[#1a1a1a] shrink-0" />
+      <span className="text-[#555] shrink-0">
+        <span className="text-[#888] font-semibold">{trades.toLocaleString()}</span> total trades
+      </span>
+      <div className="h-3 w-px bg-[#1a1a1a] shrink-0" />
+      <span className="text-[#555] shrink-0">
+        <span className="text-[#888] font-semibold">{holders.toLocaleString()}</span> holders
+      </span>
+    </div>
+  );
+}
 
 
 function useBuybackVault(mint: string) {
@@ -377,8 +409,8 @@ export default function TokenPage({ params }: PageProps) {
             )}
           </div>
 
-          {/* Social links */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Social links + Share */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {token.websiteUrl && (
               <a href={token.websiteUrl} target="_blank" rel="noopener noreferrer"
                 className="text-[#555] hover:text-white transition-colors text-xs border border-[#2a2a2a] px-2 py-1 rounded-md">
@@ -397,6 +429,17 @@ export default function TokenPage({ params }: PageProps) {
                 ✈️ Telegram
               </a>
             )}
+            {/* Share on X */}
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                `Just found $${token.symbol} on JetForge! 🚀\n\nMarket cap: ${marketCapUsdt}\n\nTrade it here 👇`
+              )}&url=${encodeURIComponent(`https://jetforge.io/token/${mint}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs border border-[#1d9bf030] bg-[#1d9bf010] text-[#1d9bf0] hover:bg-[#1d9bf020] transition-colors px-2.5 py-1 rounded-md font-medium"
+            >
+              𝕏 Share
+            </a>
           </div>
         </div>
       </div>
@@ -424,6 +467,9 @@ export default function TokenPage({ params }: PageProps) {
           </div>
         ))}
       </div>
+
+      {/* Social proof strip */}
+      <SocialProofStrip mint={mint} trades={token.trades} holders={token.holders} />
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

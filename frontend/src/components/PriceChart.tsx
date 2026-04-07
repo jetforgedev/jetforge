@@ -184,6 +184,34 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     candleSeriesRef.current.setMarkers(markers);
   }, [tradesData, creator, ohlcv]);
 
+  // Live trade flash notifications
+  const [flashTrade, setFlashTrade] = useState<{
+    type: "BUY" | "SELL";
+    trader: string;
+    solAmount: string;
+  } | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!socket || !mint) return;
+
+    socket.on("new_trade", (trade: any) => {
+      if (trade.mint !== mint) return;
+      setFlashTrade({
+        type: trade.type,
+        trader: trade.trader,
+        solAmount: trade.solAmount,
+      });
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashTrade(null), 4000);
+    });
+
+    return () => {
+      socket.off("new_trade");
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    };
+  }, [socket, mint]);
+
   // Real-time price updates via Socket.IO
   useEffect(() => {
     if (!socket || !mint || !candleSeriesRef.current) return;
@@ -260,6 +288,23 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
       {/* Chart */}
       <div className="relative">
+        {/* Live trade flash notification */}
+        {flashTrade && (
+          <div
+            className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold shadow-lg animate-slide-in"
+            style={{
+              background: flashTrade.type === "BUY" ? "#00ff8815" : "#ff444415",
+              borderColor: flashTrade.type === "BUY" ? "#00ff8840" : "#ff444440",
+              color: flashTrade.type === "BUY" ? "#00ff88" : "#ff4444",
+            }}
+          >
+            <span>{flashTrade.type === "BUY" ? "▲" : "▼"}</span>
+            <span>{flashTrade.trader.slice(0, 4)}...{flashTrade.trader.slice(-4)}</span>
+            <span className="text-white font-mono">
+              {(Number(flashTrade.solAmount) / 1e9).toFixed(3)} SOL
+            </span>
+          </div>
+        )}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d0d] z-10">
             <div className="flex items-center gap-2 text-[#555]">
