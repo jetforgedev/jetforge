@@ -29,7 +29,7 @@ async function getLatestBlockhashWithRetry(connection: Connection, retries = 3) 
 // ─── Program constants ──────────────────────────────────────────────────────
 
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_PROGRAM_ID ?? "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+  process.env.NEXT_PUBLIC_PROGRAM_ID ?? "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk"
 );
 
 export const TREASURY = new PublicKey(
