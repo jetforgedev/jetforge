@@ -9,13 +9,27 @@ export function Footer() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#00ff88] flex items-center justify-center text-black font-bold text-xs">
-                J
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
+                <div className="absolute inset-0 rounded-lg bg-[#00ff88] opacity-15 blur-sm" />
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M15 2 C15 2 22 8 22 16 L15 28 L8 16 C8 8 15 2 15 2Z" fill="#00ff88" />
+                  <circle cx="15" cy="13" r="3" fill="#080808" />
+                  <circle cx="15" cy="13" r="1.4" fill="#00ff88" opacity="0.5" />
+                  <path d="M8 16 L4 21 L8 19Z" fill="#00cc6e" />
+                  <path d="M22 16 L26 21 L22 19Z" fill="#00cc6e" />
+                  <path d="M12.5 26 L15 31 L17.5 26Z" fill="#ff6b00" opacity="0.9" />
+                  <path d="M13.8 25 L15 29 L16.2 25Z" fill="#ffaa00" opacity="0.75" />
+                </svg>
               </div>
-              <span className="font-bold text-white">
-                Jet<span className="text-[#00ff88]">Forge</span>
-              </span>
+              <div className="flex flex-col leading-none gap-0.5">
+                <span className="font-black text-[15px] text-white tracking-tight leading-none">
+                  Jet<span className="text-[#00ff88]">Forge</span>
+                </span>
+                <span className="text-[8px] text-[#444] font-semibold tracking-[0.15em] uppercase leading-none">
+                  Solana Launchpad
+                </span>
+              </div>
             </div>
             <p className="text-[#555] text-xs leading-relaxed">
               Fair-launch token platform on Solana. No presales, no team allocations. 100% bonding curve.
@@ -69,6 +83,7 @@ export function Footer() {
                 { href: "/", label: "Home" },
                 { href: "/launch", label: "Launch Token" },
                 { href: "/leaderboard", label: "Leaderboard" },
+                { href: "/creators", label: "Creators" },
               ].map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="text-[#555] hover:text-[#888] text-xs transition-colors">
