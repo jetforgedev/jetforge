@@ -105,9 +105,35 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       const name = form.name.trim();
       const symbol = form.symbol.trim().toUpperCase();
 
-      // URI: use image URL if provided, otherwise empty string
-      // In production this would be an Arweave/IPFS metadata JSON URL
-      const uri = form.imageUrl.trim() || "";
+      // Generate the mint keypair early so we can build the metadata URI before
+      // creating the token. The same keypair is reused in buildCreateTokenTransaction.
+      const { Keypair } = await import("@solana/web3.js");
+      const mintKeypairForUri = Keypair.generate();
+      const mintAddressForUri = mintKeypairForUri.publicKey.toString();
+
+      // Pre-register the token in the backend so the metadata endpoint is live
+      // before the on-chain transaction is submitted.
+      try {
+        await createTokenRecord({
+          mint: mintAddressForUri,
+          name,
+          symbol,
+          description: form.description.trim(),
+          imageUrl: form.imageUrl || undefined,
+          websiteUrl: form.websiteUrl || undefined,
+          twitterUrl: form.twitterUrl || undefined,
+          telegramUrl: form.telegramUrl || undefined,
+          creator: publicKey.toString(),
+        });
+      } catch {
+        // Non-fatal — indexer will sync it on-chain
+      }
+
+      // Use the backend metadata JSON URL as the on-chain URI.
+      // This is the Metaplex-standard format (name, symbol, image, description).
+      // When the program is upgraded to create a Metaplex metadata account,
+      // blockchain explorers will automatically read this URL.
+      const uri = `https://jetforge.io/api/metadata/${mintAddressForUri}`;
 
       // Build the on-chain createToken transaction
       toast.loading("Sending transaction...", { id: loadingToast });
@@ -117,6 +143,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         name,
         symbol,
         uri,
+        mintKeypair: mintKeypairForUri,
       });
 
       // Simulate first to surface program errors (skip if RPC unreachable)
@@ -153,23 +180,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       const mint = mintKeypair.publicKey.toString();
 
-      // Register in backend DB (best-effort — token is already live on-chain)
-      try {
-        await createTokenRecord({
-          mint,
-          name,
-          symbol,
-          description: form.description.trim(),
-          imageUrl: form.imageUrl || undefined,
-          websiteUrl: form.websiteUrl || undefined,
-          twitterUrl: form.twitterUrl || undefined,
-          telegramUrl: form.telegramUrl || undefined,
-          creator: publicKey.toString(),
-        });
-      } catch (backendErr) {
-        // Backend unavailable — token is still live on-chain, indexer will catch it
-        console.warn("Backend registration failed (indexer will sync):", backendErr);
-      }
+      // Token was already pre-registered above with the metadata URI.
+      // Indexer will sync the full on-chain state once the tx is confirmed.
 
       toast.dismiss(loadingToast);
       setForm(INITIAL_FORM);

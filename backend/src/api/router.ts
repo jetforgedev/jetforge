@@ -5,6 +5,7 @@ import { leaderboardRouter } from "./leaderboard";
 import { creatorsRouter } from "./creators";
 import { commentsRouter } from "./comments";
 import { statsRouter } from "./stats";
+import { metadataRouter } from "./metadata";
 
 export function createRouter(): Router {
   const router = Router();
@@ -15,6 +16,7 @@ export function createRouter(): Router {
   router.use("/creators", creatorsRouter);
   router.use("/comments", commentsRouter);
   router.use("/stats", statsRouter);
+  router.use("/metadata", metadataRouter);
 
   return router;
 }

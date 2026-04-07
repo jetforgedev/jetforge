@@ -318,6 +318,7 @@ export interface CreateTokenParams {
   name: string;
   symbol: string;
   uri: string;
+  mintKeypair?: Keypair; // optional pre-generated keypair (so mint address is known before tx)
 }
 
 export interface CreateTokenResult {
@@ -328,9 +329,9 @@ export interface CreateTokenResult {
 export async function buildCreateTokenTransaction(
   params: CreateTokenParams
 ): Promise<CreateTokenResult> {
-  const { connection, wallet, name, symbol, uri } = params;
+  const { connection, wallet, name, symbol, uri, mintKeypair: providedKeypair } = params;
 
-  const mintKeypair = Keypair.generate();
+  const mintKeypair = providedKeypair ?? Keypair.generate();
   const mint = mintKeypair.publicKey;
   const [bondingCurve] = getBondingCurvePDA(mint);
   const [reserveVault] = getReserveVaultPDA(mint);
