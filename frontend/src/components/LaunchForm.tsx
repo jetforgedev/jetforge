@@ -164,8 +164,10 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // This is the Metaplex-standard format (name, symbol, image, description).
       // When the program is upgraded to create a Metaplex metadata account,
       // blockchain explorers will automatically read this URL.
-      const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://api.jetforge.io";
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "https://api.jetforge.io/api")
+        .replace(/\/api$/, ""); // remove trailing /api only at end
       const uri = `${apiBase}/api/metadata/${mintAddressForUri}`;
+      console.log("[LaunchForm] URI being passed to program:", uri);
 
       // Build the on-chain createToken transaction
       toast.loading("Sending transaction...", { id: loadingToast });
