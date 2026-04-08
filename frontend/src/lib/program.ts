@@ -3,6 +3,7 @@ import {
   PublicKey,
   Transaction,
   Keypair,
+  SystemProgram,
 } from "@solana/web3.js";
 import {
   getAssociatedTokenAddressSync,
@@ -256,7 +257,7 @@ export async function buildBuyTransaction(params: BuyParams): Promise<Transactio
       creatorVault,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: PublicKey.default,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 
@@ -302,7 +303,7 @@ export async function buildSellTransaction(params: SellParams): Promise<Transact
       creatorVault,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: PublicKey.default,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 
@@ -359,7 +360,7 @@ export async function buildCreateTokenTransaction(
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-      systemProgram: PublicKey.default,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 
@@ -401,7 +402,7 @@ export async function buildExecuteBuybackTransaction(
       buybackVault,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: PublicKey.default,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 
@@ -436,7 +437,7 @@ export async function buildWithdrawCreatorFeesTransaction(
       mint,
       bondingCurve,
       creatorVault,
-      systemProgram: PublicKey.default,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 
