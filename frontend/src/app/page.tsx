@@ -9,12 +9,13 @@ import { clsx } from "clsx";
 import Link from "next/link";
 import Image from "next/image";
 
-type SortTab = "trending" | "new" | "graduating" | "watchlist";
+type SortTab = "trending" | "new" | "graduating" | "graduated" | "watchlist";
 
 const TAB_CONFIG = [
   { key: "trending" as SortTab, label: "🔥 Trending" },
   { key: "new" as SortTab, label: "🆕 New" },
-  { key: "graduating" as SortTab, label: "🎓 Graduating" },
+  { key: "graduating" as SortTab, label: "📈 Graduating" },
+  { key: "graduated" as SortTab, label: "🎓 Graduated" },
   { key: "watchlist" as SortTab, label: "⭐ Watchlist" },
 ];
 
@@ -156,7 +157,7 @@ export default function HomePage() {
   // Reset page on tab/search change
   useEffect(() => { setPage(1); }, [activeTab, debouncedSearch]);
 
-  const apiSort = activeTab === "watchlist" ? "new" : activeTab;
+  const apiSort = activeTab === "watchlist" ? "new" : activeTab === "graduated" ? "graduated" : activeTab;
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["tokens", apiSort, page, debouncedSearch],

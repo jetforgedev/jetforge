@@ -43,6 +43,7 @@ export interface TokenData {
   graduatedAt?: string;
   graduationProgress: number;
   currentPrice?: number;
+  raydiumPoolId?: string;
 }
 
 export interface TradeData {

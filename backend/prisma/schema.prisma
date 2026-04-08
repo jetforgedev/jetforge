@@ -36,6 +36,7 @@ model Token {
   holders         Int      @default(0)
   isGraduated     Boolean  @default(false)
   graduatedAt     DateTime?
+  raydiumPoolId   String?
 
   // Relations
   tradeHistory    Trade[]

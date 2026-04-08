@@ -308,7 +308,7 @@ function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: num
 }
 
 
-const GRADUATION_SOL = 85; // SOL target for graduation
+const GRADUATION_SOL = 0.5; // SOL target for graduation
 
 function BondingCurveVisual({ graduationProgress, realSolReserves }: { graduationProgress: number; realSolReserves: string }) {
   const pct = Math.min(100, Math.max(0, graduationProgress));
@@ -863,6 +863,8 @@ export default function TokenPage({ params }: PageProps) {
           <GraduationBar
             realSolReserves={token.realSolReserves}
             isGraduated={token.isGraduated}
+            mint={mint}
+            raydiumPoolId={token.raydiumPoolId ?? undefined}
           />
           {/* Bonding curve visualizer */}
           {!token.isGraduated && (

@@ -8,9 +8,11 @@ import { GRADUATION_THRESHOLD, formatSol } from "@/lib/bondingCurve";
 interface GraduationBarProps {
   realSolReserves: string;
   isGraduated: boolean;
+  mint?: string;
+  raydiumPoolId?: string;
 }
 
-export function GraduationBar({ realSolReserves, isGraduated }: GraduationBarProps) {
+export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolId }: GraduationBarProps) {
   const realSol = new BN(realSolReserves || "0");
   const target = GRADUATION_THRESHOLD;
   const progress = Math.min(
@@ -22,9 +24,23 @@ export function GraduationBar({ realSolReserves, isGraduated }: GraduationBarPro
   const solTarget = Number(target.toString()) / 1e9;
 
   if (isGraduated) {
+    const isDevnet = process.env.NEXT_PUBLIC_NETWORK === "devnet";
+    const raydiumBase = isDevnet ? "https://devnet.raydium.io" : "https://raydium.io";
+
+    // If we have the pool ID, link directly to the pool page — otherwise fall back to swap search
+    const raydiumUrl = raydiumPoolId
+      ? `${raydiumBase}/liquidity/pool/${raydiumPoolId}`
+      : mint
+      ? `${raydiumBase}/swap/?inputMint=sol&outputMint=${mint}`
+      : raydiumBase;
+
+    const jupiterUrl = mint
+      ? `https://jup.ag/swap/SOL-${mint}`
+      : "https://jup.ag";
+
     return (
       <div className="bg-[#7c3aed15] border border-[#7c3aed40] rounded-xl p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <div className="text-3xl">🎓</div>
           <div>
             <div className="text-[#a78bfa] font-semibold text-sm">
@@ -34,6 +50,24 @@ export function GraduationBar({ realSolReserves, isGraduated }: GraduationBarPro
               This token has graduated and is now trading on a decentralized exchange.
             </div>
           </div>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={raydiumUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-xs font-medium transition-colors"
+          >
+            Trade on Raydium ↗
+          </a>
+          <a
+            href={jupiterUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#00ff8810] hover:bg-[#00ff8820] border border-[#00ff8830] rounded-lg text-[#00ff88] text-xs font-medium transition-colors"
+          >
+            Trade on Jupiter ↗
+          </a>
         </div>
       </div>
     );

@@ -14,6 +14,8 @@ import {
   broadcastTokenCreated,
   broadcastGraduation,
 } from "../websocket/index";
+import { createRaydiumPool } from "../services/raydiumService";
+import { callGraduateInstruction } from "../services/graduateKeeper";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD);
@@ -212,6 +214,13 @@ async function handleBuyEvent(
         totalTrades: (graduated?.trades ?? 0).toString(),
         timestamp,
       });
+
+      // Trigger the on-chain `graduate` instruction (async, non-blocking).
+      // This distributes SOL + transfers tokens to treasury, then emits GraduationEvent
+      // which in turn triggers Raydium pool creation via handleGraduationEvent.
+      callGraduateInstruction(mint).catch((err) =>
+        console.error("[KEEPER] Unhandled error:", err)
+      );
     }
 
     console.log(`[BUY] ${mint.slice(0, 8)}… buyer=${buyer.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);
@@ -361,11 +370,16 @@ async function handleGraduationEvent(
   data: any,
   io: Server
 ): Promise<void> {
-  const mint      = data.mint.toString();
-  const creator   = data.creator.toString();
-  const timestamp = Number(data.timestamp.toString());
+  const mint            = data.mint.toString();
+  const creator         = data.creator.toString();
+  const timestamp       = Number(data.timestamp.toString());
+  // real_sol_reserves in the event = 90% liquidity SOL (see graduate.rs)
+  // real_token_reserves in the event = all unsold tokens transferred to treasury
+  const liquiditySol    = BigInt(data.realSolReserves.toString());
+  const liquidityTokens = BigInt(data.realTokenReserves.toString());
 
   try {
+    // Mark graduated immediately so frontend reflects the state
     await prisma.token.update({
       where: { mint },
       data: { isGraduated: true, graduatedAt: new Date() },
@@ -378,7 +392,24 @@ async function handleGraduationEvent(
       totalTrades: data.totalTrades.toString(),
       timestamp,
     });
-    console.log(`[GRADUATE] ${mint.slice(0, 8)}…`);
+    console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} tokens=${Number(liquidityTokens)/1e6}`);
+
+    // Create Raydium CPMM pool asynchronously — non-blocking
+    // Pool creation can take several seconds; we don't want to block the indexer
+    createRaydiumPool(mint, liquiditySol, liquidityTokens)
+      .then(async (poolId) => {
+        if (poolId) {
+          await prisma.token.update({
+            where: { mint },
+            data: { raydiumPoolId: poolId },
+          });
+          console.log(`[RAYDIUM] Stored pool ID for ${mint.slice(0, 8)}…: ${poolId}`);
+          // Broadcast updated pool ID so open token pages can update their links
+          io.to(`token:${mint}`).emit("pool_created", { mint, poolId });
+        }
+      })
+      .catch((err) => console.error("[RAYDIUM] Async pool creation error:", err));
+
   } catch (error) {
     console.error("Error handling graduation event:", error);
   }

@@ -28,7 +28,7 @@ pub struct Graduate<'info> {
     )]
     pub bonding_curve: Account<'info, BondingCurveState>,
 
-    /// Bonding curve's main token vault
+    /// Bonding curve's main token vault (holds unsold tokens)
     #[account(
         mut,
         associated_token::mint = mint,
@@ -53,6 +53,15 @@ pub struct Graduate<'info> {
         constraint = treasury.key() == crate::TREASURY_PUBKEY @ TokenLaunchError::Unauthorized,
     )]
     pub treasury: UncheckedAccount<'info>,
+
+    /// Treasury token account — receives unsold tokens to seed DEX liquidity.
+    /// Must already exist before calling this instruction (create it first via ATA).
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = treasury,
+    )]
+    pub treasury_token_account: Account<'info, TokenAccount>,
 
     /// Token creator receives graduation bonus
     /// CHECK: Validated against bonding_curve.creator
@@ -103,7 +112,7 @@ pub fn graduate(ctx: Context<Graduate>) -> Result<()> {
     // Split SOL at graduation (percentage-based):
     //   5%  → treasury (platform cut)
     //   5%  → creator (graduation reward)
-    //   90% → treasury to seed DEX liquidity (Raydium/Orca pool creation)
+    //   90% → treasury to seed DEX liquidity (Raydium CPMM pool)
     let treasury_cut = total_sol
         .checked_mul(GRADUATION_TREASURY_BPS)
         .ok_or(TokenLaunchError::MathOverflow)?
@@ -133,23 +142,23 @@ pub fn graduate(ctx: Context<Graduate>) -> Result<()> {
             .ok_or(TokenLaunchError::MathOverflow)?;
     }
 
-    // treasury receives its platform cut plus the DEX liquidity portion
+    // treasury receives its platform cut plus the DEX liquidity SOL portion
     **ctx.accounts.treasury.to_account_info().try_borrow_mut_lamports()? +=
         treasury_cut.checked_add(liquidity_sol).ok_or(TokenLaunchError::MathOverflow)?;
 
     // creator receives graduation bonus
     **ctx.accounts.creator.to_account_info().try_borrow_mut_lamports()? += creator_bonus;
 
-    let sol_for_liquidity = liquidity_sol;
+    // ── Token transfers ──────────────────────────────────────────────────────────
 
-    // Transfer reserve tokens to treasury for DEX liquidity
+    // Step 1: Consolidate reserve vault → token vault (if any reserve tokens exist)
     if reserve_tokens > 0 {
         transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 TokenTransfer {
                     from: ctx.accounts.reserve_vault.to_account_info(),
-                    to: ctx.accounts.token_vault.to_account_info(), // consolidate first
+                    to: ctx.accounts.token_vault.to_account_info(),
                     authority: ctx.accounts.bonding_curve.to_account_info(),
                 },
                 signer_seeds,
@@ -158,13 +167,33 @@ pub fn graduate(ctx: Context<Graduate>) -> Result<()> {
         )?;
     }
 
+    // Step 2: Transfer ALL tokens (unsold) from token vault → treasury ATA
+    // Treasury will use these + the liquidity SOL to seed the Raydium CPMM pool
+    let total_tokens = tokens_in_vault.checked_add(reserve_tokens)
+        .ok_or(TokenLaunchError::MathOverflow)?;
+
+    if total_tokens > 0 {
+        transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TokenTransfer {
+                    from: ctx.accounts.token_vault.to_account_info(),
+                    to: ctx.accounts.treasury_token_account.to_account_info(),
+                    authority: ctx.accounts.bonding_curve.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            total_tokens,
+        )?;
+    }
+
     let timestamp = Clock::get()?.unix_timestamp;
 
     emit!(GraduationEvent {
         mint: mint_key,
         creator,
-        real_sol_reserves: sol_for_liquidity,
-        real_token_reserves: tokens_in_vault + reserve_tokens,
+        real_sol_reserves: liquidity_sol,   // 90% SOL going to DEX pool
+        real_token_reserves: total_tokens,  // all unsold tokens going to DEX pool
         total_volume_sol: total_volume,
         total_trades,
         timestamp,

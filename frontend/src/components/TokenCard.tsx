@@ -180,11 +180,13 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
           {/* Footer */}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1a1a1a]">
             <span className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</span>
-            {token.realSolReserves && (
+            {token.isGraduated ? (
+              <span className="text-[#a78bfa] text-[10px] font-medium">🎓 Trading on DEX</span>
+            ) : token.realSolReserves ? (
               <span className="text-[#666] text-[10px] font-mono">
                 {formatSol(new BN(token.realSolReserves))} SOL raised
               </span>
-            )}
+            ) : null}
           </div>
         </div>
       </Link>

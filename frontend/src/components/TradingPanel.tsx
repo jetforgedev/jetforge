@@ -302,7 +302,37 @@ export function TradingPanel({ token }: TradingPanelProps) {
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       {/* Tab Header */}
-      <div className="flex">
+      {token.isGraduated ? (
+        <div className="p-4 space-y-3">
+          <div className="text-center py-2">
+            <div className="text-2xl mb-2">🎓</div>
+            <div className="text-white font-semibold text-sm mb-1">Graduated to DEX</div>
+            <div className="text-[#666] text-xs mb-2">This token no longer trades on the bonding curve.</div>
+          </div>
+          <a
+            href={(() => {
+              const base = process.env.NEXT_PUBLIC_NETWORK === "devnet" ? "https://devnet.raydium.io" : "https://raydium.io";
+              return token.raydiumPoolId
+                ? `${base}/liquidity/pool/${token.raydiumPoolId}`
+                : `${base}/swap/?inputMint=sol&outputMint=${token.mint}`;
+            })()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-sm font-semibold transition-colors"
+          >
+            Trade on Raydium ↗
+          </a>
+          <a
+            href={`https://jup.ag/swap/SOL-${token.mint}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 bg-[#00ff8810] hover:bg-[#00ff8820] border border-[#00ff8830] rounded-lg text-[#00ff88] text-sm font-semibold transition-colors"
+          >
+            Trade on Jupiter ↗
+          </a>
+        </div>
+      ) : (
+      <><div className="flex">
         <button
           onClick={() => { setTab("buy"); setInputAmount(""); }}
           className={clsx(
@@ -328,13 +358,6 @@ export function TradingPanel({ token }: TradingPanelProps) {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Graduated warning */}
-        {token.isGraduated && (
-          <div className="bg-[#7c3aed15] border border-[#7c3aed30] rounded-lg p-3 text-[#a78bfa] text-xs">
-            🎓 This token has graduated. Trade it on the DEX instead.
-          </div>
-        )}
-
         {/* Preset amounts */}
         {tab === "buy" && (
           <div className="flex gap-2">
@@ -542,6 +565,8 @@ export function TradingPanel({ token }: TradingPanelProps) {
           )}
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }
