@@ -112,9 +112,12 @@ export async function createRaydiumPool(
     const mintAAmount = new BN(wsolFirst ? solLamports.toString() : tokenAmount.toString());
     const mintBAmount = new BN(wsolFirst ? tokenAmount.toString() : solLamports.toString());
 
+    console.log(`[RAYDIUM] DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM = ${DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toBase58?.() ?? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM}`);
+    console.log(`[RAYDIUM] DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC = ${DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toBase58?.() ?? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC}`);
+
     const { execute, extInfo } = await raydium.cpmm.createPool({
-      programId: isDevnet ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM : undefined,
-      poolFeeAccount: isDevnet ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC : undefined,
+      programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
+      poolFeeAccount: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
       mintA,
       mintB,
       mintAAmount,
@@ -140,6 +143,28 @@ export async function createRaydiumPool(
     return poolId;
   } catch (error: any) {
     console.error("[RAYDIUM] Pool creation failed:", error?.message ?? error);
+    // Try to get program logs for SendTransactionError
+    if (typeof error?.getLogs === "function") {
+      try {
+        const logs = await error.getLogs();
+        console.error("[RAYDIUM] Transaction logs:\n" + (logs ?? []).join("\n"));
+      } catch (e2) {
+        console.error("[RAYDIUM] getLogs() failed:", e2);
+      }
+    } else if (error?.logs?.length) {
+      console.error("[RAYDIUM] Transaction logs:\n" + error.logs.join("\n"));
+    }
+    // Extract signature from error message and fetch tx logs
+    const sigMatch = error?.message?.match(/Transaction ([A-Za-z0-9]+) resulted/);
+    if (sigMatch) {
+      try {
+        const tx = await connection.getTransaction(sigMatch[1], {
+          maxSupportedTransactionVersion: 0,
+          commitment: "confirmed",
+        });
+        console.error("[RAYDIUM] On-chain logs:\n" + (tx?.meta?.logMessages ?? []).join("\n"));
+      } catch {}
+    }
     return null;
   }
 }

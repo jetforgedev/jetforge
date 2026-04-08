@@ -9,11 +9,13 @@ pub const INITIAL_VIRTUAL_TOKENS: u64 = 1_073_000_191_000_000;
 /// Total token supply (1 billion tokens with 6 decimals)
 pub const TOTAL_SUPPLY: u64 = 1_000_000_000_000_000;
 
-/// Tokens available for trading (100% — creator earns SOL at graduation instead)
-pub const REAL_TOKEN_RESERVES_INIT: u64 = 1_000_000_000_000_000;
+/// Tokens available for trading on the bonding curve (70% of total supply)
+/// 700M tokens purchasable by users — unsold ones are BURNED at graduation
+pub const REAL_TOKEN_RESERVES_INIT: u64 = 700_000_000_000_000;
 
-/// Tokens held in reserve for creator (0% — removed to prevent free dump)
-pub const RESERVE_TOKEN_AMOUNT: u64 = 0;
+/// Tokens locked in reserve vault for DEX liquidity at graduation (30% of total supply)
+/// These 300M tokens are NEVER for sale — they ALWAYS seed the Raydium CPMM pool
+pub const RESERVE_TOKEN_AMOUNT: u64 = 300_000_000_000_000;
 
 /// Graduation threshold in lamports (0.5 SOL for local testing)
 pub const GRADUATION_THRESHOLD: u64 = 500_000_000;

@@ -85,6 +85,7 @@ const IDL: any = {
         { name: "creator",           type: "publicKey", index: false },
         { name: "realSolReserves",   type: "u64",       index: false },
         { name: "realTokenReserves", type: "u64",       index: false },
+        { name: "tokensBurned",      type: "u64",       index: false },
         { name: "totalVolumeSol",    type: "u64",       index: false },
         { name: "totalTrades",       type: "u64",       index: false },
         { name: "timestamp",         type: "i64",       index: false },
@@ -376,7 +377,10 @@ async function handleGraduationEvent(
   // real_sol_reserves in the event = 90% liquidity SOL (see graduate.rs)
   // real_token_reserves in the event = all unsold tokens transferred to treasury
   const liquiditySol    = BigInt(data.realSolReserves.toString());
+  // realTokenReserves = 300M reserve tokens going to Raydium pool
+  // tokensBurned = unsold curve tokens that were destroyed
   const liquidityTokens = BigInt(data.realTokenReserves.toString());
+  const tokensBurned    = BigInt(data.tokensBurned?.toString() ?? "0");
 
   try {
     // Mark graduated immediately so frontend reflects the state
@@ -392,7 +396,7 @@ async function handleGraduationEvent(
       totalTrades: data.totalTrades.toString(),
       timestamp,
     });
-    console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} tokens=${Number(liquidityTokens)/1e6}`);
+    console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} poolTokens=${Number(liquidityTokens)/1e6} burned=${Number(tokensBurned)/1e6}`);
 
     // Create Raydium CPMM pool asynchronously — non-blocking
     // Pool creation can take several seconds; we don't want to block the indexer

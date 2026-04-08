@@ -10,9 +10,26 @@ import { PrismaClient } from "@prisma/client";
 import { callGraduateInstruction } from "../src/services/graduateKeeper";
 import { createRaydiumPool } from "../src/services/raydiumService";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { getAccount, getAssociatedTokenAddress } from "@solana/spl-token";
 import { config } from "../src/config";
 
 const prisma = new PrismaClient();
+
+// Treasury pubkey (must match TREASURY_PUBKEY in program)
+const TREASURY = new PublicKey("13DWuEycYuJvGpo2EwPMgaiBDfRKmpoxdXjJ5GKe9RPW");
+
+// BondingCurveState layout offsets (after 8-byte discriminator):
+//  +0  mint       (32)
+//  +32 creator    (32)
+//  +64 vSol       (8)
+//  +72 vToken     (8)
+//  +80 rSol       (8)   ← real_sol_reserves
+//  +88 rToken     (8)   ← real_token_reserves
+//  +96 supply     (8)
+//  +104 complete  (1)
+const REAL_SOL_OFFSET = 8 + 32 + 32 + 8 + 8;       // = 88
+const REAL_TOK_OFFSET = 8 + 32 + 32 + 8 + 8 + 8;   // = 96
+const COMPLETE_OFFSET = 8 + 32 + 32 + 8 + 8 + 8 + 8 + 8; // = 112
 
 async function main() {
   const mint = process.argv[2];
@@ -21,59 +38,104 @@ async function main() {
     process.exit(1);
   }
 
-  const token = await prisma.token.findUnique({
-    where: { mint },
-    select: { name: true, isGraduated: true, raydiumPoolId: true, realSolReserves: true, realTokenReserves: true },
-  });
+  const connection = new Connection(config.solana.rpcUrl, "confirmed");
+  const mintPubkey = new PublicKey(mint);
 
-  if (!token) {
-    console.error("Token not found in DB:", mint);
+  // Read on-chain bonding curve state
+  const [bondingCurvePDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("bonding_curve"), mintPubkey.toBuffer()],
+    new PublicKey("7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk")
+  );
+  const bcInfo = await connection.getAccountInfo(bondingCurvePDA);
+  if (!bcInfo) {
+    console.error("Bonding curve account not found on-chain");
     process.exit(1);
   }
 
-  console.log(`Token: ${token.name} | graduated=${token.isGraduated} | poolId=${token.raydiumPoolId}`);
+  const onChainRealSol = bcInfo.data.readBigUInt64LE(REAL_SOL_OFFSET);
+  const onChainRealTok = bcInfo.data.readBigUInt64LE(REAL_TOK_OFFSET);
+  const onChainComplete = bcInfo.data[COMPLETE_OFFSET] === 1;
+
+  console.log(`On-chain bonding curve:`);
+  console.log(`  complete=${onChainComplete}  realSol=${onChainRealSol}  realToken=${onChainRealTok}`);
+
+  const token = await prisma.token.findUnique({
+    where: { mint },
+    select: { name: true, isGraduated: true, raydiumPoolId: true },
+  });
+  if (!token) { console.error("Token not found in DB"); process.exit(1); }
+  console.log(`DB: name=${token.name} | graduated=${token.isGraduated} | poolId=${token.raydiumPoolId}`);
 
   if (token.raydiumPoolId) {
     console.log("Pool already exists:", token.raydiumPoolId);
     process.exit(0);
   }
 
-  // Step 1: Call on-chain graduate instruction (distributes SOL + tokens to treasury)
-  console.log("\n=== Step 1: Calling on-chain graduate instruction ===");
-  await callGraduateInstruction(mint);
+  // ── Step 1: Graduate on-chain (only if not already drained) ─────────────────
+  if (onChainComplete && onChainRealSol > 0n) {
+    console.log("\n=== Step 1: Calling on-chain graduate instruction ===");
+    await callGraduateInstruction(mint);
+    await new Promise((r) => setTimeout(r, 4000));
+  } else if (onChainComplete && onChainRealSol === 0n) {
+    console.log("\n=== Step 1: Skipped — graduate already ran (realSol=0 on-chain) ===");
+  } else {
+    console.error("Token not graduated on-chain (complete=false)");
+    process.exit(1);
+  }
 
-  // Wait for confirmation to propagate
-  await new Promise((r) => setTimeout(r, 4000));
-
-  // Step 2: Check how much SOL/tokens treasury received from the graduation event.
-  // Use the values stored in DB (real_sol_reserves = 90% liquidity SOL from event).
-  // If the graduate event already fired in the indexer, those values are set.
-  // Otherwise estimate from what's on-chain.
-  const connection = new Connection(config.solana.rpcUrl, "confirmed");
-
-  // Re-fetch token to see if GraduationEvent updated the values
+  // Check if indexer already created pool
   const updated = await prisma.token.findUnique({
     where: { mint },
-    select: { raydiumPoolId: true, realSolReserves: true, realTokenReserves: true },
+    select: { raydiumPoolId: true },
   });
-
   if (updated?.raydiumPoolId) {
     console.log("Pool was created automatically by the indexer:", updated.raydiumPoolId);
     process.exit(0);
   }
 
-  // Estimate liquidity amounts: 90% of realSolReserves and all realTokenReserves
-  const realSol = BigInt(token.realSolReserves?.toString() ?? "0");
-  const realTokens = BigInt(token.realTokenReserves?.toString() ?? "0");
-  const liquiditySol = (realSol * 90n) / 100n;
-  const liquidityTokens = realTokens;
+  // ── Step 2: Determine liquidity amounts from treasury's ACTUAL balances ──────
+  console.log("\n=== Step 2: Creating Raydium CPMM pool ===");
 
-  console.log(`\n=== Step 2: Creating Raydium CPMM pool ===`);
-  console.log(`  SOL: ${Number(liquiditySol) / 1e9}`);
-  console.log(`  Tokens: ${Number(liquidityTokens) / 1e6}`);
+  // Read treasury's actual token balance
+  const treasuryAta = await getAssociatedTokenAddress(mintPubkey, TREASURY);
+  let treasuryTokenBalance = 0n;
+  try {
+    const ataInfo = await getAccount(connection, treasuryAta);
+    treasuryTokenBalance = ataInfo.amount;
+  } catch {
+    console.warn("Treasury token ATA not found or empty");
+  }
+
+  // Treasury SOL balance (use a portion for liquidity — 90% of graduation amount)
+  // Since we can't know the exact graduation amount anymore, use the on-chain event value.
+  // As a safe fallback: use 90% of original realSol (from DB or estimation).
+  // The treasury already received the SOL from graduate.rs, so we compute from what was sent.
+  // 90% of realSol = liquidity_sol as emitted in GraduationEvent.
+  // Since onChainRealSol is 0 now, we re-derive from the original:
+  // We'll use a fixed amount: 90% of GRADUATION_THRESHOLD (0.5 SOL) ≈ 0.45 SOL minimum.
+  // Better: read from DB realSolReserves before graduation.
+  const dbToken = await prisma.token.findUnique({
+    where: { mint },
+    select: { realSolReserves: true, realTokenReserves: true },
+  });
+
+  // Use DB values if available, otherwise fallback to 90% of threshold
+  let liquiditySol = 0n;
+  if (dbToken?.realSolReserves && BigInt(dbToken.realSolReserves.toString()) > 0n) {
+    const rawSol = BigInt(dbToken.realSolReserves.toString());
+    liquiditySol = (rawSol * 90n) / 100n;
+  } else {
+    // fallback: 90% of graduation threshold
+    liquiditySol = 450_000_000n; // 0.45 SOL
+  }
+  const liquidityTokens = treasuryTokenBalance;
+
+  console.log(`  SOL (90% of graduation): ${Number(liquiditySol) / 1e9}`);
+  console.log(`  Tokens (treasury balance): ${Number(liquidityTokens) / 1e6}`);
 
   if (liquiditySol === 0n || liquidityTokens === 0n) {
-    console.error("Zero amounts — cannot create pool. Check that graduate instruction ran correctly.");
+    console.error("❌ Zero amounts — cannot create pool.");
+    console.error(`   liquiditySol=${liquiditySol}  treasuryTokens=${liquidityTokens}`);
     process.exit(1);
   }
 

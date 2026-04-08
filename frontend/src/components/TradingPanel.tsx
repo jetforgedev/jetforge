@@ -311,10 +311,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
           </div>
           <a
             href={(() => {
-              const base = process.env.NEXT_PUBLIC_NETWORK === "devnet" ? "https://devnet.raydium.io" : "https://raydium.io";
+              // Always raydium.io — devnet pools need devnet mode enabled in Raydium settings
               return token.raydiumPoolId
-                ? `${base}/liquidity/pool/${token.raydiumPoolId}`
-                : `${base}/swap/?inputMint=sol&outputMint=${token.mint}`;
+                ? `https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`
+                : `https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`;
             })()}
             target="_blank"
             rel="noopener noreferrer"

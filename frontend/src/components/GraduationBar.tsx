@@ -25,14 +25,15 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
 
   if (isGraduated) {
     const isDevnet = process.env.NEXT_PUBLIC_NETWORK === "devnet";
-    const raydiumBase = isDevnet ? "https://devnet.raydium.io" : "https://raydium.io";
 
-    // If we have the pool ID, link directly to the pool page — otherwise fall back to swap search
-    const raydiumUrl = raydiumPoolId
-      ? `${raydiumBase}/liquidity/pool/${raydiumPoolId}`
-      : mint
-      ? `${raydiumBase}/swap/?inputMint=sol&outputMint=${mint}`
-      : raydiumBase;
+    // Always raydium.io — devnet pools need Raydium's devnet mode enabled in its settings
+    const raydiumSwapUrl = mint
+      ? `https://raydium.io/swap/?inputMint=sol&outputMint=${mint}`
+      : "https://raydium.io";
+
+    const raydiumPoolUrl = raydiumPoolId
+      ? `https://raydium.io/liquidity/pool/${raydiumPoolId}`
+      : raydiumSwapUrl;
 
     const jupiterUrl = mint
       ? `https://jup.ag/swap/SOL-${mint}`
@@ -51,23 +52,40 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
             </div>
           </div>
         </div>
+        {isDevnet && (
+          <div className="mb-3 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-[10px]">
+            ⚠️ Devnet token — switch Raydium to <strong>Devnet</strong> mode via its settings (gear icon) before trading.
+          </div>
+        )}
         <div className="flex gap-2">
           <a
-            href={raydiumUrl}
+            href={raydiumSwapUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-xs font-medium transition-colors"
           >
             Trade on Raydium ↗
           </a>
-          <a
-            href={jupiterUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#00ff8810] hover:bg-[#00ff8820] border border-[#00ff8830] rounded-lg text-[#00ff88] text-xs font-medium transition-colors"
-          >
-            Trade on Jupiter ↗
-          </a>
+          {raydiumPoolId && (
+            <a
+              href={raydiumPoolUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#7c3aed10] hover:bg-[#7c3aed20] border border-[#7c3aed30] rounded-lg text-[#a78bfa] text-xs font-medium transition-colors"
+            >
+              Pool ↗
+            </a>
+          )}
+          {!isDevnet && (
+            <a
+              href={jupiterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#00ff8810] hover:bg-[#00ff8820] border border-[#00ff8830] rounded-lg text-[#00ff88] text-xs font-medium transition-colors"
+            >
+              Trade on Jupiter ↗
+            </a>
+          )}
         </div>
       </div>
     );
