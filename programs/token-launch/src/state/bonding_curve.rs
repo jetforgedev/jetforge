@@ -15,8 +15,8 @@ pub const REAL_TOKEN_RESERVES_INIT: u64 = 1_000_000_000_000_000;
 /// Tokens held in reserve for creator (0% — removed to prevent free dump)
 pub const RESERVE_TOKEN_AMOUNT: u64 = 0;
 
-/// Graduation threshold in lamports (85 SOL)
-pub const GRADUATION_THRESHOLD: u64 = 85_000_000_000;
+/// Graduation threshold in lamports (0.5 SOL for local testing)
+pub const GRADUATION_THRESHOLD: u64 = 500_000_000;
 
 /// Fee in basis points (1%)
 pub const FEE_BPS: u64 = 100;

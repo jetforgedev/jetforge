@@ -8,11 +8,11 @@ const FAQS = [
   },
   {
     q: "How does the bonding curve work?",
-    a: "We use a constant product formula (x × y = k). As more people buy, the price increases. As people sell, the price decreases. The curve starts at ~0.000028 SOL per token and rises as the market cap grows toward the 85 SOL graduation threshold.",
+    a: "We use a constant product formula (x × y = k). As more people buy, the price increases. As people sell, the price decreases. The curve starts at ~0.000028 SOL per token and rises as the market cap grows toward the 0.5 SOL graduation threshold.",
   },
   {
     q: "What happens when a token graduates?",
-    a: "When a token raises 85 SOL on the bonding curve, it graduates to a DEX (Raydium/Orca). The SOL and reserve tokens are used to create a permanent liquidity pool. Trading then continues on the DEX at the market price. The token creator receives 5% of raised SOL (~4.25 SOL) as a graduation reward.",
+    a: "When a token raises 0.5 SOL on the bonding curve, it graduates to a DEX (Raydium/Orca). The SOL and reserve tokens are used to create a permanent liquidity pool. Trading then continues on the DEX at the market price. The token creator receives 5% of raised SOL (~0.025 SOL) as a graduation reward.",
   },
   {
     q: "Can the token creator rug pull?",

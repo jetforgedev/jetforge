@@ -365,26 +365,26 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               </div>
               <div>
                 <div className="text-[#444] mb-1">Graduation at</div>
-                <div className="text-white font-mono">85 SOL</div>
+                <div className="text-white font-mono">0.5 SOL</div>
               </div>
             </div>
           </div>
 
           {/* Graduation reward preview */}
           <div className="bg-[#00ff8808] border border-[#00ff8820] rounded-xl p-4">
-            <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 85 SOL)</div>
+            <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 0.5 SOL)</div>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-[#666]">Your reward (5%)</span>
-                <span className="text-[#00ff88] font-mono font-semibold">~4.25 SOL</span>
+                <span className="text-[#00ff88] font-mono font-semibold">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#666]">Platform cut (5%)</span>
-                <span className="text-white font-mono">~4.25 SOL</span>
+                <span className="text-white font-mono">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#666]">DEX liquidity (90%)</span>
-                <span className="text-white font-mono">~76.5 SOL</span>
+                <span className="text-white font-mono">~0.45 SOL</span>
               </div>
               <div className="pt-1.5 mt-1 border-t border-[#00ff8820] text-[#555]">
                 Plus ongoing 1% trading fee: 40% to you, 40% to platform, 20% buyback-and-burn

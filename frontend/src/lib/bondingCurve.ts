@@ -6,7 +6,7 @@ export const INITIAL_VIRTUAL_TOKENS = new BN("1073000191000000");
 // RESERVE_TOKEN_AMOUNT = 0 in Rust; all 1 T tokens go to the trading vault.
 export const REAL_TOKEN_RESERVES_INIT = new BN("1000000000000000");
 export const TOTAL_SUPPLY = new BN("1000000000000000");
-export const GRADUATION_THRESHOLD = new BN("85000000000"); // 85 SOL
+export const GRADUATION_THRESHOLD = new BN("500000000"); // 0.5 SOL (local testing)
 export const FEE_BPS = 100; // 1%
 export const BPS_DENOMINATOR = 10_000;
 
