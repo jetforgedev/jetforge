@@ -21,7 +21,7 @@ function TokenAvatar({ name, imageUrl, mint }: { name: string; imageUrl?: string
 
   if (imageUrl && !imgError) {
     return (
-      <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0">
+      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10">
         <Image
           src={imageUrl}
           alt={name}
@@ -40,7 +40,7 @@ function TokenAvatar({ name, imageUrl, mint }: { name: string; imageUrl?: string
 
   return (
     <div
-      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-bold text-black text-sm"
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-black shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
       style={{ background: color }}
     >
       {initials}
@@ -80,7 +80,7 @@ function computeRugScore(token: TokenData): { score: number; label: string; colo
 
 function isTrending(token: TokenData): boolean {
   const ageHours = (Date.now() - new Date(token.createdAt).getTime()) / 3_600_000;
-  return (token.volume24h >= 0.5) || (token.trades >= 15 && ageHours < 48);
+  return token.volume24h >= 0.5 || (token.trades >= 15 && ageHours < 48);
 }
 
 function isJustLaunched(token: TokenData): boolean {
@@ -114,11 +114,14 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
 
   return (
     <div className="relative">
-      {/* Watchlist star */}
       {onWatchToggle && (
         <button
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onWatchToggle(); }}
-          className="absolute top-3 right-3 z-10 text-base leading-none transition-transform hover:scale-110"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onWatchToggle();
+          }}
+          className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/25 px-2.5 py-1.5 text-sm leading-none text-white/70 backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
           title={isWatched ? "Remove from watchlist" : "Add to watchlist"}
         >
           {isWatched ? "⭐" : "☆"}
@@ -126,129 +129,120 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
       )}
 
       <Link href={`/token/${token.mint}`}>
-        <div className={clsx(
-          "token-card bg-[#111] border rounded-xl p-4 cursor-pointer transition-all duration-150",
-          borderClass,
-          trending && !token.isGraduated && "shadow-[0_0_12px_#00ff8810]",
-          isNearGrad && !token.isGraduated && "shadow-[0_0_12px_#ffaa0015]",
-        )}>
+        <div
+          className={clsx(
+            "token-card relative overflow-hidden rounded-[26px] border bg-white/[0.03] p-4 backdrop-blur-sm",
+            "border-white/[0.08] shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
+            trending && "before:absolute before:inset-0 before:rounded-[26px] before:border before:border-[#00ff88]/25 before:content-[''] before:animate-shimmer",
+            isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
+          )}
+        >
+          <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_70%)]" />
 
-          {/* Top row */}
-          <div className="flex items-start gap-3 mb-3">
-            <div className="relative">
+          <div className="relative mb-4 flex items-start gap-3">
+            <div className="relative shrink-0">
               <TokenAvatar name={token.name} imageUrl={token.imageUrl} mint={token.mint} />
-              {/* Live activity dot */}
               {recentlyActive && !token.isGraduated && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#00ff88] border-2 border-[#111] animate-pulse" />
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-black bg-[#00ff88]" />
               )}
             </div>
-            <div className="flex-1 min-w-0 pr-5">
-              <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                <span className="font-semibold text-white text-sm truncate max-w-[120px]">{token.name}</span>
-                <span className="text-[#555] text-xs font-mono shrink-0">{token.symbol}</span>
+            <div className="min-w-0 flex-1 pr-8">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="truncate text-base font-bold tracking-tight text-white">{token.name}</span>
+                <span className="shrink-0 text-xs font-mono text-white/38">{token.symbol}</span>
                 {justLaunched && (
-                  <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#00ff8820] border border-[#00ff8840] text-[#00ff88] animate-pulse">
+                  <span className="shrink-0 animate-pulse rounded-full border border-[#00ff88]/40 bg-[#00ff88]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#00ff88]">
                     🚀 NEW
                   </span>
                 )}
+              </div>
+              <div className="truncate text-xs text-white/45">by {truncateAddress(token.creator)}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 {!justLaunched && trending && (
-                  <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#ff6b0020] border border-[#ff6b0040] text-[#ff9900]">
+                  <span className="rounded-full border border-[#00ff88]/25 bg-[#00ff88]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#87ffc4]">
                     🔥 Hot
                   </span>
                 )}
+                {token.isGraduated && (
+                  <span className="rounded-full border border-[#8b5cf6]/30 bg-[#8b5cf6]/12 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c4b5fd]">
+                    Graduated
+                  </span>
+                )}
+                {isNearGrad && !token.isGraduated && (
+                  <span className="animate-pulse rounded-full border border-[#ffcf5a]/30 bg-[#ffcf5a]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffdf8c]">
+                    ⚡ Almost there!
+                  </span>
+                )}
               </div>
-              <div className="text-[#555] text-xs truncate">by {truncateAddress(token.creator)}</div>
             </div>
           </div>
 
-          {/* Risk + state badges */}
-          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+          <div className="mb-4 flex items-center gap-2">
             <div
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium border"
+              className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold"
               style={{ background: rug.bg, borderColor: rug.border, color: rug.color }}
             >
               {rug.label === "Low Risk" ? "🛡️" : rug.label === "Medium Risk" ? "⚠️" : "🔴"} {rug.label}
             </div>
-            {token.isGraduated && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#7c3aed15] border border-[#7c3aed30] rounded-md text-[10px] text-[#a78bfa]">
-                🎓 Graduated
-              </div>
-            )}
-            {isNearGrad && !token.isGraduated && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-yellow-400/10 border border-yellow-400/30 rounded-md text-[10px] text-yellow-400 animate-pulse">
-                ⚡ Almost there!
-              </div>
-            )}
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div>
-              <div className="text-[#555] text-[10px] mb-0.5">MARKET CAP</div>
-              <div className="text-white text-xs font-mono font-medium">
-                {token.marketCapSol.toFixed(2)} SOL
-              </div>
-            </div>
-            <div>
-              <div className="text-[#555] text-[10px] mb-0.5">VOLUME 24H</div>
-              <div className={clsx("text-xs font-mono font-medium", token.volume24h > 0 ? "text-[#00ff88]" : "text-white")}>
-                {token.volume24h.toFixed(2)} SOL
-              </div>
-            </div>
-            <div>
-              <div className="text-[#555] text-[10px] mb-0.5">BUYERS</div>
-              <div className={clsx("text-xs font-mono font-medium", token.trades > 0 ? "text-white" : "text-[#444]")}>
-                {token.trades > 0 ? `${token.trades.toLocaleString()} 👥` : "—"}
-              </div>
+            <div className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/50">
+              {token.holders.toLocaleString()} holders
             </div>
           </div>
 
-          {/* Graduation progress */}
+          <div className="mb-4 grid grid-cols-3 gap-2.5">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Market Cap</div>
+              <div className="mt-2 text-sm font-bold text-white">{token.marketCapSol.toFixed(2)} SOL</div>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-[#00ff88]/[0.05] p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">24H Volume</div>
+              <div className="mt-2 text-sm font-bold text-[#8dffc9]">{token.volume24h.toFixed(2)} SOL</div>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Trades</div>
+              <div className="mt-2 text-sm font-bold text-white">{token.trades.toLocaleString()}</div>
+            </div>
+          </div>
+
           {!token.isGraduated && (
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[#555] text-[10px]">BONDING CURVE</span>
+            <div className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Bonding Curve</span>
                 <div className="flex items-center gap-2">
                   {isNearGrad && solToGrad > 0 && (
-                    <span className="text-[9px] text-yellow-400 font-mono">
+                    <span className="text-[9px] font-mono text-[#ffcf5a]">
                       {solToGrad.toFixed(3)} SOL to 🎓
                     </span>
                   )}
-                  <span className={clsx("text-[10px] font-mono font-medium", isNearGrad ? "text-yellow-400" : "text-[#666]")}>
+                  <span className={clsx("text-xs font-mono font-semibold", isNearGrad ? "text-[#ffcf5a]" : "text-[#8dffc9]")}>
                     {graduationPct.toFixed(1)}%
                   </span>
                 </div>
               </div>
-              <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className={clsx(
-                    "h-full rounded-full transition-all duration-500",
-                    isNearGrad
-                      ? "bg-gradient-to-r from-[#00ff88] via-yellow-400 to-orange-400"
-                      : graduationPct > 50
-                      ? "bg-gradient-to-r from-[#00ff88] to-[#00cc6a]"
-                      : "bg-[#00ff88]"
+                    "progress-bar-fill h-full rounded-full",
+                    isNearGrad && "near-grad"
                   )}
                   style={{ width: `${graduationPct}%` }}
                 />
               </div>
-              {/* FOMO text below bar */}
               {isNearGrad && (
-                <div className="mt-1 text-[9px] text-yellow-400/80 text-center animate-pulse">
+                <div className="mt-1.5 animate-pulse text-center text-[9px] text-yellow-400/80">
                   🔥 Graduation imminent — early buyers profit most
                 </div>
               )}
             </div>
           )}
 
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1a1a1a]">
-            <span className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</span>
+          <div className="flex items-center justify-between border-t border-white/[0.08] pt-3">
+            <span className="text-[11px] text-white/38">{timeAgo(token.createdAt)}</span>
             {token.isGraduated ? (
-              <span className="text-[#a78bfa] text-[10px] font-medium">🎓 Live on Raydium</span>
-            ) : solRaised > 0 ? (
-              <span className="text-[#00ff88] text-[10px] font-mono font-medium">
-                {solRaised.toFixed(3)} SOL raised
+              <span className="text-[11px] font-medium text-[#c4b5fd]">🎓 Trading on DEX</span>
+            ) : token.realSolReserves ? (
+              <span className="text-[11px] font-mono text-white/52">
+                {formatSol(new BN(token.realSolReserves))} SOL raised
               </span>
             ) : (
               <span className="text-[#444] text-[10px]">Be first to buy</span>

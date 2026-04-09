@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
     const token = await res.json();
 
     const title = `${token.name} (${token.symbol}) — Trade on JetForge`;
-    const description = `Trade ${token.name} ($${token.symbol}) on JetForge. Market cap: ${Number(token.marketCapSol).toFixed(2)} SOL. ${token.isGraduated ? "✅ Graduated to DEX." : `Bonding curve ${Math.min(100, token.graduationProgress).toFixed(1)}% complete.`} ${token.description ? token.description.slice(0, 120) : ""}`;
+    const description = `Trade ${token.name} ($${token.symbol}) on JetForge. Market cap: ${Number(token.marketCapSol).toFixed(2)} SOL. ${token.isGraduated ? "Graduated to DEX." : `Bonding curve ${Math.min(100, token.graduationProgress).toFixed(1)}% complete.`} ${token.description ? token.description.slice(0, 120) : ""}`.trim();
+    const image = token.imageUrl || "/og-image.png";
 
     return {
       title,
@@ -28,16 +29,14 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
         url: `${BASE_URL}/token/${mint}`,
         title,
         description,
-        images: token.imageUrl
-          ? [{ url: token.imageUrl, width: 400, height: 400, alt: token.name }]
-          : [{ url: "/og-image.png", width: 1200, height: 630 }],
+        images: [{ url: image, width: 1200, height: 630, alt: `${token.name} on JetForge` }],
         siteName: "JetForge",
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title,
         description,
-        images: token.imageUrl ? [token.imageUrl] : ["/og-image.png"],
+        images: [image],
       },
       alternates: { canonical: `${BASE_URL}/token/${mint}` },
     };

@@ -300,7 +300,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const highImpact = calculation && calculation.priceImpact > 5;
 
   return (
-    <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
+    <div className="glass-panel rounded-[28px] overflow-hidden">
       {/* Tab Header */}
       {token.isGraduated ? (
         <div className="p-4 space-y-3">
@@ -313,20 +313,20 @@ export function TradingPanel({ token }: TradingPanelProps) {
             href={`https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-sm font-semibold transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#7c3aed50] bg-[#7c3aed20] py-3 text-sm font-semibold text-[#c4b5fd] transition-colors hover:bg-[#7c3aed35]"
           >
             Trade on Raydium ↗
           </a>
         </div>
       ) : (
-      <><div className="flex">
+      <><div className="flex gap-1 p-1.5">
         <button
           onClick={() => { setTab("buy"); setInputAmount(""); }}
           className={clsx(
-            "flex-1 py-3 text-sm font-semibold transition-colors",
+            "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
             tab === "buy"
-              ? "bg-[#00ff8815] text-[#00ff88] border-b-2 border-[#00ff88]"
-              : "text-[#666] hover:text-white border-b border-[#1a1a1a]"
+              ? "bg-[#00ff88]/10 text-[#00ff88] shadow-[inset_0_0_0_1px_rgba(0,255,136,0.35),0_0_22px_rgba(0,255,136,0.12)]"
+              : "text-white/40 hover:text-white border border-transparent"
           )}
         >
           Buy
@@ -334,17 +334,17 @@ export function TradingPanel({ token }: TradingPanelProps) {
         <button
           onClick={() => { setTab("sell"); setInputAmount(""); }}
           className={clsx(
-            "flex-1 py-3 text-sm font-semibold transition-colors",
+            "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
             tab === "sell"
-              ? "bg-[#ff444415] text-[#ff4444] border-b-2 border-[#ff4444]"
-              : "text-[#666] hover:text-white border-b border-[#1a1a1a]"
+              ? "bg-[#ff4444]/10 text-[#ff7b88] shadow-[inset_0_0_0_1px_rgba(255,68,68,0.35),0_0_22px_rgba(255,68,68,0.12)]"
+              : "text-white/40 hover:text-white border border-transparent"
           )}
         >
           Sell
         </button>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="space-y-4 p-4">
         {/* Preset amounts */}
         {tab === "buy" && (
           <div className="flex gap-2">
@@ -353,10 +353,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
                 key={sol}
                 onClick={() => handlePresetBuy(sol)}
                 className={clsx(
-                  "flex-1 py-1.5 text-xs rounded-md border transition-colors",
+                  "flex-1 rounded-xl border py-1.5 text-xs transition-colors",
                   inputAmount === sol.toString()
-                    ? "bg-[#00ff8820] border-[#00ff88] text-[#00ff88]"
-                    : "bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:border-[#444] hover:text-white"
+                    ? "bg-[#00ff88]/12 border-[#00ff88]/40 text-[#00ff88]"
+                    : "bg-white/[0.04] border-white/10 text-white/48 hover:border-white/20 hover:text-white"
                 )}
               >
                 {sol} SOL
@@ -371,7 +371,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
               <button
                 key={pct}
                 onClick={() => handlePresetSell(pct)}
-                className="flex-1 py-1.5 text-xs rounded-md border bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:border-[#444] hover:text-white transition-colors"
+                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-1.5 text-xs text-white/48 transition-colors hover:border-white/20 hover:text-white"
               >
                 {pct}%
               </button>
@@ -381,7 +381,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         {/* Input */}
         <div>
-          <div className="flex justify-between text-xs text-[#555] mb-1.5">
+          <div className="mb-1.5 flex justify-between text-xs text-white/40">
             <span>{tab === "buy" ? "Amount (SOL)" : `Amount (${token.symbol})`}</span>
             <span>
               Balance:{" "}
@@ -400,7 +400,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
               min="0"
               step={tab === "buy" ? "0.01" : "1"}
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] text-xs font-mono">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-white/32">
               {tab === "buy" ? "SOL" : token.symbol}
             </div>
           </div>
@@ -420,19 +420,19 @@ export function TradingPanel({ token }: TradingPanelProps) {
           }
 
           return (
-            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-lg p-3 space-y-2">
+            <div className="space-y-2 rounded-[20px] border border-white/8 bg-white/[0.04] p-3">
               <div className="flex justify-between text-xs">
-                <span className="text-[#666]">You receive</span>
+                <span className="text-white/42">You receive</span>
                 <span className="text-white font-mono font-medium">
                   {calculation.output} {tab === "buy" ? token.symbol : "SOL"}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-[#666]">Fee (1%)</span>
-                <span className="text-[#666] font-mono">{calculation.fee} SOL</span>
+                <span className="text-white/42">Fee (1%)</span>
+                <span className="font-mono text-white/42">{calculation.fee} SOL</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-[#666]">Price Impact</span>
+                <span className="text-white/42">Price Impact</span>
                 <span
                   className={clsx(
                     "font-mono",
@@ -444,8 +444,8 @@ export function TradingPanel({ token }: TradingPanelProps) {
                 </span>
               </div>
               {tab === "sell" && pnlSol !== null && (
-                <div className="flex justify-between text-xs pt-1 border-t border-[#1a1a1a]">
-                  <span className="text-[#666]">Est. PnL</span>
+                <div className="flex justify-between border-t border-white/8 pt-1 text-xs">
+                  <span className="text-white/42">Est. PnL</span>
                   <span className={clsx("font-mono font-semibold", pnlSol >= 0 ? "text-[#00ff88]" : "text-[#ff4444]")}>
                     {pnlSol >= 0 ? "+" : ""}{pnlSol.toFixed(4)} SOL
                     {pnlPct !== null && ` (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%)`}
@@ -454,8 +454,8 @@ export function TradingPanel({ token }: TradingPanelProps) {
               )}
               {tab === "sell" && avgBuyPriceSol !== null && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-[#444]">Avg buy price</span>
-                  <span className="text-[#444] font-mono">{avgBuyPriceSol.toFixed(6)} SOL/token</span>
+                  <span className="text-white/30">Avg buy price</span>
+                  <span className="font-mono text-white/30">{avgBuyPriceSol.toFixed(6)} SOL/token</span>
                 </div>
               )}
             </div>
@@ -464,7 +464,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         {/* High impact warning */}
         {highImpact && (
-          <div className="bg-[#ff444415] border border-[#ff444430] rounded-lg p-3 text-[#ff4444] text-xs">
+          <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
             ⚠️ High price impact ({calculation!.priceImpact.toFixed(1)}%). Consider splitting into smaller trades.
           </div>
         )}
@@ -472,13 +472,13 @@ export function TradingPanel({ token }: TradingPanelProps) {
         {/* Insufficient balance warning (inline) */}
         {publicKey && inputAmount && parseFloat(inputAmount) > 0 && (
           tab === "buy" && parseFloat(inputAmount) * 1.015 > solBalance ? (
-            <div className="bg-[#ff444415] border border-[#ff444430] rounded-lg p-3 text-[#ff4444] text-xs">
+            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
               {solBalance < 0.001
                 ? "Your SOL balance is empty. Fund your wallet to trade."
                 : `Insufficient SOL — need ~${(parseFloat(inputAmount) * 1.015).toFixed(3)} SOL, have ${solBalance.toFixed(3)} SOL.`}
             </div>
           ) : tab === "sell" && parseTokenAmount(inputAmount).gt(tokenBalance) ? (
-            <div className="bg-[#ff444415] border border-[#ff444430] rounded-lg p-3 text-[#ff4444] text-xs">
+            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
               {tokenBalance.isZero()
                 ? `You don't hold any ${token.symbol}.`
                 : `Insufficient ${token.symbol} balance.`}
@@ -490,7 +490,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
         <div>
           <button
             onClick={() => setShowSlippage(!showSlippage)}
-            className="flex items-center gap-1 text-[#555] text-xs hover:text-[#888] transition-colors"
+            className="flex items-center gap-1 text-xs text-white/40 transition-colors hover:text-white/70"
           >
             <span>Slippage: {(slippageBps / 100).toFixed(1)}%</span>
             <svg
@@ -511,10 +511,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
                   key={bps}
                   onClick={() => setSlippageBps(bps)}
                   className={clsx(
-                    "flex-1 py-1 text-xs rounded border transition-colors",
+                    "flex-1 rounded-xl border py-1 text-xs transition-colors",
                     slippageBps === bps
-                      ? "bg-[#00ff8820] border-[#00ff88] text-[#00ff88]"
-                      : "bg-[#1a1a1a] border-[#2a2a2a] text-[#666]"
+                      ? "bg-[#00ff88]/12 border-[#00ff88]/40 text-[#00ff88]"
+                      : "bg-white/[0.04] border-white/10 text-white/40"
                   )}
                 >
                   {bps / 100}%
@@ -529,10 +529,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
           onClick={handleTrade}
           disabled={isLoading || !publicKey || !inputAmount || parseFloat(inputAmount) <= 0 || token.isGraduated}
           className={clsx(
-            "w-full py-3 rounded-lg font-semibold text-sm transition-all",
+            "w-full rounded-2xl py-3.5 text-sm font-bold transition-all",
             tab === "buy"
-              ? "bg-[#00ff88] text-black hover:bg-[#00cc6a] disabled:opacity-40 disabled:cursor-not-allowed"
-              : "bg-[#ff4444] text-white hover:bg-[#cc3333] disabled:opacity-40 disabled:cursor-not-allowed"
+              ? "bg-[linear-gradient(90deg,#00ff88,#00e5ff)] text-[#03110d] shadow-[0_16px_38px_rgba(0,255,136,0.22)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              : "bg-[linear-gradient(90deg,#ff5b6e,#ff8a5b)] text-white shadow-[0_16px_38px_rgba(255,91,110,0.18)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
           )}
         >
           {isLoading ? (

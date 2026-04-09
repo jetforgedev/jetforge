@@ -3,7 +3,7 @@
 import React from "react";
 import { clsx } from "clsx";
 import BN from "bn.js";
-import { GRADUATION_THRESHOLD, formatSol } from "@/lib/bondingCurve";
+import { GRADUATION_THRESHOLD } from "@/lib/bondingCurve";
 
 interface GraduationBarProps {
   realSolReserves: string;
@@ -33,15 +33,17 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
       : raydiumSwapUrl;
 
     return (
-      <div className="bg-[#7c3aed15] border border-[#7c3aed40] rounded-xl p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="text-3xl">🎓</div>
+      <div className="rounded-[28px] border border-[#8b5cf6]/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.16),rgba(255,255,255,0.03))] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.2)]">
+        <div className="mb-4 flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#8b5cf6]/18 text-3xl shadow-[0_0_28px_rgba(139,92,246,0.16)]">
+            🎓
+          </div>
           <div>
-            <div className="text-[#a78bfa] font-semibold text-sm">
-              Graduated to DEX!
+            <div className="text-sm font-semibold uppercase tracking-[0.22em] text-[#c4b5fd]">
+              Graduated to DEX
             </div>
-            <div className="text-[#666] text-xs mt-0.5">
-              This token has graduated and is now trading on a decentralized exchange.
+            <div className="mt-1 text-sm text-white/58">
+              This token completed its curve and is now trading on a decentralized exchange.
             </div>
           </div>
         </div>
@@ -50,7 +52,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
             href={raydiumSwapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-xs font-medium transition-colors"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-[#8b5cf6]/35 bg-[#8b5cf6]/16 py-3 text-sm font-semibold text-[#ddd6fe] transition-colors hover:bg-[#8b5cf6]/24"
           >
             Trade on Raydium ↗
           </a>
@@ -59,7 +61,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
               href={raydiumPoolUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#7c3aed10] hover:bg-[#7c3aed20] border border-[#7c3aed30] rounded-lg text-[#a78bfa] text-xs font-medium transition-colors"
+              className="flex items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-white/72 transition-colors hover:bg-white/[0.08]"
             >
               Pool ↗
             </a>
@@ -72,67 +74,60 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
   return (
     <div
       className={clsx(
-        "bg-[#111] border rounded-xl p-4 transition-all",
+        "relative overflow-hidden rounded-[28px] border bg-white/[0.04] p-5 backdrop-blur-sm",
         isNearGrad
-          ? "border-yellow-500/30 animate-pulse-glow"
-          : "border-[#1a1a1a]"
+          ? "animate-glow-pulse border-[#ffcf5a]/35 shadow-[0_0_40px_rgba(255,207,90,0.12)]"
+          : "border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.18)]"
       )}
     >
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">📈</span>
-          <span className="text-white text-sm font-semibold">
-            Bonding Curve Progress
-          </span>
+      <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_68%)]" />
+      {isNearGrad && (
+        <div className="absolute inset-0 overflow-hidden rounded-[28px]">
+          <div className="absolute inset-y-0 left-[-35%] w-1/3 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.16),transparent)]" />
+        </div>
+      )}
+
+      <div className="relative mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#00ff88]/10 text-lg">📈</div>
+          <div>
+            <div className="text-sm font-semibold text-white">Bonding Curve Progress</div>
+            <div className="text-xs text-white/42">Liquidity marches toward DEX graduation</div>
+          </div>
           {isNearGrad && (
-            <span className="px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/30 rounded text-yellow-400 text-[10px] font-medium">
-              GRADUATING SOON
+            <span className="rounded-full border border-[#ffcf5a]/30 bg-[#ffcf5a]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffdf8c]">
+              Grad Soon
             </span>
           )}
         </div>
-        <span
-          className={clsx(
-            "text-sm font-mono font-bold",
-            isNearGrad ? "text-yellow-400" : "text-[#00ff88]"
-          )}
-        >
+        <span className={clsx("text-lg font-mono font-bold", isNearGrad ? "text-[#ffcf5a]" : "text-[#00ff88]")}>
           {progress.toFixed(1)}%
         </span>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-3 bg-[#1a1a1a] rounded-full overflow-hidden mb-3">
+      <div className="mb-4 h-4 overflow-hidden rounded-full bg-white/[0.06]">
         <div
           className={clsx(
-            "h-full rounded-full transition-all duration-700",
-            isNearGrad
-              ? "bg-gradient-to-r from-[#00ff88] to-yellow-400"
-              : "bg-[#00ff88]"
+            "progress-bar-fill h-full rounded-full",
+            isNearGrad && "near-grad"
           )}
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Stats */}
-      <div className="flex justify-between items-center text-xs">
-        <div className="text-[#666]">
-          <span className="font-mono text-white font-medium">
-            {solRaised.toFixed(3)} SOL
-          </span>{" "}
-          raised
+      <div className="grid gap-3 text-xs text-white/46 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+          <div className="mb-1 uppercase tracking-[0.18em] text-white/32">Raised</div>
+          <div className="font-mono text-sm font-semibold text-white">{solRaised.toFixed(3)} SOL</div>
         </div>
-        <div className="text-[#666]">
-          Target:{" "}
-          <span className="font-mono text-white font-medium">
-            {solTarget} SOL
-          </span>
+        <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+          <div className="mb-1 uppercase tracking-[0.18em] text-white/32">Target</div>
+          <div className="font-mono text-sm font-semibold text-white">{solTarget} SOL</div>
         </div>
       </div>
 
-      {/* Graduation info */}
-      <div className="mt-3 pt-3 border-t border-[#1a1a1a] text-[#555] text-xs">
-        When this curve reaches {solTarget} SOL, liquidity will be automatically
-        deployed to a DEX and trading will continue there.
+      <div className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-6 text-white/42">
+        When this curve reaches {solTarget} SOL, liquidity is automatically deployed to a DEX and trading continues there.
       </div>
     </div>
   );
