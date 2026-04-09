@@ -270,12 +270,12 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   ];
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+    <div className="glass-panel rounded-[28px] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+      <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-white text-sm font-semibold">{symbol}</span>
-          <span className="text-[#555] text-xs">Market Cap</span>
+          <span className="text-xs text-white/35">Market Cap</span>
           {ohlcv && ohlcv.length > 0 && (() => {
             const lastClose = ohlcv[ohlcv.length - 1].close;
             const pricePerTokenSol = lastClose / 1000;
@@ -299,8 +299,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
               className={clsx(
                 "px-2 py-1 text-xs rounded font-medium transition-colors",
                 interval === i.value
-                  ? "bg-[#00ff8820] text-[#00ff88]"
-                  : "text-[#555] hover:text-[#888]"
+              ? "bg-[#00ff88]/12 text-[#00ff88]"
+              : "text-white/35 hover:text-white/70"
               )}
             >
               {i.label}
@@ -328,8 +328,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d0d] z-10">
-            <div className="flex items-center gap-2 text-[#555]">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#091210]/90 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-white/42">
               <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -339,7 +339,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="h-[400px] flex items-center justify-center text-[#333]">
+          <div className="flex h-[400px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -348,6 +348,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
         <div ref={chartContainerRef} className="w-full" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.92))]" />
       </div>
     </div>
   );

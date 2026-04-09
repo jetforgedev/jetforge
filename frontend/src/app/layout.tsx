@@ -6,15 +6,17 @@ import { Footer } from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 
 const BASE_URL = "https://jetforge.io";
+const DEFAULT_TITLE = "JetForge — Fair-Launch Token Platform on Solana";
+const DEFAULT_DESCRIPTION =
+  "Launch and trade tokens on Solana's most transparent bonding curve launchpad. No presales, no team allocations. 100% fair launch.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "JetForge — Fair-Launch Solana Token Platform",
+    default: DEFAULT_TITLE,
     template: "%s | JetForge",
   },
-  description:
-    "Launch and trade Solana meme coins instantly with a bonding curve. No presales, no team allocations — 100% fair launch. Real-time charts, live trading, and automatic DEX graduation.",
+  description: DEFAULT_DESCRIPTION,
   keywords: [
     "Solana token launch",
     "pump fun alternative",
@@ -41,15 +43,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: BASE_URL,
     siteName: "JetForge",
-    title: "JetForge — Fair-Launch Solana Token Platform",
-    description:
-      "Launch your own Solana token in seconds. Trade with a bonding curve, no presales, no rugs. Real-time charts and live trading.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "JetForge — Solana Token Launchpad" }],
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "JetForge — Solana fair-launch platform" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "JetForge — Fair-Launch Solana Token Platform",
-    description: "Launch and trade Solana tokens instantly. Bonding curve, fair launch, real-time charts.",
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
     images: ["/og-image.png"],
     creator: "@jetforgeio",
   },
@@ -63,8 +64,7 @@ const websiteJsonLd = {
   "@type": "WebSite",
   name: "JetForge",
   url: BASE_URL,
-  description:
-    "Fair-launch Solana token launchpad. Launch meme coins, trade with bonding curve, graduate to DEX.",
+  description: DEFAULT_DESCRIPTION,
   potentialAction: {
     "@type": "SearchAction",
     target: { "@type": "EntryPoint", urlTemplate: `${BASE_URL}/?q={search_term_string}` },
@@ -95,25 +95,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <link rel="me" href={BASE_URL} />
       </head>
-      <body className="bg-[#0a0a0a] text-white min-h-screen" suppressHydrationWarning>
+      <body className="min-h-screen bg-[#07110f] text-white" suppressHydrationWarning>
         <ClientProviders>
-          <Header />
-          <main className="max-w-[1400px] mx-auto px-4 py-6">
-            {children}
-          </main>
-          <Footer />
+          <div className="relative min-h-screen overflow-hidden">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[440px] bg-[radial-gradient(circle_at_top,rgba(0,255,136,0.10),transparent_58%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[260px] bg-[linear-gradient(180deg,rgba(0,204,255,0.08),transparent)]" />
+            <Header />
+            <main className="relative z-10 mx-auto max-w-[1440px] px-4 py-6 pb-24 sm:px-5 lg:px-6">
+              {children}
+            </main>
+            <Footer />
+          </div>
           <Toaster
             position="bottom-right"
             toastOptions={{
               style: {
-                background: "#1a1a1a",
-                color: "#fff",
-                border: "1px solid #2a2a2a",
-                borderRadius: "10px",
+                background: "rgba(9, 18, 16, 0.94)",
+                color: "#f5fffb",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "16px",
                 fontSize: "13px",
+                boxShadow: "0 18px 40px rgba(0,0,0,0.24)",
+                backdropFilter: "blur(18px)",
               },
-              success: { iconTheme: { primary: "#00ff88", secondary: "#000" } },
-              error: { iconTheme: { primary: "#ff4444", secondary: "#fff" } },
+              success: { iconTheme: { primary: "#00ff88", secondary: "#04110c" } },
+              error: { iconTheme: { primary: "#ff5b6e", secondary: "#fff" } },
             }}
           />
         </ClientProviders>

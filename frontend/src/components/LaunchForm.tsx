@@ -265,9 +265,9 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   }
 
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="mx-auto max-w-xl">
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="mb-8 flex items-center gap-2">
         {stepLabels.map((label, i) => {
           const s = (i + 1) as Step;
           return (
@@ -275,27 +275,27 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               <div className="flex items-center gap-2">
                 <div
                   className={clsx(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                    "flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all",
                     step > s
-                      ? "bg-[#00ff88] text-black"
+                      ? "bg-[#00ff88] text-black shadow-[0_0_26px_rgba(0,255,136,0.3)]"
                       : step === s
-                      ? "bg-[#00ff8830] text-[#00ff88] border border-[#00ff88]"
-                      : "bg-[#1a1a1a] text-[#555] border border-[#2a2a2a]"
+                      ? "border border-[#00ff88]/55 bg-[#00ff88]/15 text-[#00ff88] shadow-[0_0_30px_rgba(0,255,136,0.18)]"
+                      : "border border-white/10 bg-white/[0.04] text-white/35"
                   )}
                 >
                   {step > s ? "✓" : s}
                 </div>
                 <span
                   className={clsx(
-                    "text-xs font-medium hidden sm:block",
-                    step === s ? "text-white" : "text-[#555]"
+                    "hidden text-xs font-semibold sm:block",
+                    step === s ? "text-white" : "text-white/35"
                   )}
                 >
                   {label}
                 </span>
               </div>
               {i < stepLabels.length - 1 && (
-                <div className="flex-1 h-px bg-[#1a1a1a]" />
+                <div className={clsx("h-px flex-1", step > s ? "bg-[#00ff88]/35" : "bg-white/8")} />
               )}
             </React.Fragment>
           );
@@ -351,45 +351,45 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           {/* Token info preview */}
-          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
-            <div className="text-[#555] text-xs mb-3">Token Properties</div>
+          <div className="glass-panel rounded-[24px] p-4">
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">Token Properties</div>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <div className="text-[#444] mb-1">Total Supply</div>
+                <div className="mb-1 text-white/35">Total Supply</div>
                 <div className="text-white font-mono">1,000,000,000</div>
               </div>
               <div>
-                <div className="text-[#444] mb-1">Decimals</div>
+                <div className="mb-1 text-white/35">Decimals</div>
                 <div className="text-white font-mono">6</div>
               </div>
               <div>
-                <div className="text-[#444] mb-1">Initial Price</div>
+                <div className="mb-1 text-white/35">Initial Price</div>
                 <div className="text-white font-mono">~0.000028 SOL</div>
               </div>
               <div>
-                <div className="text-[#444] mb-1">Graduation at</div>
+                <div className="mb-1 text-white/35">Graduation at</div>
                 <div className="text-white font-mono">0.5 SOL</div>
               </div>
             </div>
           </div>
 
           {/* Graduation reward preview */}
-          <div className="bg-[#00ff8808] border border-[#00ff8820] rounded-xl p-4">
+          <div className="rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-4">
             <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 0.5 SOL)</div>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-[#666]">Your reward (5%)</span>
+                <span className="text-white/50">Your reward (5%)</span>
                 <span className="text-[#00ff88] font-mono font-semibold">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#666]">Platform cut (5%)</span>
+                <span className="text-white/50">Platform cut (5%)</span>
                 <span className="text-white font-mono">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#666]">DEX liquidity (90%)</span>
+                <span className="text-white/50">DEX liquidity (90%)</span>
                 <span className="text-white font-mono">~0.45 SOL</span>
               </div>
-              <div className="pt-1.5 mt-1 border-t border-[#00ff8820] text-[#555]">
+              <div className="mt-1 border-t border-[#00ff88]/18 pt-1.5 text-white/42">
                 Plus ongoing 1% trading fee: 40% to you, 40% to platform, 20% buyback-and-burn
               </div>
             </div>
@@ -418,12 +418,12 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
             {/* Drop zone / preview */}
             {imagePreview ? (
-              <div className="flex items-center gap-4 p-4 bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl">
+              <div className="glass-panel flex items-center gap-4 rounded-[24px] p-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="w-20 h-20 rounded-xl object-cover border border-[#333] shrink-0"
+                  className="h-20 w-20 shrink-0 rounded-2xl border border-white/10 object-cover"
                   onError={() => setImagePreview(null)}
                 />
                 <div className="flex-1 min-w-0">
@@ -445,7 +445,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
                       update("imageUrl", "");
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
-                    className="text-[#555] text-xs mt-1 hover:text-[#ff4444] transition-colors"
+                    className="mt-1 text-xs text-white/40 transition-colors hover:text-[#ff5b6e]"
                   >
                     Remove
                   </button>
@@ -463,10 +463,10 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
                   if (file) handleImageFile(file);
                 }}
                 className={clsx(
-                  "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors",
+                  "cursor-pointer rounded-[24px] border-2 border-dashed p-8 text-center transition-all",
                   isDragging
-                    ? "border-[#00ff88] bg-[#00ff8810]"
-                    : "border-[#2a2a2a] hover:border-[#444] bg-[#0f0f0f]"
+                    ? "border-[#00ff88] bg-[#00ff88]/10 shadow-[0_0_30px_rgba(0,255,136,0.12)]"
+                    : "border-white/12 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
                 )}
               >
                 <div className="text-3xl mb-2">🖼️</div>
@@ -524,32 +524,32 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       {/* Step 3: Review */}
       {step === 3 && (
         <div className="space-y-5 animate-fade-in">
-          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-5">
+          <div className="glass-panel rounded-[24px] p-5">
             <div className="flex items-start gap-4">
               {form.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={form.imageUrl}
                   alt={form.name}
-                  className="w-16 h-16 rounded-xl object-cover shrink-0"
+                  className="h-16 w-16 shrink-0 rounded-2xl object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-[#00ff88] flex items-center justify-center text-black font-bold text-xl shrink-0">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#00ff88] text-xl font-bold text-black">
                   {form.symbol.slice(0, 2) || "?"}
                 </div>
               )}
               <div>
                 <div className="text-white font-semibold text-lg">{form.name || "—"}</div>
                 <div className="text-[#555] text-sm font-mono">${form.symbol || "—"}</div>
-                <div className="text-[#666] text-xs mt-2 line-clamp-2">{form.description}</div>
+                <div className="mt-2 line-clamp-2 text-xs text-white/52">{form.description}</div>
               </div>
             </div>
           </div>
 
           {/* Cost breakdown */}
-          <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 space-y-2">
-            <div className="text-[#555] text-xs font-medium mb-3">LAUNCH COST ESTIMATE</div>
+          <div className="glass-panel rounded-[24px] p-4 space-y-2">
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">LAUNCH COST ESTIMATE</div>
             {[
               ["Create mint account", "~0.002 SOL"],
               ["Initialize bonding curve", "~0.003 SOL"],
@@ -558,25 +558,25 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               ["Mint tokens to bonding curve", "~0.001 SOL"],
             ].map(([label, cost]) => (
               <div key={label} className="flex justify-between text-xs">
-                <span className="text-[#666]">{label}</span>
+                <span className="text-white/50">{label}</span>
                 <span className="text-white font-mono">{cost}</span>
               </div>
             ))}
-            <div className="pt-2 mt-2 border-t border-[#1a1a1a] flex justify-between text-sm font-semibold">
+            <div className="mt-2 flex justify-between border-t border-white/8 pt-2 text-sm font-semibold">
               <span className="text-white">Total</span>
               <span className="text-[#00ff88] font-mono">~0.012 SOL</span>
             </div>
           </div>
 
           {/* Anti-rug info */}
-          <div className="bg-[#00ff8808] border border-[#00ff8820] rounded-xl p-4">
+          <div className="rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-4">
             <div className="flex items-start gap-3">
               <span className="text-xl mt-0.5">🛡️</span>
               <div>
                 <div className="text-[#00ff88] text-sm font-semibold mb-1">
                   Anti-Rug Protection
                 </div>
-                <ul className="text-[#666] text-xs space-y-1">
+                <ul className="space-y-1 text-xs text-white/50">
                   <li>• Tokens are minted to the bonding curve vault</li>
                   <li>• Creator cannot withdraw SOL from the curve</li>
                   <li>• Bonding curve is immutable once deployed</li>
@@ -589,7 +589,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       )}
 
       {/* Navigation buttons */}
-      <div className="flex gap-3 mt-8">
+      <div className="mt-8 flex gap-3">
         {step > 1 && (
           <button
             onClick={() => setStep((s) => (s - 1) as Step)}
@@ -599,14 +599,14 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </button>
         )}
         {step < 3 ? (
-          <button onClick={handleNextStep} className="btn-primary flex-1">
+          <button onClick={handleNextStep} className="btn-primary animate-gradient-shift flex-1 py-4 text-base">
             Continue →
           </button>
         ) : (
           <button
             onClick={handleLaunch}
             disabled={isLaunching || !publicKey}
-            className="btn-primary flex-1"
+            className="btn-primary animate-gradient-shift flex-1 py-4 text-base shadow-[0_18px_40px_rgba(0,255,136,0.24)]"
           >
             {isLaunching ? (
               <span className="flex items-center justify-center gap-2">

@@ -590,10 +590,10 @@ export default function TokenPage({ params }: PageProps) {
       </div>
 
       {/* Token header */}
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
+      <div className="glass-panel rounded-[30px] p-5">
         <div className="flex items-start gap-4 flex-wrap">
           {/* Token image */}
-          <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-[#1a1a1a]">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[24px] bg-white/[0.06]">
             {token.imageUrl ? (
               <Image
                 src={token.imageUrl}
@@ -603,7 +603,7 @@ export default function TokenPage({ params }: PageProps) {
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[#00ff88]">
+              <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#00ff88]">
                 {token.symbol.slice(0, 2)}
               </div>
             )}
@@ -612,8 +612,8 @@ export default function TokenPage({ params }: PageProps) {
           {/* Token info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-bold text-white">{token.name}</h1>
-              <span className="text-[#555] font-mono text-sm">${token.symbol}</span>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white">{token.name}</h1>
+              <span className="text-sm font-mono text-white/38">${token.symbol}</span>
               {token.isGraduated && (
                 <span className="px-2 py-0.5 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-xs font-medium">
                   🎓 Graduated
@@ -642,14 +642,14 @@ export default function TokenPage({ params }: PageProps) {
                 Dev: {devPct.toFixed(1)}%
               </span>
             </div>
-            <div className="text-[#555] text-xs mt-1">
+            <div className="mt-1 text-xs text-white/40">
               Created by{" "}
-              <span className="text-[#888] font-mono">{truncateAddress(token.creator)}</span>
+              <span className="font-mono text-white/72">{truncateAddress(token.creator)}</span>
               {" · "}
               {timeAgo(token.createdAt)}
             </div>
             {token.description && (
-              <p className="text-[#666] text-sm mt-2 max-w-2xl line-clamp-2">
+              <p className="mt-2 max-w-2xl line-clamp-2 text-sm text-white/56">
                 {token.description}
               </p>
             )}
@@ -659,19 +659,19 @@ export default function TokenPage({ params }: PageProps) {
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {token.websiteUrl && (
               <a href={token.websiteUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[#555] hover:text-white transition-colors text-xs border border-[#2a2a2a] px-2 py-1 rounded-md">
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
                 🌐 Website
               </a>
             )}
             {token.twitterUrl && (
               <a href={token.twitterUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[#555] hover:text-white transition-colors text-xs border border-[#2a2a2a] px-2 py-1 rounded-md">
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
                 𝕏 Twitter
               </a>
             )}
             {token.telegramUrl && (
               <a href={token.telegramUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[#555] hover:text-white transition-colors text-xs border border-[#2a2a2a] px-2 py-1 rounded-md">
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
                 ✈️ Telegram
               </a>
             )}
@@ -682,7 +682,7 @@ export default function TokenPage({ params }: PageProps) {
               )}&url=${encodeURIComponent(`https://jetforge.io/token/${mint}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs border border-[#1d9bf030] bg-[#1d9bf010] text-[#1d9bf0] hover:bg-[#1d9bf020] transition-colors px-2.5 py-1 rounded-md font-medium"
+              className="flex items-center gap-1.5 rounded-xl border border-[#1d9bf030] bg-[#1d9bf010] px-3 py-1.5 text-xs font-medium text-[#1d9bf0] transition-colors hover:bg-[#1d9bf020]"
             >
               𝕏 Share
             </a>
@@ -707,7 +707,7 @@ export default function TokenPage({ params }: PageProps) {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Market Cap", value: marketCapUsdt, accent: true },
           { label: token.isGraduated ? "24h Volume" : "SOL Raised", value: `${realSolRaised} SOL` },
@@ -716,9 +716,9 @@ export default function TokenPage({ params }: PageProps) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="bg-[#111] border border-[#1a1a1a] rounded-xl p-3"
+            className="glass-panel rounded-[24px] p-4"
           >
-            <div className="text-[#555] text-xs mb-1">{stat.label}</div>
+            <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-white/35">{stat.label}</div>
             <div
               className={`font-mono font-semibold text-sm ${
                 stat.accent ? "text-[#00ff88]" : "text-white"
@@ -745,7 +745,7 @@ export default function TokenPage({ params }: PageProps) {
           <TradingPanel token={token} />
 
           {/* Token details */}
-          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
+          <div className="glass-panel rounded-[28px] p-4">
             <div className="text-white text-sm font-semibold mb-3">Token Details</div>
             <div className="space-y-2.5 text-xs">
               {[
