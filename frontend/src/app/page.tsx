@@ -69,17 +69,17 @@ function StatsBar() {
       {items.map((item) => (
         <div
           key={item.label}
-          className="glass-panel min-h-[74px] rounded-[16px] border border-white/10 p-3 shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:min-h-[122px] md:rounded-[24px] md:p-5"
+          className="glass-panel min-h-[68px] rounded-[14px] border border-white/10 p-2.5 shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:min-h-[122px] md:rounded-[24px] md:p-5"
         >
-          <div className="mb-2 flex items-start justify-between gap-2 md:mb-3 md:gap-3">
-            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45 md:text-[11px] md:tracking-[0.24em]">
+          <div className="mb-1.5 flex items-start justify-between gap-2 md:mb-3 md:gap-3">
+            <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-white/45 md:text-[11px] md:tracking-[0.24em]">
               {item.label}
             </span>
             <span className="hidden shrink-0 rounded-full bg-[#00ff88]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#00ff88] md:inline-flex">
               {item.badge}
             </span>
           </div>
-          <div className="text-base font-extrabold tracking-tight text-white sm:text-lg md:text-2xl">
+          <div className="text-[1.05rem] font-extrabold tracking-tight text-white sm:text-lg md:text-2xl">
             <CountUpValue value={item.value} />
           </div>
           <div className="mt-0.5 hidden text-sm text-white/50 md:block">{item.note}</div>
@@ -120,19 +120,19 @@ function KingOfTheHill() {
   const king = data?.[0];
   if (!king) {
     return (
-      <div className="relative overflow-hidden rounded-[18px] border border-[#ffcf5a]/20 bg-[linear-gradient(135deg,rgba(255,207,90,0.08),rgba(255,255,255,0.02))] p-4 sm:rounded-[28px] sm:p-5">
+      <div className="relative overflow-hidden rounded-[16px] border border-[#ffcf5a]/20 bg-[linear-gradient(135deg,rgba(255,207,90,0.08),rgba(255,255,255,0.02))] p-3 sm:rounded-[28px] sm:p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#ffcf5a]/12 text-2xl sm:h-14 sm:w-14 sm:rounded-2xl">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#ffcf5a]/12 text-lg sm:h-14 sm:w-14 sm:rounded-2xl sm:text-2xl">
             👑
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ffcf5a] sm:text-[11px] sm:tracking-[0.34em]">
+            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a] sm:text-[11px] sm:tracking-[0.34em]">
               King of the Hill
             </div>
-            <div className="mt-1 text-sm font-semibold text-white/70 sm:text-base">
+            <div className="mt-0.5 text-[13px] font-semibold text-white/70 sm:text-base">
               Waiting for a leader
             </div>
-            <div className="mt-1 text-xs text-white/45 sm:text-sm">
+            <div className="mt-0.5 text-[11px] text-white/45 sm:text-sm">
               The top volume token will appear here automatically.
             </div>
           </div>
@@ -143,55 +143,55 @@ function KingOfTheHill() {
 
   return (
     <Link href={`/token/${king.mint}`}>
-      <div className="group relative overflow-hidden rounded-[18px] p-[1px] sm:rounded-[28px]">
-        <div className="absolute inset-0 animate-gradient-shift rounded-[18px] bg-[linear-gradient(115deg,rgba(255,207,90,0.9),rgba(255,255,255,0.2),rgba(255,207,90,0.95))] sm:rounded-[28px]" />
-        <div className="absolute inset-0 animate-shimmer rounded-[18px] bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.22),transparent)] opacity-40 sm:rounded-[28px]" />
-        <div className="glass-panel-dark relative overflow-hidden rounded-[17px] border border-transparent px-3 py-3 transition-transform duration-200 group-hover:scale-[1.01] sm:rounded-[27px] sm:px-6 sm:py-5 lg:px-7">
+      <div className="group relative overflow-hidden rounded-[16px] p-[1px] sm:rounded-[28px]">
+        <div className="absolute inset-0 animate-gradient-shift rounded-[16px] bg-[linear-gradient(115deg,rgba(255,207,90,0.9),rgba(255,255,255,0.2),rgba(255,207,90,0.95))] sm:rounded-[28px]" />
+        <div className="absolute inset-0 animate-shimmer rounded-[16px] bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.22),transparent)] opacity-40 sm:rounded-[28px]" />
+        <div className="glass-panel-dark relative overflow-hidden rounded-[15px] border border-transparent px-3 py-3 transition-transform duration-200 group-hover:scale-[1.01] sm:rounded-[27px] sm:px-6 sm:py-5 lg:px-7">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,207,90,0.18),transparent_70%)]" />
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center">
+          <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center">
             <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,rgba(255,207,90,0.24),rgba(255,152,0,0.12))] text-2xl shadow-[0_0_28px_rgba(255,207,90,0.18)] sm:h-14 sm:w-14 sm:rounded-2xl sm:text-3xl">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[linear-gradient(135deg,rgba(255,207,90,0.24),rgba(255,152,0,0.12))] text-lg shadow-[0_0_28px_rgba(255,207,90,0.18)] sm:h-14 sm:w-14 sm:rounded-2xl sm:text-3xl">
                   👑
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ffcf5a] sm:text-[11px] sm:tracking-[0.34em]">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a] sm:text-[11px] sm:tracking-[0.34em]">
                     King of the Hill
                   </div>
-                  <div className="mt-0.5 line-clamp-2 text-[17px] font-extrabold leading-5 tracking-tight text-white sm:mt-1 sm:text-2xl">
+                  <div className="mt-0.5 line-clamp-1 text-[15px] font-extrabold leading-5 tracking-tight text-white sm:mt-1 sm:text-2xl">
                     {king.name}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-white/55 sm:gap-2 sm:text-sm">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-white/55 sm:mt-1 sm:gap-2 sm:text-sm">
                     <span className="font-mono text-white/70">${king.symbol}</span>
                     <span>rotates every hour</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 flex min-w-0 items-start gap-3 sm:mt-4 sm:gap-4">
+              <div className="mt-2 flex min-w-0 items-start gap-2.5 sm:mt-4 sm:gap-4">
                 {king.imageUrl ? (
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[14px] border border-white/10 sm:h-14 sm:w-14 sm:rounded-2xl">
+                  <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-[12px] border border-white/10 sm:h-14 sm:w-14 sm:rounded-2xl">
                     <Image src={king.imageUrl} alt={king.name} fill className="object-cover" unoptimized />
                   </div>
                 ) : (
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#ffcf5a]/15 text-base font-bold text-[#ffcf5a] sm:h-14 sm:w-14 sm:rounded-2xl sm:text-lg">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#ffcf5a]/15 text-sm font-bold text-[#ffcf5a] sm:h-14 sm:w-14 sm:rounded-2xl sm:text-lg">
                     {king.symbol.slice(0, 2)}
                   </div>
                 )}
-                <p className="max-w-xl text-xs leading-5 text-white/62 sm:text-sm sm:leading-6">
+                <p className="max-w-xl text-[11px] leading-5 text-white/62 sm:text-sm sm:leading-6">
                   The highest-conviction chart on JetForge right now. Follow the strongest volume surge before it graduates.
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-1 xl:grid-cols-2">
-              <div className="rounded-[14px] border border-white/10 bg-white/[0.05] p-3 sm:rounded-2xl sm:p-4">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-white/40">24H Volume</div>
-                <div className="mt-1.5 text-sm font-bold text-white sm:mt-2 sm:text-lg">{king.volume24h.toFixed(2)} SOL</div>
+              <div className="rounded-[12px] border border-white/10 bg-white/[0.05] p-2.5 sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px] sm:tracking-[0.22em]">24H Volume</div>
+                <div className="mt-1 text-[13px] font-bold text-white sm:mt-2 sm:text-lg">{king.volume24h.toFixed(2)} SOL</div>
               </div>
-              <div className="rounded-[14px] border border-[#ffcf5a]/20 bg-[#ffcf5a]/8 p-3 sm:rounded-2xl sm:p-4">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-[#ffcf5a]/70">Market Cap</div>
-                <div className="mt-1.5 text-sm font-bold text-[#fff1c2] sm:mt-2 sm:text-lg">{king.marketCapSol.toFixed(2)} SOL</div>
+              <div className="rounded-[12px] border border-[#ffcf5a]/20 bg-[#ffcf5a]/8 p-2.5 sm:rounded-2xl sm:p-4">
+                <div className="text-[9px] uppercase tracking-[0.18em] text-[#ffcf5a]/70 sm:text-[10px] sm:tracking-[0.22em]">Market Cap</div>
+                <div className="mt-1 text-[13px] font-bold text-[#fff1c2] sm:mt-2 sm:text-lg">{king.marketCapSol.toFixed(2)} SOL</div>
               </div>
             </div>
           </div>
@@ -265,28 +265,28 @@ export default function HomePage() {
   const loading = activeTab === "watchlist" ? watchlistLoading : isLoading;
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4 sm:hidden">
-        <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(255,255,255,0.03)_42%,rgba(0,204,255,0.08))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.24)]">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#86ffc4]">
+    <div className="space-y-5">
+      <div className="space-y-3 sm:hidden">
+        <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-3.5 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+          <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4]">
             Live Market
           </div>
-          <div className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-white">
-            Discover what&apos;s moving now
+          <div className="mt-1.5 text-[1.85rem] font-extrabold leading-[0.98] tracking-tight text-white">
+            Trade what&apos;s moving
           </div>
-          <div className="mt-2 text-sm leading-6 text-white/60">
-            Scan live token activity, watch the leader board, and jump into the market fast.
+          <div className="mt-1.5 text-[13px] leading-5 text-white/58">
+            Scan activity, check the leader, and jump into the market fast.
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-3 flex gap-2">
             <Link
               href="#market"
-              className="flex-1 rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-center text-sm font-semibold text-white"
+              className="flex-1 rounded-[16px] border border-white/12 bg-white/[0.04] px-4 py-2.5 text-center text-sm font-semibold text-white"
             >
               View Market
             </Link>
             <Link
               href="/launch"
-              className="flex-1 rounded-2xl bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-3 text-center text-sm font-extrabold text-[#03110d]"
+              className="flex-1 rounded-[16px] bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2.5 text-center text-sm font-extrabold text-[#03110d]"
             >
               Launch
             </Link>
