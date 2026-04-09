@@ -31,9 +31,11 @@ if (config.solana.treasuryAddress.includes("XXX")) {
 export const BONDING_CURVE_CONSTANTS = {
   INITIAL_VIRTUAL_SOL: BigInt("30000000000"),
   INITIAL_VIRTUAL_TOKENS: BigInt("1073000191000000"),
+  // 70/30 model: 700M on bonding curve, 300M locked for Raydium
   REAL_TOKEN_RESERVES_INIT: BigInt("700000000000000"),
+  RESERVE_TOKEN_AMOUNT: BigInt("300000000000000"),
   TOTAL_SUPPLY: BigInt("1000000000000000"),
-  GRADUATION_THRESHOLD: BigInt("500000000"), // 0.5 SOL (local testing)
+  GRADUATION_THRESHOLD: BigInt("500000000"), // 0.5 SOL devnet (85 SOL mainnet)
   FEE_BPS: BigInt(100),
   BPS_DENOMINATOR: BigInt(10000),
 };

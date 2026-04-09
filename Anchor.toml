@@ -6,13 +6,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+token_launch = "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk"
 
 [programs.devnet]
-token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+token_launch = "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk"
 
 [programs.mainnet]
-token_launch = "EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV"
+token_launch = "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk"
 
 [registry]
 url = "https://api.apr.dev"

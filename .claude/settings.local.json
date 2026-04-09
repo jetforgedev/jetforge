@@ -318,7 +318,8 @@
       "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 4000 -State Listen | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }')",
       "Bash(node -e \"require\\('@raydium-io/raydium-sdk-v2'\\)\")",
       "Bash(node -e \"const r = require\\('@raydium-io/raydium-sdk-v2'\\); console.log\\(Object.keys\\(r\\).filter\\(k => ['Raydium','TxVersion','DEVNET_PROGRAM_ID','NATIVE_MINT'].includes\\(k\\)\\)\\)\")",
-      "Bash(node -e \"const {DEVNET_PROGRAM_ID} = require\\('@raydium-io/raydium-sdk-v2'\\); console.log\\(JSON.stringify\\({cpmm: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toString\\(\\), fee: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toString\\(\\)}, null, 2\\)\\)\")"
+      "Bash(node -e \"const {DEVNET_PROGRAM_ID} = require\\('@raydium-io/raydium-sdk-v2'\\); console.log\\(JSON.stringify\\({cpmm: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toString\\(\\), fee: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toString\\(\\)}, null, 2\\)\\)\")",
+      "Bash(node -e \"const {PublicKey, SystemProgram} = require\\('@solana/web3.js'\\); console.log\\('PublicKey.default:', PublicKey.default?.toString\\(\\)\\); console.log\\('SystemProgram.programId:', SystemProgram.programId.toString\\(\\)\\); console.log\\('Equal:', PublicKey.default?.toString\\(\\) === SystemProgram.programId.toString\\(\\)\\);\")"
     ]
   }
 }

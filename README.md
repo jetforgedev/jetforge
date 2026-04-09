@@ -1,6 +1,6 @@
 # JetForge — Solana Token Launch Platform
 
-A JetForge-style token launch and trading platform built on Solana devnet.
+A pump.fun-style token launch and trading platform built on Solana devnet.
 Live at **[https://jetforge.io](https://jetforge.io)**
 
 ## Architecture Overview
@@ -22,21 +22,37 @@ Live at **[https://jetforge.io](https://jetforge.io)**
 └─────────────┘                        └──────────────────────────┘
 ```
 
-## Smart Contract (Anchor/Rust)
+## Tokenomics
 
-### Bonding Curve Math
+### Token Supply Distribution (70/30 Model)
 
-Uses constant product formula (x × y = k):
+Every token launched on JetForge uses a fixed 1 billion token supply split into two pools:
 
-- **Initial virtual SOL**: 30 SOL (30,000,000,000 lamports)
-- **Initial virtual tokens**: 1,073,000,191,000,000
-- **Trading supply**: 1,000,000,000,000,000 (100% — all tokens available for trading)
-- **Total supply**: 1,000,000,000 tokens (with 6 decimals)
-- **Graduation threshold**: 85 SOL real reserves
+| Pool | Amount | % | Purpose |
+|------|--------|---|---------|
+| **Bonding Curve** | 700,000,000 tokens | 70% | Available for trading on the bonding curve |
+| **Raydium Reserve** | 300,000,000 tokens | 30% | Locked; released to Raydium pool at graduation |
+| **Total Supply** | 1,000,000,000 tokens | 100% | — |
+
+> Tokens have **6 decimal places** (raw values are 1,000× larger, e.g. 1,000,000,000,000,000 raw = 1B tokens).
+
+### Bonding Curve Constants
+
+Uses a constant product AMM formula (x × y = k):
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| Initial virtual SOL | 30 SOL (30,000,000,000 lamports) | Sets the starting price |
+| Initial virtual tokens | 1,073,000,191,000,000 raw | ~1.073B virtual — higher than real supply to price token low at launch |
+| Real token reserves (init) | 700,000,000,000,000 raw | 700M tokens available on curve |
+| Graduation threshold | **0.5 SOL** (devnet) / **85 SOL** (mainnet) | Real SOL raised to trigger graduation |
+
+**Starting price** ≈ 30 SOL ÷ 1,073,000,191,000 = ~0.0000000000280 SOL per raw unit  
+= ~0.0000280 SOL per token (6 decimals) = ~$0.0000023 at $82/SOL
 
 **Buy formula:**
 ```
-k = virtual_sol × virtual_tokens
+k                  = virtual_sol × virtual_tokens
 new_virtual_sol    = virtual_sol + sol_in_after_fee
 new_virtual_tokens = k / new_virtual_sol
 tokens_out         = virtual_tokens - new_virtual_tokens
@@ -44,40 +60,66 @@ tokens_out         = virtual_tokens - new_virtual_tokens
 
 **Sell formula:**
 ```
-k = virtual_sol × virtual_tokens
+k                  = virtual_sol × virtual_tokens
 new_virtual_tokens = virtual_tokens + token_in
 new_virtual_sol    = k / new_virtual_tokens
-sol_out            = virtual_sol - new_virtual_sol (before fee)
+sol_out            = virtual_sol - new_virtual_sol  (capped at real_sol_reserves, then 1% fee deducted)
 ```
 
 ### Fee Structure
 
-**1% fee on every buy and sell transaction.**
+**1% fee on every buy and sell.**
 
 | Recipient | Share | Purpose |
-|---|---|---|
-| **Creator vault** | 40% of fee | Creator earns from trading activity |
+|-----------|-------|---------|
+| **Creator vault** | 40% of fee | Creator earns passively from all trading activity |
 | **Treasury** | 40% of fee | Platform revenue |
-| **Buyback vault** | 20% of fee | Accumulated until 0.1 SOL threshold, then used to buy & burn tokens |
+| **Buyback vault** | 20% of fee | Auto-burns tokens when vault reaches 0.1 SOL threshold |
 
-**Example:** On a 1 SOL buy (1% fee = 0.01 SOL):
-- Creator receives: 0.004 SOL
-- Treasury receives: 0.004 SOL
-- Buyback vault: 0.002 SOL
+**Example — 1 SOL buy (fee = 0.01 SOL):**
+- Creator vault: +0.004 SOL
+- Treasury: +0.004 SOL
+- Buyback vault: +0.002 SOL → burns tokens when vault ≥ 0.1 SOL
 
-**Graduation fee split (at 85 SOL):**
-- 5% → treasury (platform cut)
-- 5% → creator (graduation reward)
-- 90% → treasury to seed DEX liquidity
+### Graduation
+
+When `real_sol_reserves` reaches the graduation threshold the bonding curve is marked complete and the `graduate` instruction is triggered automatically.
+
+**What happens at graduation:**
+
+1. **300M reserve tokens** are transferred from the reserve vault → treasury ATA (for Raydium pool seeding)
+2. **Unsold curve tokens** (any of the 700M not bought) are burned — deflationary
+3. **SOL is split:**
+
+| Recipient | % | Purpose |
+|-----------|---|---------|
+| Creator | 5% | Graduation bonus reward |
+| Treasury (platform fee) | 5% | Platform cut |
+| Treasury (liquidity) | 90% | Seeds the Raydium CLMM pool together with the 300M reserve tokens |
+
+4. **Raydium CLMM pool** is created with the 90% SOL + 300M tokens
+5. Token is marked `is_graduated = true` — bonding curve trading disabled
+
+### Buyback & Burn
+
+The buyback vault accumulates 20% of every trading fee. When it reaches **0.1 SOL**, anyone can call `execute_buyback`:
+
+- The 0.1 SOL is used to buy tokens from the bonding curve at market price
+- All purchased tokens are immediately burned
+- This is permissionless — any wallet can trigger it
+
+---
+
+## Smart Contract
 
 ### Program Instructions
 
 | Instruction | Description |
 |---|---|
-| `create_token` | Deploy token with bonding curve, mint full supply to vault |
-| `buy` | Buy tokens with SOL using constant product formula |
-| `sell` | Sell tokens back for SOL |
-| `graduate` | Migrate graduated token liquidity to DEX (callable when curve is complete) |
+| `create_token` | Deploy token: mint 1B supply, create bonding curve PDA, split tokens into curve vault (700M) and reserve vault (300M), create Metaplex metadata |
+| `buy` | Buy tokens with SOL using constant product formula, distribute 1% fee |
+| `sell` | Sell tokens back for SOL, distribute 1% fee, cap sol_out at real reserves |
+| `graduate` | Triggered when curve is complete — burns unsold tokens, seeds Raydium pool, splits SOL 5/5/90 |
 | `execute_buyback` | Permissionless: burns accumulated buyback fees when vault ≥ 0.1 SOL |
 | `withdraw_creator_fees` | Creator withdraws accumulated fee SOL from their vault |
 
@@ -85,8 +127,10 @@ sol_out            = virtual_sol - new_virtual_sol (before fee)
 
 | Network | Program ID |
 |---|---|
-| **Devnet** | `EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV` |
+| **Devnet** | `7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk` |
 | Mainnet | Not deployed yet — audit in progress |
+
+---
 
 ## Project Structure
 
@@ -104,9 +148,9 @@ jetforge/
 │   └── src/
 │       ├── index.ts           # Express server + Socket.io
 │       ├── config.ts          # Config + startup validation
-│       ├── indexer/           # Solana on-chain event indexer
+│       ├── indexer/           # Solana event indexer (WS + polling fallback)
 │       ├── api/               # REST API routes
-│       └── websocket/         # WebSocket broadcasting
+│       └── services/          # graduateKeeper, raydiumService
 └── frontend/                  # Next.js 16 frontend
     └── src/
         ├── app/               # App Router pages
@@ -117,9 +161,11 @@ jetforge/
         │   └── launch/        # Create new token
         ├── components/        # TradingPanel, PriceChart, LaunchForm…
         ├── hooks/             # useTokenData, useTrades, usePrice…
-        ├── lib/               # Bonding curve math, API client, program
+        ├── lib/               # bondingCurve.ts, api.ts, program.ts
         └── providers/         # Wallet + React Query providers
 ```
+
+---
 
 ## Local Development
 
@@ -149,67 +195,85 @@ anchor build
 ```bash
 cd backend
 cp .env.devnet-public .env
-# Edit .env with your PostgreSQL connection string and program ID
+# Edit .env with your PostgreSQL connection string
 
 npx prisma db push
 npx prisma generate
 ```
 
-### 4. Start backend + frontend together
+### 4. Start backend + frontend
 
 ```bash
 # From root
 npx concurrently "npm run dev --prefix backend" "npm run dev --prefix frontend"
 ```
 
-Backend: `http://localhost:4000`
+Backend: `http://localhost:4000`  
 Frontend: `http://localhost:3000`
 
-## Devnet Deployment
+---
 
-### 1. Get devnet SOL
+## VPS / Production Deployment
 
-```bash
-solana airdrop 2 --url devnet
-# Or visit https://faucet.solana.com
-```
-
-### 2. Build and deploy
-
-```bash
-anchor build
-anchor deploy --provider.cluster devnet
-```
-
-### 3. Configure backend
+### Backend `.env`
 
 ```env
+PORT=4000
+DATABASE_URL=postgresql://user:pass@localhost:5432/jetforge
 SOLANA_RPC_URL=https://api.devnet.solana.com
 SOLANA_WS_URL=wss://api.devnet.solana.com
-PROGRAM_ID=EFHQqg1qrv18pxgob5uuy4nRZ3XpUwBmUHzqpFUUK6MV
-TREASURY_ADDRESS=13DWuEycYuJvGpo2EwPMgaiBDfRKmpoxdXjJ5GKe9RPW
+PROGRAM_ID=7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk
+TREASURY_ADDRESS=<your treasury wallet pubkey>
 FRONTEND_URL=https://jetforge.io
 ```
+
+### Frontend `.env.local`
+
+```env
+NEXT_PUBLIC_API_URL=https://api.jetforge.io/api
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+```
+
+> Setting `NEXT_PUBLIC_API_URL` to your public domain is required for Raydium to display token name and image — the metadata URI stored on-chain points to this URL.
+
+### Update VPS after a pull
+
+```bash
+git pull origin main
+
+# Backend
+cd backend && npm install && npm run build
+pm2 restart backend
+
+# Frontend
+cd ../frontend && npm install && npm run build
+pm2 restart frontend
+```
+
+---
 
 ## API Reference
 
 ### REST Endpoints
 
 ```
-GET  /api/tokens                         # List tokens (sort: new|trending|graduating|marketcap)
-GET  /api/tokens/:mint                   # Token details + stats
+GET  /api/tokens                         # List tokens (sort: new|trending|graduating|graduated|marketcap)
+GET  /api/tokens/:mint                   # Token details + live chain sync
 POST /api/tokens                         # Register new token (called after on-chain tx)
-GET  /api/tokens/:mint/ohlcv             # Candlestick data (interval: 1m|5m|15m|30m|1h|1d)
-GET  /api/tokens/:mint/holders           # Top 10 token holders
+GET  /api/tokens/:mint/ohlcv             # Candlestick data (interval: 1s|1m|5m|15m|30m|1h|1d)
+GET  /api/tokens/:mint/holders           # Top 10 token holders (live from RPC)
 
 GET  /api/trades/:mint                   # Trades for a token
 GET  /api/trades/user/:wallet            # User's trade history
+
+GET  /api/metadata/:mint                 # Metaplex-standard JSON metadata (used as on-chain URI)
 
 GET  /api/leaderboard/tokens             # Top tokens by volume / market cap
 GET  /api/leaderboard/traders            # Top traders by PnL / volume
 
 GET  /api/creators/:wallet               # Creator profile + launched tokens
 GET  /api/portfolio/:wallet              # Wallet holdings + trade history
+GET  /api/stats                          # Platform stats (total tokens, 24h volume)
 ```
 
 ### WebSocket Events
@@ -224,7 +288,9 @@ GET  /api/portfolio/:wallet              # Wallet holdings + trade history
 - `new_trade` — New trade on subscribed token
 - `feed_trade` — Any trade across all tokens (global feed)
 - `token_created` — New token launched
-- `token_graduated` — Token reached 85 SOL and graduated
+- `token_graduated` — Token reached graduation threshold
+
+---
 
 ## Testing on Devnet
 
@@ -232,6 +298,8 @@ GET  /api/portfolio/:wallet              # Wallet holdings + trade history
 2. Switch network to **Devnet** (Settings → Developer Settings → Devnet)
 3. Get free devnet SOL at **[faucet.solana.com](https://faucet.solana.com)**
 4. Visit **[https://jetforge.io](https://jetforge.io)**
+
+---
 
 ## Security
 
@@ -242,6 +310,8 @@ GET  /api/portfolio/:wallet              # Wallet holdings + trade history
 - Graduation fee math uses `ok_or(MathOverflow)?` — no silent zero fallback
 - Config validation on startup — server refuses to boot with placeholder addresses
 - URI validation blocks `javascript:` and `data:` injection
+
+---
 
 ## License
 
