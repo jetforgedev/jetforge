@@ -65,11 +65,11 @@ function StatsBar() {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2.5 md:gap-3">
+    <div className="grid grid-cols-3 gap-2 md:gap-3">
       {items.map((item) => (
         <div
           key={item.label}
-          className="glass-panel rounded-[14px] border border-white/10 px-3 py-3 shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:rounded-[24px] md:p-5"
+          className="rounded-[14px] border border-white/10 bg-white/[0.05] px-3 py-3 md:rounded-[24px] md:bg-transparent md:p-5 md:shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:[background:linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))]"
         >
           <div className="mb-1.5 flex items-start justify-between gap-1 md:mb-3 md:gap-3">
             <span className="text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-white/40 md:text-[11px] md:tracking-[0.24em]">
@@ -309,7 +309,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        <StatsBar />
+        <div className="pb-1">
+          <StatsBar />
+        </div>
         <KingOfTheHill />
       </div>
 
