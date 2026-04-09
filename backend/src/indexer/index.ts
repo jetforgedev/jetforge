@@ -464,6 +464,79 @@ function setupLogSubscription(io: Server): void {
   console.log(`Indexer watching program ${config.solana.programId} (sub #${subscriptionId})`);
 }
 
+// ─── Polling-based fallback indexer ───────────────────────────────────────────
+// The public devnet WebSocket drops events silently. This polling loop fetches
+// recent program transactions every 10s and processes any that were missed.
+
+let lastProcessedSignature: string | null = null;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+async function processTransaction(
+  signature: string,
+  io: Server
+): Promise<void> {
+  try {
+    // Skip if already processed (check DB for either buy or sell trade)
+    const existing = await prisma.trade.findUnique({ where: { signature } });
+    if (existing) return;
+
+    const tx = await connection.getTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+      commitment: "confirmed",
+    });
+    if (!tx || tx.meta?.err) return;
+
+    const logs = tx.meta?.logMessages ?? [];
+    if (!eventParser) return;
+
+    const events = [...eventParser.parseLogs(logs)];
+    for (const event of events) {
+      switch (event.name) {
+        case "BuyEvent":
+          await handleBuyEvent(signature, event.data, io);
+          break;
+        case "SellEvent":
+          await handleSellEvent(signature, event.data, io);
+          break;
+        case "TokenCreatedEvent":
+          await handleTokenCreatedEvent(event.data, io);
+          break;
+        case "GraduationEvent":
+          await handleGraduationEvent(event.data, io);
+          break;
+      }
+    }
+  } catch (err: any) {
+    // Non-fatal — skip this tx and continue
+    if (!err?.message?.includes("not found")) {
+      console.error(`[POLL] Error processing ${signature.slice(0,8)}…:`, err?.message ?? err);
+    }
+  }
+}
+
+async function pollRecentTransactions(io: Server): Promise<void> {
+  try {
+    const opts: any = { limit: 30, commitment: "confirmed" };
+    if (lastProcessedSignature) opts.until = lastProcessedSignature;
+
+    const sigs = await connection.getSignaturesForAddress(PROGRAM_ID, opts);
+    if (!sigs.length) return;
+
+    // Process from oldest to newest (reverse order)
+    const toProcess = [...sigs].reverse();
+    for (const sigInfo of toProcess) {
+      if (!sigInfo.err) {
+        await processTransaction(sigInfo.signature, io);
+      }
+    }
+
+    // Remember the newest signature so next poll only fetches newer txs
+    lastProcessedSignature = sigs[0].signature;
+  } catch (err: any) {
+    console.error("[POLL] Failed to fetch signatures:", err?.message ?? err);
+  }
+}
+
 async function connect(io: Server): Promise<void> {
   connection = new Connection(config.solana.rpcUrl, {
     wsEndpoint: config.solana.wsUrl,
@@ -471,6 +544,13 @@ async function connect(io: Server): Promise<void> {
   });
 
   setupLogSubscription(io);
+
+  // Start polling fallback — runs every 10s to catch events the WS missed
+  if (pollInterval) clearInterval(pollInterval);
+  // Initial poll to backfill recent history
+  await pollRecentTransactions(io);
+  pollInterval = setInterval(() => pollRecentTransactions(io), 10_000);
+  console.log("[POLL] Transaction polling started (10s interval)");
 
   console.log(`Indexer connected to ${config.solana.rpcUrl}`);
 }

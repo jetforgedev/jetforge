@@ -147,7 +147,7 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     // Build the graduate instruction
     const keys = [
       { pubkey: callerKeypair.publicKey,    isSigner: true,  isWritable: true  }, // caller (ephemeral)
-      { pubkey: mint,                       isSigner: false, isWritable: false }, // mint
+      { pubkey: mint,                       isSigner: false, isWritable: true  }, // mint (mut — required for burn CPI)
       { pubkey: bondingCurve,               isSigner: false, isWritable: true  }, // bonding_curve
       { pubkey: tokenVault,                 isSigner: false, isWritable: true  }, // token_vault
       { pubkey: reserveVault,               isSigner: false, isWritable: true  }, // reserve_vault

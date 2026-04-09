@@ -13,9 +13,14 @@ export function useToken(mint: string) {
     queryKey: ["token", mint],
     queryFn: () => getToken(mint),
     enabled: !!mint,
-    refetchInterval: (query) =>
-      query.state.status === "error" ? 3_000 : 30_000,
-    staleTime: 10_000,
+    refetchInterval: (query) => {
+      if (query.state.status === "error") return 3_000;
+      // Poll fast (5s) for active tokens so graduation + trades show quickly.
+      // After graduation, slow down to 30s.
+      const data = query.state.data as TokenData | undefined;
+      return data?.isGraduated ? 30_000 : 5_000;
+    },
+    staleTime: 4_000,
     retry: 60, // Keep retrying (3s interval × 60 = 3 min max)
     retryDelay: 3_000,
   });

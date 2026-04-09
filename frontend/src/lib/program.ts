@@ -45,24 +45,26 @@ export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const IDL: any = {
+  address: "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk",
   version: "0.1.0",
   name: "token_launch",
   instructions: [
     {
       name: "createToken",
+      discriminator: [84, 52, 204, 228, 24, 140, 234, 75],
       accounts: [
-        { name: "creator", isMut: true, isSigner: true },
-        { name: "mint", isMut: true, isSigner: true },
-        { name: "bondingCurve", isMut: true, isSigner: false },
-        { name: "tokenVault", isMut: true, isSigner: false },
-        { name: "reserveVault", isMut: true, isSigner: false },
-        { name: "buybackVault", isMut: true, isSigner: false },
-        { name: "creatorVault", isMut: true, isSigner: false },
-        { name: "metadata", isMut: true, isSigner: false },
-        { name: "tokenProgram", isMut: false, isSigner: false },
-        { name: "associatedTokenProgram", isMut: false, isSigner: false },
-        { name: "tokenMetadataProgram", isMut: false, isSigner: false },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "creator", writable: true, signer: true },
+        { name: "mint", writable: true, signer: true },
+        { name: "bondingCurve", writable: true },
+        { name: "tokenVault", writable: true },
+        { name: "reserveVault", writable: true },
+        { name: "buybackVault", writable: true },
+        { name: "creatorVault", writable: true },
+        { name: "metadata", writable: true },
+        { name: "tokenProgram" },
+        { name: "associatedTokenProgram" },
+        { name: "tokenMetadataProgram" },
+        { name: "systemProgram" },
       ],
       args: [
         { name: "name", type: "string" },
@@ -72,18 +74,19 @@ const IDL: any = {
     },
     {
       name: "buy",
+      discriminator: [102, 6, 61, 18, 1, 218, 235, 234],
       accounts: [
-        { name: "buyer", isMut: true, isSigner: true },
-        { name: "mint", isMut: false, isSigner: false },
-        { name: "bondingCurve", isMut: true, isSigner: false },
-        { name: "tokenVault", isMut: true, isSigner: false },
-        { name: "buyerTokenAccount", isMut: true, isSigner: false },
-        { name: "treasury", isMut: true, isSigner: false },
-        { name: "buybackVault", isMut: true, isSigner: false },
-        { name: "creatorVault", isMut: true, isSigner: false },
-        { name: "tokenProgram", isMut: false, isSigner: false },
-        { name: "associatedTokenProgram", isMut: false, isSigner: false },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "buyer", writable: true, signer: true },
+        { name: "mint" },
+        { name: "bondingCurve", writable: true },
+        { name: "tokenVault", writable: true },
+        { name: "buyerTokenAccount", writable: true },
+        { name: "treasury", writable: true },
+        { name: "buybackVault", writable: true },
+        { name: "creatorVault", writable: true },
+        { name: "tokenProgram" },
+        { name: "associatedTokenProgram" },
+        { name: "systemProgram" },
       ],
       args: [
         { name: "solAmount", type: "u64" },
@@ -92,18 +95,19 @@ const IDL: any = {
     },
     {
       name: "sell",
+      discriminator: [51, 230, 133, 164, 1, 127, 131, 173],
       accounts: [
-        { name: "seller", isMut: true, isSigner: true },
-        { name: "mint", isMut: true, isSigner: false },
-        { name: "bondingCurve", isMut: true, isSigner: false },
-        { name: "tokenVault", isMut: true, isSigner: false },
-        { name: "sellerTokenAccount", isMut: true, isSigner: false },
-        { name: "treasury", isMut: true, isSigner: false },
-        { name: "buybackVault", isMut: true, isSigner: false },
-        { name: "creatorVault", isMut: true, isSigner: false },
-        { name: "tokenProgram", isMut: false, isSigner: false },
-        { name: "associatedTokenProgram", isMut: false, isSigner: false },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "seller", writable: true, signer: true },
+        { name: "mint", writable: true },
+        { name: "bondingCurve", writable: true },
+        { name: "tokenVault", writable: true },
+        { name: "sellerTokenAccount", writable: true },
+        { name: "treasury", writable: true },
+        { name: "buybackVault", writable: true },
+        { name: "creatorVault", writable: true },
+        { name: "tokenProgram" },
+        { name: "associatedTokenProgram" },
+        { name: "systemProgram" },
       ],
       args: [
         { name: "tokenAmount", type: "u64" },
@@ -112,26 +116,28 @@ const IDL: any = {
     },
     {
       name: "executeBuyback",
+      discriminator: [47, 32, 19, 100, 184, 96, 144, 49],
       accounts: [
-        { name: "payer", isMut: true, isSigner: true },
-        { name: "mint", isMut: true, isSigner: false },
-        { name: "bondingCurve", isMut: true, isSigner: false },
-        { name: "tokenVault", isMut: true, isSigner: false },
-        { name: "buybackVault", isMut: true, isSigner: false },
-        { name: "tokenProgram", isMut: false, isSigner: false },
-        { name: "associatedTokenProgram", isMut: false, isSigner: false },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "payer", writable: true, signer: true },
+        { name: "mint", writable: true },
+        { name: "bondingCurve", writable: true },
+        { name: "tokenVault", writable: true },
+        { name: "buybackVault", writable: true },
+        { name: "tokenProgram" },
+        { name: "associatedTokenProgram" },
+        { name: "systemProgram" },
       ],
       args: [],
     },
     {
       name: "withdrawCreatorFees",
+      discriminator: [8, 30, 213, 18, 121, 105, 129, 222],
       accounts: [
-        { name: "creator", isMut: true, isSigner: true },
-        { name: "mint", isMut: false, isSigner: false },
-        { name: "bondingCurve", isMut: false, isSigner: false },
-        { name: "creatorVault", isMut: true, isSigner: false },
-        { name: "systemProgram", isMut: false, isSigner: false },
+        { name: "creator", writable: true, signer: true },
+        { name: "mint" },
+        { name: "bondingCurve" },
+        { name: "creatorVault", writable: true },
+        { name: "systemProgram" },
       ],
       args: [],
     },
@@ -139,11 +145,17 @@ const IDL: any = {
   accounts: [
     {
       name: "BondingCurveState",
+      discriminator: [182, 185, 75, 193, 72, 40, 132, 153],
+    },
+  ],
+  types: [
+    {
+      name: "BondingCurveState",
       type: {
         kind: "struct",
         fields: [
-          { name: "mint", type: "publicKey" },
-          { name: "creator", type: "publicKey" },
+          { name: "mint", type: "pubkey" },
+          { name: "creator", type: "pubkey" },
           { name: "virtualSolReserves", type: "u64" },
           { name: "virtualTokenReserves", type: "u64" },
           { name: "realSolReserves", type: "u64" },
@@ -218,7 +230,7 @@ function getProgram(connection: Connection, wallet: AnchorWallet) {
     commitment: "confirmed",
     preflightCommitment: "confirmed",
   });
-  return new Program(IDL, PROGRAM_ID, provider);
+  return new Program(IDL, provider);
 }
 
 // ─── Transaction builders ─────────────────────────────────────────────────────

@@ -560,7 +560,11 @@ export default function TokenPage({ params }: PageProps) {
     }
   };
 
-  const realSolRaised = (Number(token.realSolReserves) / 1e9).toFixed(3);
+  // After graduation realSolReserves resets to 0 (SOL moves to Raydium).
+  // Show volume24h as the meaningful metric for graduated tokens.
+  const realSolRaised = token.isGraduated
+    ? (token.volume24h ?? 0).toFixed(3)
+    : (Number(token.realSolReserves) / 1e9).toFixed(3);
   // Market cap = (virtualSol / virtualTokens) * totalSupply, already computed
   // server-side and stored as token.marketCapSol (SOL units).
   const marketCapUsdt = solPrice
@@ -706,7 +710,7 @@ export default function TokenPage({ params }: PageProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Market Cap", value: marketCapUsdt, accent: true },
-          { label: "SOL Raised", value: `${realSolRaised} SOL` },
+          { label: token.isGraduated ? "24h Volume" : "SOL Raised", value: `${realSolRaised} SOL` },
           { label: "Holders", value: token.holders.toLocaleString() },
           { label: "Total Trades", value: token.trades.toLocaleString() },
         ].map((stat) => (

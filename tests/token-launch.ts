@@ -44,11 +44,15 @@ import BN from "bn.js";
 
 const INITIAL_VIRTUAL_SOL    = new BN("30000000000");
 const INITIAL_VIRTUAL_TOKENS = new BN("1073000191000000");
-const REAL_TOKEN_RESERVES_INIT = new BN("1000000000000000"); // 100% to trading vault
+const REAL_TOKEN_RESERVES_INIT = new BN("700000000000000"); // 70% to trading vault (bonding curve)
+const RESERVE_TOKEN_AMOUNT   = new BN("300000000000000"); // 30% to reserve vault (Raydium pool)
 const TOTAL_SUPPLY           = new BN("1000000000000000");
-const GRADUATION_THRESHOLD   = new BN("85000000000");       // 85 SOL
+const GRADUATION_THRESHOLD   = new BN("500000000");         // 0.5 SOL (devnet/localnet test value)
 const FEE_BPS   = 100;
 const BPS_DENOM = 10_000;
+
+// Metaplex Token Metadata program
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
 // Hardcoded treasury — must match crate::TREASURY_PUBKEY in lib.rs.
 const TREASURY_PUBKEY = new PublicKey(
@@ -88,6 +92,7 @@ describe("token-launch", () => {
   let reserveVault:  PublicKey;
   let buybackVault:  PublicKey;
   let creatorVault:  PublicKey;
+  let metadataPDA:   PublicKey;
 
   // Fund a keypair from the provider wallet (works on devnet where airdrop is rate-limited)
   async function fund(kp: Keypair, lamports: number) {
@@ -131,6 +136,11 @@ describe("token-launch", () => {
       [Buffer.from("creator_vault"), mint.publicKey.toBuffer()],
       program.programId
     );
+
+    [metadataPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.publicKey.toBuffer()],
+      TOKEN_METADATA_PROGRAM_ID
+    );
   });
 
   // ── create_token ────────────────────────────────────────────────────────────
@@ -147,8 +157,10 @@ describe("token-launch", () => {
           reserveVault,
           buybackVault,
           creatorVault,
+          metadata:               metadataPDA,
           tokenProgram:           TOKEN_PROGRAM_ID,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          tokenMetadataProgram:   TOKEN_METADATA_PROGRAM_ID,
           systemProgram:          SystemProgram.programId,
         })
         .signers([creator, mint])
@@ -169,13 +181,13 @@ describe("token-launch", () => {
       assert.equal(curve.totalTrades.toString(), "0");
       assert.equal(curve.totalVolumeSol.toString(), "0");
 
-      // Trading vault holds all 1 T tokens.
+      // Trading vault holds the 70% bonding curve supply.
       const vault = await getAccount(connection, tokenVault);
       assert.equal(vault.amount.toString(), REAL_TOKEN_RESERVES_INIT.toString());
 
-      // Reserve vault exists but holds 0 tokens (RESERVE_TOKEN_AMOUNT == 0).
+      // Reserve vault holds the 30% locked for Raydium pool at graduation.
       const reserve = await getAccount(connection, reserveVault);
-      assert.equal(reserve.amount.toString(), "0");
+      assert.equal(reserve.amount.toString(), RESERVE_TOKEN_AMOUNT.toString());
 
       // Fee vaults created and rent-exempt (non-zero lamports, no data).
       const bbLamps = await connection.getBalance(buybackVault);

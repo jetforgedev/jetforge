@@ -154,6 +154,70 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Token not found" });
     }
 
+    // ── Live chain sync ─────────────────────────────────────────────────────
+    // The public devnet WebSocket drops events. Always read bonding curve state
+    // from chain when the token is active (not graduated) or DB looks stale.
+    // Rate-limited: re-read only if DB hasn't been updated in the last 15s.
+    let liveVirtualSol     = token.virtualSolReserves;
+    let liveVirtualTokens  = token.virtualTokenReserves;
+    let liveRealSol        = token.realSolReserves;
+    let liveRealTokens     = token.realTokenReserves;
+    let liveIsGraduated    = token.isGraduated;
+    let liveTotalTrades    = BigInt(0);
+    let liveTotalVolumeSol = BigInt(0);
+
+    const staleSecs = (Date.now() - token.updatedAt.getTime()) / 1000;
+    const needsChainRead = !token.isGraduated || staleSecs > 15;
+
+    if (needsChainRead) {
+      try {
+        const conn = new Connection(config.solana.rpcUrl, "confirmed");
+        const programId = new PublicKey(config.solana.programId);
+        const mintPk = new PublicKey(mint);
+        const [bcPDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from("bonding_curve"), mintPk.toBuffer()],
+          programId
+        );
+        const info = await conn.getAccountInfo(bcPDA);
+        if (info?.data && info.data.length >= 130) {
+          const data = info.data;
+          const readU64 = (offset: number): bigint =>
+            data.readBigUInt64LE(offset);
+          liveVirtualSol    = readU64(72);
+          liveVirtualTokens = readU64(80);
+          liveRealSol       = readU64(88);
+          liveRealTokens    = readU64(96);
+          liveIsGraduated   = data[112] === 1;
+          liveTotalVolumeSol = readU64(121);
+          liveTotalTrades    = readU64(129);
+
+          // Persist so DB reflects chain state
+          await prisma.token.update({
+            where: { mint },
+            data: {
+              virtualSolReserves:  liveVirtualSol,
+              virtualTokenReserves: liveVirtualTokens,
+              realSolReserves:     liveRealSol,
+              realTokenReserves:   liveRealTokens,
+              isGraduated:         liveIsGraduated,
+              graduatedAt:         liveIsGraduated && !token.isGraduated ? new Date() : token.graduatedAt,
+              marketCapSol: computeMarketCap(liveVirtualSol, liveVirtualTokens, token.totalSupply),
+            },
+          });
+
+          // If token just graduated, trigger the graduate instruction
+          if (liveIsGraduated && !token.isGraduated) {
+            const { callGraduateInstruction } = await import("../services/graduateKeeper");
+            callGraduateInstruction(mint).catch((e: any) =>
+              console.error("[KEEPER] Auto-trigger from API:", e?.message)
+            );
+          }
+        }
+      } catch (chainErr) {
+        console.warn(`[tokens] Chain read failed for ${mint.slice(0,8)}…:`, chainErr);
+      }
+    }
+
     // Get 24h volume
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentTrades = await prisma.trade.aggregate({
@@ -172,33 +236,31 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
     });
 
     const marketCapSol = computeMarketCap(
-      token.virtualSolReserves,
-      token.virtualTokenReserves,
+      liveVirtualSol,
+      liveVirtualTokens,
       token.totalSupply
     );
 
     const { id: _id, _count, ...tokenRest } = token as any;
     const formatted = {
       ...tokenRest,
-      virtualSolReserves: token.virtualSolReserves.toString(),
-      virtualTokenReserves: token.virtualTokenReserves.toString(),
-      realSolReserves: token.realSolReserves.toString(),
-      realTokenReserves: token.realTokenReserves.toString(),
+      virtualSolReserves: liveVirtualSol.toString(),
+      virtualTokenReserves: liveVirtualTokens.toString(),
+      realSolReserves: liveRealSol.toString(),
+      realTokenReserves: liveRealTokens.toString(),
       totalSupply: token.totalSupply.toString(),
       marketCapSol,
       volume24h: recentTrades._sum.solAmount
         ? Number(recentTrades._sum.solAmount) / 1e9
-        : 0,
+        : Number(liveTotalVolumeSol) / 1e9,
       holders: holdersResult.length,
-      totalTrades: _count.tradeHistory,
-      graduationProgress:
-        (Number(token.realSolReserves) /
-          Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) *
-        100,
-      currentPrice: computePrice(
-        token.virtualSolReserves,
-        token.virtualTokenReserves
+      trades: _count.tradeHistory || Number(liveTotalTrades),
+      totalTrades: _count.tradeHistory || Number(liveTotalTrades),
+      isGraduated: liveIsGraduated,
+      graduationProgress: Math.min(100,
+        (Number(liveRealSol) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100
       ),
+      currentPrice: computePrice(liveVirtualSol, liveVirtualTokens),
     };
 
     res.json(formatted);

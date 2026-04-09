@@ -129,8 +129,8 @@ export async function createRaydiumPool(
       txVersion: TxVersion.LEGACY,
     });
 
-    const txResult = await execute({ sendAndConfirm: true });
-    console.log(`[RAYDIUM] Pool created! Tx: ${txResult}`);
+    const { txId } = await execute({ sendAndConfirm: true });
+    console.log(`[RAYDIUM] Pool created! Tx: ${Array.isArray(txId) ? txId[0] : txId}`);
 
     const poolId: string = extInfo.address.poolId.toBase58();
     const lpMint: PublicKey = extInfo.address.lpMint;
@@ -192,17 +192,17 @@ async function burnLpTokens(
       return;
     }
 
-    // Create/get incinerator's LP token account
+    // Create/get incinerator's LP token account.
+    // allowOwnerOffCurve=true is required — the incinerator is not on the ed25519 curve.
     const incineratorLpAta = await getOrCreateAssociatedTokenAccount(
       connection,
       treasury,          // treasury pays for the incinerator ATA creation
       lpMint,
       INCINERATOR,
-      false,
+      true,              // allowOwnerOffCurve — incinerator has no private key
       "confirmed",
       undefined,
       TOKEN_PROGRAM_ID,
-      // Allow creating ATA for non-system accounts
     );
 
     const burnTx = new Transaction().add(

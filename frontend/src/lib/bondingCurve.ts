@@ -101,8 +101,10 @@ export function getSellAmount(
   const newVirtualSol = k.div(newVirtualTokens);
   let solOutBeforeFee = virtualSol.sub(newVirtualSol);
 
-  // Cap at real SOL reserves — matches Rust contract behavior
-  if (realSolReserves && solOutBeforeFee.gt(realSolReserves)) {
+  // Cap at real SOL reserves — matches Rust contract behavior.
+  // Skip cap when realSolReserves is 0: that means the DB is stale (not that the
+  // pool is empty). A truly empty pool can't be traded anyway (CurveComplete).
+  if (realSolReserves && realSolReserves.gtn(0) && solOutBeforeFee.gt(realSolReserves)) {
     solOutBeforeFee = realSolReserves.clone();
   }
 

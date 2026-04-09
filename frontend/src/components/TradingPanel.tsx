@@ -148,7 +148,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
       return "Network error — check your connection";
     if (msg.includes("SlippageExceeded") || msg.includes("6000") || msg.includes("0x1770"))
       return "Slippage exceeded — increase slippage tolerance and retry";
-    if (msg.includes("CurveComplete") || msg.includes("AlreadyGraduated") || msg.includes("0x1772"))
+    if (msg.includes("CurveComplete") || msg.includes("AlreadyGraduated") || msg.includes("TokenGraduated") || msg.includes("0x1771") || msg.includes("0x1772"))
       return "Token has graduated — trade on the DEX";
     if (msg.includes("insufficient funds") || msg.includes("Insufficient funds") || msg.includes("0x1"))
       return "Insufficient SOL balance";
