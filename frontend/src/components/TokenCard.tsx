@@ -113,7 +113,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
     : "border-[#1a1a1a] hover:border-[#2a2a2a]";
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       {onWatchToggle && (
         <button
           onClick={(e) => {
@@ -128,10 +128,10 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
         </button>
       )}
 
-      <Link href={`/token/${token.mint}`}>
+      <Link href={`/token/${token.mint}`} className="flex h-full">
         <div
           className={clsx(
-            "token-card relative overflow-hidden rounded-[26px] border bg-white/[0.03] p-4 backdrop-blur-sm",
+            "token-card relative flex w-full flex-col overflow-hidden rounded-[26px] border bg-white/[0.03] p-4 backdrop-blur-sm",
             "border-white/[0.08] shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
             trending && "before:absolute before:inset-0 before:rounded-[26px] before:border before:border-[#00ff88]/25 before:content-[''] before:animate-shimmer",
             isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
@@ -189,54 +189,67 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-2.5">
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Market Cap</div>
-              <div className="mt-2 text-sm font-bold text-white">{token.marketCapSol.toFixed(2)} SOL</div>
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
+              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">Mkt Cap</div>
+              <div className="mt-1.5 text-xs font-bold text-white leading-tight">{token.marketCapSol.toFixed(2)}<span className="text-white/40 font-normal"> SOL</span></div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-[#00ff88]/[0.05] p-3">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">24H Volume</div>
-              <div className="mt-2 text-sm font-bold text-[#8dffc9]">{token.volume24h.toFixed(2)} SOL</div>
+            <div className="rounded-2xl border border-white/8 bg-[#00ff88]/[0.05] p-2.5">
+              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">24H Vol</div>
+              <div className="mt-1.5 text-xs font-bold text-[#8dffc9] leading-tight">{token.volume24h.toFixed(2)}<span className="text-[#8dffc9]/60 font-normal"> SOL</span></div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Trades</div>
-              <div className="mt-2 text-sm font-bold text-white">{token.trades.toLocaleString()}</div>
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
+              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">Trades</div>
+              <div className="mt-1.5 text-xs font-bold text-white leading-tight">{token.trades.toLocaleString()}</div>
             </div>
           </div>
 
-          {!token.isGraduated && (
-            <div className="mb-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Bonding Curve</span>
-                <div className="flex items-center gap-2">
-                  {isNearGrad && solToGrad > 0 && (
-                    <span className="text-[9px] font-mono text-[#ffcf5a]">
-                      {solToGrad.toFixed(3)} SOL to 🎓
-                    </span>
-                  )}
-                  <span className={clsx("text-xs font-mono font-semibold", isNearGrad ? "text-[#ffcf5a]" : "text-[#8dffc9]")}>
-                    {graduationPct.toFixed(1)}%
+          {/* Bonding curve — always rendered for equal card height */}
+          <div className="mb-4 flex-1">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+                {token.isGraduated ? "Graduated" : "Bonding Curve"}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {!token.isGraduated && isNearGrad && solToGrad > 0 && (
+                  <span className="text-[9px] font-mono text-[#ffcf5a]">
+                    {solToGrad.toFixed(3)} SOL to 🎓
                   </span>
-                </div>
+                )}
+                <span className={clsx(
+                  "text-xs font-mono font-semibold",
+                  token.isGraduated ? "text-[#c4b5fd]" : isNearGrad ? "text-[#ffcf5a]" : "text-[#8dffc9]"
+                )}>
+                  {token.isGraduated ? "100%" : `${graduationPct.toFixed(1)}%`}
+                </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <div
-                  className={clsx(
-                    "progress-bar-fill h-full rounded-full",
-                    isNearGrad && "near-grad"
-                  )}
-                  style={{ width: `${graduationPct}%` }}
-                />
-              </div>
-              {isNearGrad && (
-                <div className="mt-1.5 animate-pulse text-center text-[9px] text-yellow-400/80">
-                  🔥 Graduation imminent — early buyers profit most
-                </div>
-              )}
             </div>
-          )}
+            <div className="h-3 overflow-hidden rounded-full bg-white/[0.07]">
+              <div
+                className={clsx(
+                  "h-full rounded-full transition-all duration-700",
+                  token.isGraduated
+                    ? "bg-[linear-gradient(90deg,#7c3aed,#a78bfa)]"
+                    : isNearGrad
+                    ? "progress-bar-fill near-grad"
+                    : "progress-bar-fill"
+                )}
+                style={{ width: token.isGraduated ? "100%" : `${graduationPct}%` }}
+              />
+            </div>
+            {!token.isGraduated && isNearGrad && (
+              <div className="mt-1.5 animate-pulse text-center text-[9px] text-yellow-400/80">
+                🔥 Graduation imminent — early buyers profit most
+              </div>
+            )}
+            {token.isGraduated && (
+              <div className="mt-1.5 text-center text-[9px] text-[#c4b5fd]/70">
+                ✓ Liquidity locked on DEX forever
+              </div>
+            )}
+          </div>
 
-          <div className="flex items-center justify-between border-t border-white/[0.08] pt-3">
+          <div className="mt-auto flex items-center justify-between border-t border-white/[0.08] pt-3">
             <span className="text-[11px] text-white/38">{timeAgo(token.createdAt)}</span>
             {token.isGraduated ? (
               <span className="text-[11px] font-medium text-[#c4b5fd]">🎓 Trading on DEX</span>

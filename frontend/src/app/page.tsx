@@ -361,23 +361,25 @@ export default function HomePage() {
                 )}
               </div>
 
-              <div className="flex w-fit items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-sm">
-                {TAB_CONFIG.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={clsx(
-                      "relative rounded-[14px] px-4 py-2.5 text-sm font-semibold transition-all",
-                      activeTab === tab.key
-                        ? "bg-white/[0.08] text-white shadow-[inset_0_-2px_0_0_#00ff88,0_8px_20px_rgba(0,255,136,0.08)]"
-                        : "text-white/45 hover:text-white/75"
-                    )}
-                  >
-                    {tab.key === "watchlist"
-                      ? `⭐ Watchlist${watchlist.length > 0 ? ` (${watchlist.length})` : ""}`
-                      : tab.label}
-                  </button>
-                ))}
+              <div className="overflow-x-auto">
+                <div className="flex w-max min-w-full items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-sm sm:w-fit">
+                  {TAB_CONFIG.map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={clsx(
+                        "relative shrink-0 rounded-[14px] px-3 py-2 text-sm font-semibold transition-all sm:px-4 sm:py-2.5",
+                        activeTab === tab.key
+                          ? "bg-white/[0.08] text-white shadow-[inset_0_-2px_0_0_#00ff88,0_8px_20px_rgba(0,255,136,0.08)]"
+                          : "text-white/45 hover:text-white/75"
+                      )}
+                    >
+                      {tab.key === "watchlist"
+                        ? `⭐ Watchlist${watchlist.length > 0 ? ` (${watchlist.length})` : ""}`
+                        : tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -414,7 +416,7 @@ export default function HomePage() {
             <>
               <div
                 className={clsx(
-                  "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+                  "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
                   isFetching && "opacity-85 transition-opacity"
                 )}
               >
