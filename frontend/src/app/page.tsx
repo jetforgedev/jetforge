@@ -65,21 +65,21 @@ function StatsBar() {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2 md:gap-3">
+    <div className="grid grid-cols-3 gap-2.5 md:gap-3">
       {items.map((item) => (
         <div
           key={item.label}
-          className="glass-panel rounded-[14px] border border-white/10 p-2.5 shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:rounded-[24px] md:p-5"
+          className="glass-panel rounded-[14px] border border-white/10 px-3 py-3 shadow-[0_20px_45px_rgba(0,0,0,0.22)] md:rounded-[24px] md:p-5"
         >
-          <div className="mb-1 flex items-start justify-between gap-1 md:mb-3 md:gap-3">
-            <span className="text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-white/45 md:text-[11px] md:tracking-[0.24em]">
+          <div className="mb-1.5 flex items-start justify-between gap-1 md:mb-3 md:gap-3">
+            <span className="text-[8px] font-semibold uppercase leading-tight tracking-[0.1em] text-white/40 md:text-[11px] md:tracking-[0.24em]">
               {item.label}
             </span>
             <span className="hidden shrink-0 rounded-full bg-[#00ff88]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#00ff88] md:inline-flex">
               {item.badge}
             </span>
           </div>
-          <div className="truncate text-[13px] font-extrabold tracking-tight text-white sm:text-base md:text-2xl">
+          <div className="truncate text-sm font-extrabold tracking-tight text-white sm:text-base md:text-2xl">
             <CountUpValue value={item.value} />
           </div>
           <div className="mt-0.5 hidden text-sm text-white/50 md:block">{item.note}</div>
@@ -282,8 +282,8 @@ export default function HomePage() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-3 sm:hidden">
-        <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-3.5 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+      <div className="space-y-4 sm:hidden">
+        <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
           <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4]">
             Live Market
           </div>
