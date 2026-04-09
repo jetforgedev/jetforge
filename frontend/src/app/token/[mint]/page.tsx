@@ -590,104 +590,97 @@ export default function TokenPage({ params }: PageProps) {
       </div>
 
       {/* Token header */}
-      <div className="glass-panel rounded-[30px] p-5">
-        <div className="flex items-start gap-4 flex-wrap">
-          {/* Token image */}
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[24px] bg-white/[0.06]">
+      <div className="glass-panel rounded-[24px] p-4 sm:rounded-[30px] sm:p-5">
+        {/* Row 1: image + name + alert button */}
+        <div className="flex items-center gap-3">
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-[24px]">
             {token.imageUrl ? (
-              <Image
-                src={token.imageUrl}
-                alt={token.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+              <Image src={token.imageUrl} alt={token.name} fill className="object-cover" unoptimized />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#00ff88]">
+              <div className="flex h-full w-full items-center justify-center text-xl font-bold text-[#00ff88]">
                 {token.symbol.slice(0, 2)}
               </div>
             )}
           </div>
-
-          {/* Token info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-extrabold tracking-tight text-white">{token.name}</h1>
-              <span className="text-sm font-mono text-white/38">${token.symbol}</span>
-              {token.isGraduated && (
-                <span className="px-2 py-0.5 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-xs font-medium">
-                  🎓 Graduated
-                </span>
-              )}
-              <span className="px-2 py-0.5 bg-[#00ff8810] border border-[#00ff8830] rounded-full text-[#00ff88] text-xs">
-                🛡️ Anti-Rug
-              </span>
-              {isVerifiedCreator && (
-                <span className="px-2 py-0.5 bg-[#1d9bf015] border border-[#1d9bf030] rounded-full text-[#1d9bf0] text-xs font-medium" title="Creator has at least 1 graduated token">
-                  ✓ Verified Creator
-                </span>
-              )}
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-                  devPct === 0
-                    ? "bg-[#00ff8810] border-[#00ff8830] text-[#00ff88]"
-                    : devPct < 5
-                    ? "bg-[#88888810] border-[#88888830] text-[#888]"
-                    : devPct < 15
-                    ? "bg-[#ffaa0015] border-[#ffaa0030] text-[#ffaa00]"
-                    : "bg-[#ff444415] border-[#ff444430] text-[#ff4444]"
-                }`}
-                title="% of total supply held by token creator"
-              >
-                Dev: {devPct.toFixed(1)}%
-              </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">{token.name}</h1>
+              <span className="shrink-0 text-xs font-mono text-white/38">${token.symbol}</span>
             </div>
-            <div className="mt-1 text-xs text-white/40">
-              Created by{" "}
-              <span className="font-mono text-white/72">{truncateAddress(token.creator)}</span>
-              {" · "}
-              {timeAgo(token.createdAt)}
+            <div className="mt-0.5 text-xs text-white/40">
+              by <span className="font-mono text-white/60">{truncateAddress(token.creator)}</span>
+              {" · "}{timeAgo(token.createdAt)}
             </div>
-            {token.description && (
-              <p className="mt-2 max-w-2xl line-clamp-2 text-sm text-white/56">
-                {token.description}
-              </p>
-            )}
           </div>
-
-          {/* Social links + Share */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {token.websiteUrl && (
-              <a href={token.websiteUrl} target="_blank" rel="noopener noreferrer"
-                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
-                🌐 Website
-              </a>
-            )}
-            {token.twitterUrl && (
-              <a href={token.twitterUrl} target="_blank" rel="noopener noreferrer"
-                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
-                𝕏 Twitter
-              </a>
-            )}
-            {token.telegramUrl && (
-              <a href={token.telegramUrl} target="_blank" rel="noopener noreferrer"
-                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
-                ✈️ Telegram
-              </a>
-            )}
-            {/* Share on X */}
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                `Just found $${token.symbol} on JetForge! 🚀\n\nMarket cap: ${marketCapUsdt}\n\nTrade it here 👇`
-              )}&url=${encodeURIComponent(`https://jetforge.io/token/${mint}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-[#1d9bf030] bg-[#1d9bf010] px-3 py-1.5 text-xs font-medium text-[#1d9bf0] transition-colors hover:bg-[#1d9bf020]"
-            >
-              𝕏 Share
-            </a>
+          <div className="shrink-0">
             <PriceAlertWidget mint={mint} currentMcapSol={token.marketCapSol} />
           </div>
+        </div>
+
+        {/* Row 2: badges — horizontally scrollable on mobile */}
+        <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {token.isGraduated && (
+            <span className="shrink-0 px-2 py-1 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-[11px] font-medium">
+              🎓 Graduated
+            </span>
+          )}
+          <span className="shrink-0 px-2 py-1 bg-[#00ff8810] border border-[#00ff8830] rounded-full text-[#00ff88] text-[11px]">
+            🛡️ Anti-Rug
+          </span>
+          {isVerifiedCreator && (
+            <span className="shrink-0 px-2 py-1 bg-[#1d9bf015] border border-[#1d9bf030] rounded-full text-[#1d9bf0] text-[11px] font-medium">
+              ✓ Verified Creator
+            </span>
+          )}
+          <span
+            className={`shrink-0 px-2 py-1 rounded-full text-[11px] font-medium border ${
+              devPct === 0 ? "bg-[#00ff8810] border-[#00ff8830] text-[#00ff88]"
+              : devPct < 5 ? "bg-[#88888810] border-[#88888830] text-[#888]"
+              : devPct < 15 ? "bg-[#ffaa0015] border-[#ffaa0030] text-[#ffaa00]"
+              : "bg-[#ff444415] border-[#ff444430] text-[#ff4444]"
+            }`}
+          >
+            Dev: {devPct.toFixed(1)}%
+          </span>
+        </div>
+
+        {/* Row 3: description */}
+        {token.description && (
+          <p className="mt-2.5 line-clamp-2 text-sm text-white/56">
+            {token.description}
+          </p>
+        )}
+
+        {/* Social links — desktop only (mobile uses header row) */}
+        <div className="hidden sm:flex mt-4 items-center gap-2 flex-wrap">
+          {token.websiteUrl && (
+            <a href={token.websiteUrl} target="_blank" rel="noopener noreferrer"
+              className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
+              🌐 Website
+            </a>
+          )}
+          {token.twitterUrl && (
+            <a href={token.twitterUrl} target="_blank" rel="noopener noreferrer"
+              className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
+              𝕏 Twitter
+            </a>
+          )}
+          {token.telegramUrl && (
+            <a href={token.telegramUrl} target="_blank" rel="noopener noreferrer"
+              className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/48 transition-colors hover:text-white hover:bg-white/[0.05]">
+              ✈️ Telegram
+            </a>
+          )}
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+              `Just found $${token.symbol} on JetForge! 🚀\n\nMarket cap: ${marketCapUsdt}\n\nTrade it here 👇`
+            )}&url=${encodeURIComponent(`https://jetforge.io/token/${mint}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-xl border border-[#1d9bf030] bg-[#1d9bf010] px-3 py-1.5 text-xs font-medium text-[#1d9bf0] transition-colors hover:bg-[#1d9bf020]"
+          >
+            𝕏 Share
+          </a>
         </div>
       </div>
 
