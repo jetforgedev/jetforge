@@ -8,8 +8,6 @@ import { TokenData, truncateAddress, timeAgo } from "@/lib/api";
 import { formatSol } from "@/lib/bondingCurve";
 import BN from "bn.js";
 
-const GRADUATION_THRESHOLD_SOL = 0.5; // devnet
-
 interface TokenCardProps {
   token: TokenData;
   isWatched?: boolean;
@@ -83,34 +81,11 @@ function isTrending(token: TokenData): boolean {
   return token.volume24h >= 0.5 || (token.trades >= 15 && ageHours < 48);
 }
 
-function isJustLaunched(token: TokenData): boolean {
-  const ageMs = Date.now() - new Date(token.createdAt).getTime();
-  return ageMs < 60 * 60 * 1000; // < 1 hour
-}
-
-function isRecentlyActive(token: TokenData): boolean {
-  return token.volume24h > 0 && token.trades > 0;
-}
-
 export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCardProps) {
   const graduationPct = Math.min(100, token.graduationProgress || 0);
   const isNearGrad = graduationPct >= 80;
   const rug = computeRugScore(token);
   const trending = isTrending(token);
-  const justLaunched = isJustLaunched(token);
-  const recentlyActive = isRecentlyActive(token);
-
-  const solRaised = token.realSolReserves ? parseFloat(token.realSolReserves) / 1e9 : 0;
-  const solToGrad = Math.max(0, GRADUATION_THRESHOLD_SOL - solRaised);
-
-  // Border styling based on state
-  const borderClass = token.isGraduated
-    ? "border-[#7c3aed30] hover:border-[#7c3aed60]"
-    : trending
-    ? "border-[#00ff8830] hover:border-[#00ff8860]"
-    : isNearGrad
-    ? "border-yellow-400/20 hover:border-yellow-400/40"
-    : "border-[#1a1a1a] hover:border-[#2a2a2a]";
 
   return (
     <div className="relative h-full">
@@ -128,39 +103,29 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
         </button>
       )}
 
-      <Link href={`/token/${token.mint}`} className="flex h-full">
+      <Link href={`/token/${token.mint}`} className="block h-full">
         <div
           className={clsx(
-            "token-card relative flex w-full flex-col overflow-hidden rounded-[26px] border bg-white/[0.03] p-4 backdrop-blur-sm",
+            "token-card relative flex h-full flex-col overflow-hidden rounded-[18px] border bg-white/[0.03] p-3.5 backdrop-blur-sm sm:rounded-[26px] sm:p-4",
             "border-white/[0.08] shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
-            trending && "before:absolute before:inset-0 before:rounded-[26px] before:border before:border-[#00ff88]/25 before:content-[''] before:animate-shimmer",
+            trending && "before:absolute before:inset-0 before:rounded-[18px] before:border before:border-[#00ff88]/25 before:content-[''] before:animate-shimmer sm:before:rounded-[26px]",
             isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
           )}
         >
           <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_70%)]" />
 
-          <div className="relative mb-4 flex items-start gap-3">
-            <div className="relative shrink-0">
-              <TokenAvatar name={token.name} imageUrl={token.imageUrl} mint={token.mint} />
-              {recentlyActive && !token.isGraduated && (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-black bg-[#00ff88]" />
-              )}
-            </div>
+          <div className="relative mb-3.5 flex items-start gap-3 sm:mb-4">
+            <TokenAvatar name={token.name} imageUrl={token.imageUrl} mint={token.mint} />
             <div className="min-w-0 flex-1 pr-8">
               <div className="mb-1 flex items-center gap-2">
-                <span className="truncate text-base font-bold tracking-tight text-white">{token.name}</span>
+                <span className="truncate text-[15px] font-bold tracking-tight text-white sm:text-base">{token.name}</span>
                 <span className="shrink-0 text-xs font-mono text-white/38">{token.symbol}</span>
-                {justLaunched && (
-                  <span className="shrink-0 animate-pulse rounded-full border border-[#00ff88]/40 bg-[#00ff88]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#00ff88]">
-                    🚀 NEW
-                  </span>
-                )}
               </div>
               <div className="truncate text-xs text-white/45">by {truncateAddress(token.creator)}</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {!justLaunched && trending && (
+                {trending && (
                   <span className="rounded-full border border-[#00ff88]/25 bg-[#00ff88]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#87ffc4]">
-                    🔥 Hot
+                    Hot
                   </span>
                 )}
                 {token.isGraduated && (
@@ -169,8 +134,8 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
                   </span>
                 )}
                 {isNearGrad && !token.isGraduated && (
-                  <span className="animate-pulse rounded-full border border-[#ffcf5a]/30 bg-[#ffcf5a]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffdf8c]">
-                    ⚡ Almost there!
+                  <span className="rounded-full border border-[#ffcf5a]/30 bg-[#ffcf5a]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffdf8c]">
+                    Near Grad
                   </span>
                 )}
               </div>
@@ -189,62 +154,46 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
-              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">Mkt Cap</div>
-              <div className="mt-1.5 text-xs font-bold text-white leading-tight">{token.marketCapSol.toFixed(2)}<span className="text-white/40 font-normal"> SOL</span></div>
+          <div className="mb-3.5 grid grid-cols-3 gap-2 sm:mb-4 sm:gap-2.5">
+            <div className="rounded-[14px] border border-white/8 bg-white/[0.04] p-2.5 sm:rounded-2xl sm:p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Market Cap</div>
+              <div className="mt-1.5 text-[13px] font-bold text-white sm:mt-2 sm:text-sm">{token.marketCapSol.toFixed(2)} SOL</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-[#00ff88]/[0.05] p-2.5">
-              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">24H Vol</div>
-              <div className="mt-1.5 text-xs font-bold text-[#8dffc9] leading-tight">{token.volume24h.toFixed(2)}<span className="text-[#8dffc9]/60 font-normal"> SOL</span></div>
+            <div className="rounded-[14px] border border-white/8 bg-[#00ff88]/[0.05] p-2.5 sm:rounded-2xl sm:p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">24H Volume</div>
+              <div className="mt-1.5 text-[13px] font-bold text-[#8dffc9] sm:mt-2 sm:text-sm">{token.volume24h.toFixed(2)} SOL</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
-              <div className="text-[9px] uppercase tracking-[0.14em] text-white/35">Trades</div>
-              <div className="mt-1.5 text-xs font-bold text-white leading-tight">{token.trades.toLocaleString()}</div>
+            <div className="rounded-[14px] border border-white/8 bg-white/[0.04] p-2.5 sm:rounded-2xl sm:p-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">Trades</div>
+              <div className="mt-1.5 text-[13px] font-bold text-white sm:mt-2 sm:text-sm">{token.trades.toLocaleString()}</div>
             </div>
           </div>
 
-          {/* Bonding curve — always rendered for equal card height */}
-          <div className="mb-4 flex-1">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                {token.isGraduated ? "Graduated" : "Bonding Curve"}
-              </span>
-              <div className="flex items-center gap-1.5">
-                {!token.isGraduated && isNearGrad && solToGrad > 0 && (
-                  <span className="text-[9px] font-mono text-[#ffcf5a]">
-                    {solToGrad.toFixed(3)} SOL to 🎓
-                  </span>
-                )}
-                <span className={clsx(
-                  "text-xs font-mono font-semibold",
-                  token.isGraduated ? "text-[#c4b5fd]" : isNearGrad ? "text-[#ffcf5a]" : "text-[#8dffc9]"
-                )}>
-                  {token.isGraduated ? "100%" : `${graduationPct.toFixed(1)}%`}
+          <div className="mb-3.5 min-h-[58px] sm:mb-4">
+            {!token.isGraduated ? (
+              <>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Bonding Curve</span>
+                <span className={clsx("text-xs font-mono font-semibold", isNearGrad ? "text-[#ffcf5a]" : "text-[#8dffc9]")}>
+                  {graduationPct.toFixed(1)}%
                 </span>
               </div>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-white/[0.07]">
-              <div
-                className={clsx(
-                  "h-full rounded-full transition-all duration-700",
-                  token.isGraduated
-                    ? "bg-[linear-gradient(90deg,#7c3aed,#a78bfa)]"
-                    : isNearGrad
-                    ? "progress-bar-fill near-grad"
-                    : "progress-bar-fill"
-                )}
-                style={{ width: token.isGraduated ? "100%" : `${graduationPct}%` }}
-              />
-            </div>
-            {!token.isGraduated && isNearGrad && (
-              <div className="mt-1.5 animate-pulse text-center text-[9px] text-yellow-400/80">
-                🔥 Graduation imminent — early buyers profit most
+              <div className="h-2.5 overflow-hidden rounded-full border border-white/6 bg-[#081a16]">
+                <div
+                  className={clsx(
+                    "progress-bar-fill h-full rounded-full",
+                    isNearGrad && "near-grad"
+                  )}
+                  style={{ width: `${graduationPct}%` }}
+                />
               </div>
-            )}
-            {token.isGraduated && (
-              <div className="mt-1.5 text-center text-[9px] text-[#c4b5fd]/70">
-                ✓ Liquidity locked on DEX forever
+              <div className="mt-2 text-[10px] text-white/32">
+                {Math.max(0, 100 - graduationPct).toFixed(1)}% left to graduation
+              </div>
+              </>
+            ) : (
+              <div className="rounded-[14px] border border-[#8b5cf6]/20 bg-[#8b5cf6]/10 px-3 py-2 text-[11px] font-medium text-[#d8ccff] sm:rounded-2xl">
+                Trading has moved to the DEX after graduation.
               </div>
             )}
           </div>
@@ -257,9 +206,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
               <span className="text-[11px] font-mono text-white/52">
                 {formatSol(new BN(token.realSolReserves))} SOL raised
               </span>
-            ) : (
-              <span className="text-[#444] text-[10px]">Be first to buy</span>
-            )}
+            ) : null}
           </div>
         </div>
       </Link>

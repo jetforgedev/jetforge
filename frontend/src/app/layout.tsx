@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
     images: ["/og-image.png"],
-    creator: "@jetforgeio",
+    creator: "@jetforgeDev",
   },
   alternates: {
     canonical: BASE_URL,
@@ -101,7 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[440px] bg-[radial-gradient(circle_at_top,rgba(0,255,136,0.10),transparent_58%)]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[260px] bg-[linear-gradient(180deg,rgba(0,204,255,0.08),transparent)]" />
             <Header />
-            <main className="relative z-10 mx-auto max-w-[1440px] px-4 py-6 pb-24 sm:px-5 lg:px-6">
+            <main className="relative z-10 mx-auto max-w-[1560px] px-4 py-6 pb-24 sm:px-5 lg:px-6">
               {children}
             </main>
             <Footer />

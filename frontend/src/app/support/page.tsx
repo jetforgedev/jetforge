@@ -12,14 +12,14 @@ export default function SupportPage() {
             icon: "💬",
             title: "Telegram Community",
             desc: "Join our Telegram group for real-time help from the community and team.",
-            link: "https://t.me/jetforge",
+            link: "https://t.me/jetforgechat",
             label: "Join Telegram",
           },
           {
             icon: "𝕏",
             title: "Twitter / X",
             desc: "Follow us for updates, announcements, and platform news.",
-            link: "https://twitter.com/jetforge",
+            link: "https://x.com/jetforgeDev",
             label: "Follow on X",
           },
           {

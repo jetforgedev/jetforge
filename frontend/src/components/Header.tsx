@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { clsx } from "clsx";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function Header() {
   const pathname = usePathname();
@@ -46,26 +47,7 @@ export function Header() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(0,255,136,0.45),rgba(0,204,255,0.35),transparent)]" />
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-6">
         <Link href="/" className="group flex shrink-0 items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] shadow-[0_0_25px_rgba(0,255,136,0.12)]">
-            <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle,rgba(0,255,136,0.18),transparent_68%)] opacity-80 transition-opacity group-hover:opacity-100" />
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M15 2 C15 2 22 8 22 16 L15 28 L8 16 C8 8 15 2 15 2Z" fill="#00ff88" />
-              <circle cx="15" cy="13" r="3" fill="#07110f" />
-              <circle cx="15" cy="13" r="1.4" fill="#00ccff" opacity="0.8" />
-              <path d="M8 16 L4 21 L8 19Z" fill="#00ccff" />
-              <path d="M22 16 L26 21 L22 19Z" fill="#00ccff" />
-              <path d="M12.5 26 L15 31 L17.5 26Z" fill="#ff8a00" opacity="0.9" />
-              <path d="M13.8 25 L15 29 L16.2 25Z" fill="#ffcf5a" opacity="0.75" />
-            </svg>
-          </div>
-          <div className="leading-none">
-            <div className="bg-[linear-gradient(90deg,#00ff88,#00ccff)] bg-clip-text text-[17px] font-black tracking-tight text-transparent sm:text-[19px]">
-              JetForge
-            </div>
-            <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/35">
-              Solana Launchpad
-            </div>
-          </div>
+          <BrandLogo markClassName="transition-transform duration-200 group-hover:scale-[1.04]" />
         </Link>
 
         <nav className="hidden items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] p-1 backdrop-blur-sm md:flex">

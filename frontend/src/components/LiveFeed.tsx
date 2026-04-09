@@ -116,7 +116,7 @@ export function LiveFeed() {
   }, [feed, autoScroll]);
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl flex flex-col h-full min-h-[400px] max-h-[600px]">
+    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl flex flex-col h-full min-h-[320px] max-h-[520px]">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#1a1a1a] shrink-0">
         <div className="flex items-center gap-2">
@@ -145,9 +145,10 @@ export function LiveFeed() {
         }}
       >
         {feed.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-12 text-[#333]">
+          <div className="flex h-full flex-col items-center justify-center py-10 text-[#333]">
             <div className="text-4xl mb-3">📡</div>
             <div className="text-sm">Waiting for trades...</div>
+            <div className="mt-1 text-xs text-[#2f3a37]">Fresh activity will stream here</div>
           </div>
         ) : (
           feed.map((item) => <FeedEntry key={item.id} item={item} />)
