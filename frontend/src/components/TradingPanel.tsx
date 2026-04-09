@@ -310,25 +310,12 @@ export function TradingPanel({ token }: TradingPanelProps) {
             <div className="text-[#666] text-xs mb-2">This token no longer trades on the bonding curve.</div>
           </div>
           <a
-            href={(() => {
-              // Always raydium.io — devnet pools need devnet mode enabled in Raydium settings
-              return token.raydiumPoolId
-                ? `https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`
-                : `https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`;
-            })()}
+            href={`https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full py-3 bg-[#7c3aed20] hover:bg-[#7c3aed35] border border-[#7c3aed50] rounded-lg text-[#a78bfa] text-sm font-semibold transition-colors"
           >
             Trade on Raydium ↗
-          </a>
-          <a
-            href={`https://jup.ag/swap/SOL-${token.mint}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3 bg-[#00ff8810] hover:bg-[#00ff8820] border border-[#00ff8830] rounded-lg text-[#00ff88] text-sm font-semibold transition-colors"
-          >
-            Trade on Jupiter ↗
           </a>
         </div>
       ) : (
