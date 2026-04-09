@@ -319,7 +319,10 @@
       "Bash(node -e \"require\\('@raydium-io/raydium-sdk-v2'\\)\")",
       "Bash(node -e \"const r = require\\('@raydium-io/raydium-sdk-v2'\\); console.log\\(Object.keys\\(r\\).filter\\(k => ['Raydium','TxVersion','DEVNET_PROGRAM_ID','NATIVE_MINT'].includes\\(k\\)\\)\\)\")",
       "Bash(node -e \"const {DEVNET_PROGRAM_ID} = require\\('@raydium-io/raydium-sdk-v2'\\); console.log\\(JSON.stringify\\({cpmm: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toString\\(\\), fee: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toString\\(\\)}, null, 2\\)\\)\")",
-      "Bash(node -e \"const {PublicKey, SystemProgram} = require\\('@solana/web3.js'\\); console.log\\('PublicKey.default:', PublicKey.default?.toString\\(\\)\\); console.log\\('SystemProgram.programId:', SystemProgram.programId.toString\\(\\)\\); console.log\\('Equal:', PublicKey.default?.toString\\(\\) === SystemProgram.programId.toString\\(\\)\\);\")"
+      "Bash(node -e \"const {PublicKey, SystemProgram} = require\\('@solana/web3.js'\\); console.log\\('PublicKey.default:', PublicKey.default?.toString\\(\\)\\); console.log\\('SystemProgram.programId:', SystemProgram.programId.toString\\(\\)\\); console.log\\('Equal:', PublicKey.default?.toString\\(\\) === SystemProgram.programId.toString\\(\\)\\);\")",
+      "Bash(cat frontend/.env*)",
+      "Bash(curl -s \"https://api.jetforge.io/api/metadata/5kA8BE3gQ9su2f9ttHH4X2cPxaoYjVoqC7Whw5dutcpd\")",
+      "Bash(find \"D:/token dex/.claude/worktrees/elegant-taussig\" -name \"*.env*\" ! -path \"*/node_modules/*\" -exec grep -l \"PRIVATE\\\\|SECRET\\\\|KEY\\\\|PASSWORD\" {} \\\\;)"
     ]
   }
 }

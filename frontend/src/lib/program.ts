@@ -278,6 +278,14 @@ export async function buildBuyTransaction(params: BuyParams): Promise<Transactio
   tx.recentBlockhash = blockhash;
   tx.lastValidBlockHeight = lastValidBlockHeight;
   tx.feePayer = wallet.publicKey;
+
+  // Simulate to surface errors before the wallet signs
+  const sim = await connection.simulateTransaction(tx);
+  if (sim.value.err) {
+    const errLog = sim.value.logs?.find(l => l.includes("Error") || l.includes("failed"));
+    throw new Error(`Buy simulation failed: ${errLog ?? JSON.stringify(sim.value.err)}`);
+  }
+
   return tx;
 }
 
@@ -324,6 +332,14 @@ export async function buildSellTransaction(params: SellParams): Promise<Transact
   tx.recentBlockhash = blockhash;
   tx.lastValidBlockHeight = lastValidBlockHeight;
   tx.feePayer = wallet.publicKey;
+
+  // Simulate to surface errors before the wallet signs
+  const sim = await connection.simulateTransaction(tx);
+  if (sim.value.err) {
+    const errLog = sim.value.logs?.find(l => l.includes("Error") || l.includes("failed"));
+    throw new Error(`Sell simulation failed: ${errLog ?? JSON.stringify(sim.value.err)}`);
+  }
+
   return tx;
 }
 

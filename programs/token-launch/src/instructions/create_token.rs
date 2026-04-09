@@ -83,9 +83,18 @@ pub fn create_token(
     require!(symbol.len() >= 1 && symbol.len() <= 10, crate::errors::TokenLaunchError::InvalidMetadata);
     require!(uri.len() <= 200, crate::errors::TokenLaunchError::InvalidMetadata);
 
-    // Name and symbol must contain at least one visible (non-whitespace) character
-    require!(name.chars().any(|c| !c.is_whitespace()), crate::errors::TokenLaunchError::InvalidMetadata);
-    require!(symbol.chars().any(|c| !c.is_whitespace()), crate::errors::TokenLaunchError::InvalidMetadata);
+    // Name and symbol: ASCII printable only (0x20–0x7E), no control chars or Unicode tricks
+    require!(
+        name.bytes().all(|b| b >= 0x20 && b <= 0x7e),
+        crate::errors::TokenLaunchError::InvalidMetadata
+    );
+    require!(
+        symbol.bytes().all(|b| b >= 0x20 && b <= 0x7e),
+        crate::errors::TokenLaunchError::InvalidMetadata
+    );
+    // Must contain at least one non-space character
+    require!(name.trim_ascii().len() > 0, crate::errors::TokenLaunchError::InvalidMetadata);
+    require!(symbol.trim_ascii().len() > 0, crate::errors::TokenLaunchError::InvalidMetadata);
 
     // Block dangerous URI schemes (javascript:/data: injection); allow empty, https, http, ipfs, ar
     require!(

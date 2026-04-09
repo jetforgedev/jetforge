@@ -7,7 +7,7 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true,
-      "cwd": "D:/token dex/frontend"
+      "cwd": "frontend"
     },
     {
       "name": "backend",

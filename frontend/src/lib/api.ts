@@ -148,10 +148,14 @@ export async function getComments(mint: string): Promise<{ comments: CommentData
   return fetchApi(`/comments/${mint}`);
 }
 
-export async function postComment(mint: string, wallet: string, text: string): Promise<CommentData> {
+export function buildCommentMessage(mint: string, text: string): string {
+  return `JetForge comment\nmint: ${mint}\ntext: ${text}`;
+}
+
+export async function postComment(mint: string, wallet: string, text: string, signature: string): Promise<CommentData> {
   return fetchApi(`/comments/${mint}`, {
     method: "POST",
-    body: JSON.stringify({ wallet, text }),
+    body: JSON.stringify({ wallet, text, signature }),
   });
 }
 

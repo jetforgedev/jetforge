@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { createServer } from "http";
 import dotenv from "dotenv";
 import path from "path";
@@ -21,15 +22,52 @@ export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === "development" ? ["query", "error"] : ["error"],
 });
 
-// Middleware
+// ─── CORS — explicit origin whitelist ────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  "https://jetforge.io",
+  "https://www.jetforge.io",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
 app.use(
   cors({
-    origin: config.frontendUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down" },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many uploads, please wait" },
+});
+
+const commentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  message: { error: "Too many comments, please wait" },
+});
+
+app.use("/api/upload", uploadLimiter);
+app.use("/api/comments", commentLimiter);
+app.use("/api", generalLimiter);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 

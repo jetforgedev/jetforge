@@ -26,6 +26,7 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { config } from "../config";
+import { prisma } from "../index";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const TREASURY_PUBKEY = new PublicKey(config.solana.treasuryAddress);
@@ -33,7 +34,7 @@ const TREASURY_PUBKEY = new PublicKey(config.solana.treasuryAddress);
 // Anchor instruction discriminator: sha256("global:graduate")[0..8]
 const GRADUATE_DISCRIMINATOR = Buffer.from([45, 235, 225, 181, 17, 218, 64, 130]);
 
-// Track in-flight graduations to avoid duplicate calls
+// Track in-flight graduations to avoid duplicate calls within this process lifetime
 const inFlight = new Set<string>();
 
 function getTreasuryKeypair(): Keypair | null {
@@ -89,6 +90,18 @@ async function fetchCreatorFromChain(
  * Safe to call multiple times — deduplicates in-flight calls.
  */
 export async function callGraduateInstruction(mintStr: string): Promise<void> {
+  // Persistent dedup: check DB first (survives server restarts)
+  try {
+    const token = await prisma.token.findUnique({ where: { mint: mintStr } });
+    if (token?.isGraduated) {
+      console.log(`[KEEPER] Token ${mintStr.slice(0, 8)}… already graduated in DB — skipping`);
+      return;
+    }
+  } catch {
+    // Non-fatal — continue with in-memory check
+  }
+
+  // In-process dedup: prevents concurrent calls in same server lifetime
   if (inFlight.has(mintStr)) {
     console.log(`[KEEPER] Graduate already in-flight for ${mintStr.slice(0, 8)}…`);
     return;
@@ -166,9 +179,26 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     });
 
     const tx = new Transaction().add(instruction);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    tx.recentBlockhash = blockhash;
+    tx.lastValidBlockHeight = lastValidBlockHeight;
+    tx.feePayer = callerKeypair.publicKey;
+
+    // Simulate before sending to catch errors early
+    const sim = await connection.simulateTransaction(tx, [callerKeypair]);
+    if (sim.value.err) {
+      const logs = sim.value.logs ?? [];
+      const alreadyDone = logs.some(l => l.includes("AlreadyGraduated") || l.includes("already in use"));
+      if (alreadyDone) {
+        console.log(`[KEEPER] Simulation: token ${mintStr.slice(0, 8)}… already graduated on-chain`);
+        return;
+      }
+      console.error(`[KEEPER] Simulation failed for ${mintStr.slice(0, 8)}…:`, sim.value.err, logs);
+      return;
+    }
+
     const sig = await sendAndConfirmTransaction(connection, tx, [callerKeypair], {
       commitment: "confirmed",
-      skipPreflight: true, // bypass simulation — check actual on-chain result
     });
 
     console.log(`[KEEPER] Graduate tx confirmed: ${sig}`);
