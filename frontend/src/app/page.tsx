@@ -8,6 +8,7 @@ import { getTokens, getTopTokens, getPlatformStats, TokenData } from "@/lib/api"
 import { clsx } from "clsx";
 import Link from "next/link";
 import Image from "next/image";
+import { useSocket } from "@/hooks/useLiveFeed";
 
 type SortTab = "trending" | "new" | "graduating" | "graduated" | "watchlist";
 
@@ -27,20 +28,43 @@ function StatsBar() {
     refetchInterval: 60_000,
   });
 
-  const items = [
-    { label: "Total Tokens", value: stats?.totalTokens?.toLocaleString() ?? "—" },
-    { label: "24h Volume", value: stats ? `${stats.volume24hSol.toLocaleString()} SOL` : "—" },
-    { label: "24h Trades", value: stats?.trades24h?.toLocaleString() ?? "—" },
-  ];
+  const { data: graduatingData } = useQuery({
+    queryKey: ["tokens-graduating-count"],
+    queryFn: () => getTokens("graduating", 1, 1),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+
+  const graduatingCount = graduatingData?.pagination?.total ?? 0;
 
   return (
-    <div className="flex items-center gap-6 text-xs text-[#555] overflow-x-auto pb-2 mb-6">
-      {items.map((s) => (
-        <div key={s.label} className="flex items-center gap-2 shrink-0">
-          <span>{s.label}:</span>
-          <span className="text-white font-mono font-medium">{s.value}</span>
-        </div>
-      ))}
+    <div className="flex items-center gap-4 text-xs overflow-x-auto pb-2 mb-6 flex-wrap">
+      {/* Live indicator */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse-glow inline-block" />
+        <span className="text-[#00ff88] font-semibold">LIVE</span>
+      </div>
+      <div className="w-px h-4 bg-[#2a2a2a] shrink-0" />
+      <div className="flex items-center gap-1.5 shrink-0 text-[#555]">
+        <span>Tokens:</span>
+        <span className="text-white font-mono font-medium">{stats?.totalTokens?.toLocaleString() ?? "—"}</span>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 text-[#555]">
+        <span>24h Vol:</span>
+        <span className="text-[#00ff88] font-mono font-semibold">{stats ? `${stats.volume24hSol.toLocaleString()} SOL` : "—"}</span>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 text-[#555]">
+        <span>24h Trades:</span>
+        <span className="text-white font-mono font-medium">{stats?.trades24h?.toLocaleString() ?? "—"}</span>
+      </div>
+      {graduatingCount > 0 && (
+        <>
+          <div className="w-px h-4 bg-[#2a2a2a] shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0 animate-pulse">
+            <span className="text-yellow-400 font-semibold">📈 {graduatingCount} graduating now</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -142,7 +166,7 @@ function useWatchlist() {
 }
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<SortTab>("new");
+  const [activeTab, setActiveTab] = useState<SortTab>("trending");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -305,12 +329,19 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Live Feed sidebar */}
+      {/* Live Feed sidebar — desktop only */}
       <div className="hidden lg:block w-72 shrink-0">
         <div className="sticky top-20">
           <LiveFeed />
         </div>
       </div>
+
+      {/* Mobile FAB — Launch Token */}
+      <Link href="/launch" className="fixed bottom-6 right-6 z-50 lg:hidden">
+        <div className="flex items-center gap-2 bg-[#00ff88] text-black font-bold px-5 py-3 rounded-full shadow-lg shadow-[#00ff8840] text-sm active:scale-95 transition-transform">
+          🚀 <span>Launch Token</span>
+        </div>
+      </Link>
     </div>
   );
 }
