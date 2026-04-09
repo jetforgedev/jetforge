@@ -93,8 +93,8 @@ pub fn create_token(
         crate::errors::TokenLaunchError::InvalidMetadata
     );
     // Must contain at least one non-space character
-    require!(name.trim_ascii().len() > 0, crate::errors::TokenLaunchError::InvalidMetadata);
-    require!(symbol.trim_ascii().len() > 0, crate::errors::TokenLaunchError::InvalidMetadata);
+    require!(name.bytes().any(|b| b != b' '), crate::errors::TokenLaunchError::InvalidMetadata);
+    require!(symbol.bytes().any(|b| b != b' '), crate::errors::TokenLaunchError::InvalidMetadata);
 
     // Block dangerous URI schemes (javascript:/data: injection); allow empty, https, http, ipfs, ar
     require!(
