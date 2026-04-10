@@ -73,7 +73,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
       className={clsx(
         "relative overflow-hidden rounded-[28px] border bg-white/[0.04] p-4 backdrop-blur-sm sm:p-5",
         isNearGrad
-          ? "animate-glow-pulse border-[#ffcf5a]/35 shadow-[0_0_40px_rgba(255,207,90,0.12)]"
+          ? "animate-glow-pulse border-[#ffcf5a]/35"
           : "border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.18)]"
       )}
     >
