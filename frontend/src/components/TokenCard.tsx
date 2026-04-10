@@ -96,7 +96,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
             e.stopPropagation();
             onWatchToggle();
           }}
-          className="absolute right-3 top-3 z-10 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-xs leading-none text-white/70 backdrop-blur-sm transition-all hover:scale-110 hover:text-white sm:right-4 sm:top-4 sm:px-2.5 sm:py-1.5 sm:text-sm"
+          className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/25 px-2.5 py-1.5 text-sm leading-none text-white/70 backdrop-blur-sm transition-all hover:scale-110 hover:text-white"
           title={isWatched ? "Remove from watchlist" : "Add to watchlist"}
         >
           {isWatched ? "⭐" : "☆"}
@@ -160,17 +160,17 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
 
           {/* Stats grid */}
           <div className="mb-2 grid grid-cols-3 gap-1.5 sm:mb-3.5 sm:gap-2.5">
-            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="flex flex-col rounded-[10px] border border-white/10 bg-white/[0.05] p-1.5 shadow-[0_0_12px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)] sm:rounded-2xl sm:p-3">
               <div className="text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Mkt Cap</div>
-              <div className="mt-1 text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.marketCapSol.toFixed(2)}<span className="text-[9px] text-white/50"> SOL</span></div>
+              <div className="mt-auto pt-1 text-[11px] font-bold text-white sm:pt-2 sm:text-sm">{token.marketCapSol.toFixed(2)}<span className="text-[9px] text-white/50"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-white/8 bg-[#00ff88]/[0.05] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="flex flex-col rounded-[10px] border border-[#00ff88]/20 bg-[#00ff88]/[0.07] p-1.5 shadow-[0_0_14px_rgba(0,255,136,0.12),inset_0_1px_0_rgba(0,255,136,0.10)] sm:rounded-2xl sm:p-3">
               <div className="text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Volume</div>
-              <div className="mt-1 text-[11px] font-bold text-[#8dffc9] sm:mt-2 sm:text-sm">{token.volume24h.toFixed(2)}<span className="text-[9px] text-[#8dffc9]/60"> SOL</span></div>
+              <div className="mt-auto pt-1 text-[11px] font-bold text-[#8dffc9] sm:pt-2 sm:text-sm">{token.volume24h.toFixed(2)}<span className="text-[9px] text-[#8dffc9]/60"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="flex flex-col rounded-[10px] border border-white/10 bg-white/[0.05] p-1.5 shadow-[0_0_12px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)] sm:rounded-2xl sm:p-3">
               <div className="text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Trades</div>
-              <div className="mt-1 text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.trades.toLocaleString()}</div>
+              <div className="mt-auto pt-1 text-[11px] font-bold text-white sm:pt-2 sm:text-sm">{token.trades.toLocaleString()}</div>
             </div>
           </div>
 
