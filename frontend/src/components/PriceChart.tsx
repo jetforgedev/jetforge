@@ -283,7 +283,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       setAth((prev) => prev === null ? val : Math.max(prev, val));
 
       try {
-        candleSeriesRef.current.update({ time: updated.time as any, ...updated });
+        candleSeriesRef.current.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
       } catch { /* time went backwards */ }
     });
 
