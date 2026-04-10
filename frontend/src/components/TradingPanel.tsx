@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
+import type { AnchorWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Keypair, Transaction, VersionedTransaction } from "@solana/web3.js";
 import toast from "react-hot-toast";
 import BN from "bn.js";
 import { clsx } from "clsx";
@@ -43,6 +44,89 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const [solBalance, setSolBalance] = useState(0);
   const [tokenBalance, setTokenBalance] = useState<BN>(new BN(0));
 
+  // ─── Fast Trade Mode (session key) ─────────────────────────────────────────
+  const [fastTradeEnabled, setFastTradeEnabled] = useState(false);
+  const sessionKpRef = useRef<Keypair | null>(null);
+  const [sessionPubkey, setSessionPubkey] = useState<string | null>(null);
+  const [sessionSolBal, setSessionSolBal] = useState(0);
+  const [sessionTokenBal, setSessionTokenBal] = useState<BN>(new BN(0));
+  const [showFastInfo, setShowFastInfo] = useState(false);
+
+  // Load existing session key on mount
+  useEffect(() => {
+    const key = `fastTrade:${token.mint}`;
+    const stored = sessionStorage.getItem(key);
+    if (stored) {
+      try {
+        const { secretKey } = JSON.parse(stored);
+        const kp = Keypair.fromSecretKey(new Uint8Array(secretKey));
+        sessionKpRef.current = kp;
+        setSessionPubkey(kp.publicKey.toBase58());
+        setFastTradeEnabled(true);
+      } catch {}
+    }
+  }, [token.mint]);
+
+  // Fetch session key balances
+  useEffect(() => {
+    if (!fastTradeEnabled || !sessionPubkey) return;
+    const fetchSessionBalances = async () => {
+      const pk = new PublicKey(sessionPubkey);
+      const sol = await connection.getBalance(pk).catch(() => 0);
+      setSessionSolBal(sol / 1e9);
+      try {
+        const ata = getAssociatedTokenAddressSync(new PublicKey(token.mint), pk);
+        const acc = await connection.getTokenAccountBalance(ata);
+        setSessionTokenBal(new BN(acc.value.amount));
+      } catch {
+        setSessionTokenBal(new BN(0));
+      }
+    };
+    fetchSessionBalances();
+    const id = setInterval(fetchSessionBalances, 8_000);
+    return () => clearInterval(id);
+  }, [fastTradeEnabled, sessionPubkey, connection, token.mint]);
+
+  const toggleFastTrade = useCallback(() => {
+    if (fastTradeEnabled) {
+      setFastTradeEnabled(false);
+      return;
+    }
+    const key = `fastTrade:${token.mint}`;
+    const stored = sessionStorage.getItem(key);
+    if (stored) {
+      try {
+        const { secretKey } = JSON.parse(stored);
+        const kp = Keypair.fromSecretKey(new Uint8Array(secretKey));
+        sessionKpRef.current = kp;
+        setSessionPubkey(kp.publicKey.toBase58());
+      } catch {
+        const kp = Keypair.generate();
+        sessionStorage.setItem(key, JSON.stringify({ secretKey: Array.from(kp.secretKey) }));
+        sessionKpRef.current = kp;
+        setSessionPubkey(kp.publicKey.toBase58());
+      }
+    } else {
+      const kp = Keypair.generate();
+      sessionStorage.setItem(key, JSON.stringify({ secretKey: Array.from(kp.secretKey) }));
+      sessionKpRef.current = kp;
+      setSessionPubkey(kp.publicKey.toBase58());
+    }
+    setFastTradeEnabled(true);
+    setShowFastInfo(true);
+  }, [fastTradeEnabled, token.mint]);
+
+  const revokeSessionKey = useCallback(() => {
+    sessionStorage.removeItem(`fastTrade:${token.mint}`);
+    sessionKpRef.current = null;
+    setSessionPubkey(null);
+    setFastTradeEnabled(false);
+    setSessionSolBal(0);
+    setSessionTokenBal(new BN(0));
+  }, [token.mint]);
+
+  // ─── End Fast Trade ─────────────────────────────────────────────────────────
+
   const virtualSol = new BN(token.virtualSolReserves);
   const virtualTokens = new BN(token.virtualTokenReserves);
   const realTokenReserves = new BN(token.realTokenReserves);
@@ -52,7 +136,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const { data: tradeHistory } = useQuery({
     queryKey: ["user-trades-for-token", token.mint, publicKey?.toString()],
     queryFn: () => getUserTrades(publicKey!.toString()),
-    enabled: !!publicKey && tab === "sell",
+    enabled: !!publicKey && tab === "sell" && !fastTradeEnabled,
     staleTime: 30_000,
   });
 
@@ -72,15 +156,14 @@ export function TradingPanel({ token }: TradingPanelProps) {
     return totalSolSpent / totalTokensBought; // SOL per 1 token
   }, [tradeHistory, token.mint]);
 
-  // Fetch balances
+  // Fetch main wallet balances (only when not in fast trade mode)
   useEffect(() => {
-    if (!publicKey) return;
+    if (!publicKey || fastTradeEnabled) return;
 
     const fetchBalances = async () => {
       const balance = await connection.getBalance(publicKey);
       setSolBalance(balance / 1e9);
 
-      // Fetch token balance
       try {
         const mint = new PublicKey(token.mint);
         const ata = getAssociatedTokenAddressSync(mint, publicKey);
@@ -94,7 +177,11 @@ export function TradingPanel({ token }: TradingPanelProps) {
     fetchBalances();
     const id = setInterval(fetchBalances, 15_000);
     return () => clearInterval(id);
-  }, [publicKey, connection, token.mint]);
+  }, [publicKey, connection, token.mint, fastTradeEnabled]);
+
+  // Effective balances based on mode
+  const effectiveSolBalance = fastTradeEnabled ? sessionSolBal : solBalance;
+  const effectiveTokenBalance = fastTradeEnabled ? sessionTokenBal : tokenBalance;
 
   // Calculate output amount
   const calculation = (() => {
@@ -132,7 +219,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
   };
 
   const handlePresetSell = (pct: number) => {
-    const amount = tokenBalance.muln(pct).divn(100);
+    const amount = effectiveTokenBalance.muln(pct).divn(100);
     setInputAmount(formatTokenAmount(amount));
   };
 
@@ -155,7 +242,6 @@ export function TradingPanel({ token }: TradingPanelProps) {
     if (msg.includes("InsufficientTokens") || msg.includes("0x1773"))
       return "Insufficient token balance";
     if (msg.includes("Simulation failed:")) {
-      // Strip noisy prefix, show only the meaningful program log line
       const clean = msg
         .replace("Simulation failed: Program log: Panicked at", "Program error:")
         .replace("Simulation failed: Program log: ", "")
@@ -168,8 +254,13 @@ export function TradingPanel({ token }: TradingPanelProps) {
   };
 
   const handleTrade = useCallback(async () => {
-    if (!publicKey || !anchorWallet) {
+    // In fast trade mode, no wallet needed. Otherwise require wallet.
+    if (!fastTradeEnabled && (!publicKey || !anchorWallet)) {
       toast.error("Connect your wallet first");
+      return;
+    }
+    if (fastTradeEnabled && !sessionKpRef.current) {
+      toast.error("Fast trade wallet not initialized");
       return;
     }
     if (!inputAmount || parseFloat(inputAmount) <= 0) {
@@ -185,23 +276,24 @@ export function TradingPanel({ token }: TradingPanelProps) {
       return;
     }
 
-    // Pre-flight balance checks — catch obvious failures before sending
+    // Pre-flight balance checks
     if (tab === "buy") {
-      const solNeeded = parseFloat(inputAmount) * 1.015; // amount + 1% fee + ~0.5% tx buffer
-      if (solNeeded > solBalance) {
+      const solNeeded = parseFloat(inputAmount) * 1.015;
+      if (solNeeded > effectiveSolBalance) {
+        const walletLabel = fastTradeEnabled ? "fast trade wallet" : "your wallet";
         toast.error(
-          solBalance < 0.001
-            ? "Your SOL balance is empty — fund your wallet to trade"
-            : `Insufficient SOL — you need ~${solNeeded.toFixed(3)} SOL but have ${solBalance.toFixed(3)} SOL`
+          effectiveSolBalance < 0.001
+            ? `SOL balance is empty — fund the ${walletLabel} to trade`
+            : `Insufficient SOL in ${walletLabel} — need ~${solNeeded.toFixed(3)} SOL, have ${effectiveSolBalance.toFixed(3)} SOL`
         );
         return;
       }
     } else {
       const tokenIn = parseTokenAmount(inputAmount);
-      if (tokenIn.gt(tokenBalance)) {
+      if (tokenIn.gt(effectiveTokenBalance)) {
         toast.error(
-          tokenBalance.isZero()
-            ? `You don't hold any ${token.symbol}`
+          effectiveTokenBalance.isZero()
+            ? `No ${token.symbol} in ${fastTradeEnabled ? "fast trade wallet" : "your wallet"}`
             : `Insufficient ${token.symbol} balance`
         );
         return;
@@ -214,6 +306,27 @@ export function TradingPanel({ token }: TradingPanelProps) {
     );
 
     try {
+      // Determine signer: session key (fast trade) or connected wallet
+      let signerWallet: AnchorWallet;
+      const fastKey = fastTradeEnabled ? sessionKpRef.current : null;
+
+      if (fastKey) {
+        // Create a mock AnchorWallet backed by the session keypair
+        signerWallet = {
+          publicKey: fastKey.publicKey,
+          signTransaction: async <T extends Transaction | VersionedTransaction>(t: T): Promise<T> => {
+            if (t instanceof Transaction) t.partialSign(fastKey);
+            return t;
+          },
+          signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+            txs.forEach((t) => { if (t instanceof Transaction) t.partialSign(fastKey!); });
+            return txs;
+          },
+        };
+      } else {
+        signerWallet = anchorWallet!;
+      }
+
       let tx;
 
       if (tab === "buy") {
@@ -223,7 +336,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         tx = await buildBuyTransaction({
           connection,
-          wallet: anchorWallet,
+          wallet: signerWallet,
           mintAddress: token.mint,
           creatorAddress: token.creator,
           solAmountLamports,
@@ -236,7 +349,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         tx = await buildSellTransaction({
           connection,
-          wallet: anchorWallet,
+          wallet: signerWallet,
           mintAddress: token.mint,
           creatorAddress: token.creator,
           tokenAmountRaw,
@@ -244,12 +357,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
         });
       }
 
-      // Simulate to get a real error message before sending
+      // Simulate before sending
       const sim = await connection.simulateTransaction(tx);
       if (sim.value.err) {
         const logs = sim.value.logs ?? [];
-        console.error("Simulation failed:", sim.value.err, "\nLogs:\n", logs.join("\n"));
-        // Find the most meaningful log line
         const errLine =
           logs.find((l) => l.includes("Program log: Error") || l.includes("AnchorError")) ??
           logs.find((l) => l.includes("Error") || l.includes("failed")) ??
@@ -257,7 +368,17 @@ export function TradingPanel({ token }: TradingPanelProps) {
         throw new Error(`Simulation failed: ${errLine}`);
       }
 
-      const sig = await sendTransaction(tx, connection, { skipPreflight: true });
+      let sig: string;
+
+      if (fastKey) {
+        // Fast trade: sign with session key and broadcast directly (no wallet popup)
+        tx.sign(fastKey);
+        sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
+      } else {
+        // Normal trade: wallet signs and broadcasts (shows Phantom popup)
+        sig = await sendTransaction(tx, connection, { skipPreflight: true });
+      }
+
       await connection.confirmTransaction(sig, "confirmed");
 
       toast.dismiss(loadingToast);
@@ -267,7 +388,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           <a
             href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noreferrer"
             className="underline"
           >
             View tx
@@ -278,16 +399,28 @@ export function TradingPanel({ token }: TradingPanelProps) {
       setInputAmount("");
 
       // Refresh balances after trade
-      const balance = await connection.getBalance(publicKey);
-      setSolBalance(balance / 1e9);
-      try {
-        const { PublicKey: PK } = await import("@solana/web3.js");
-        const { getAssociatedTokenAddressSync: getAta } = await import("@solana/spl-token");
-        const ata = getAta(new PK(token.mint), publicKey);
-        const tokenAcct = await connection.getTokenAccountBalance(ata);
-        setTokenBalance(new BN(tokenAcct.value.amount));
-      } catch {
-        // ATA may not exist yet
+      if (fastKey) {
+        const sol = await connection.getBalance(fastKey.publicKey).catch(() => 0);
+        setSessionSolBal(sol / 1e9);
+        try {
+          const ata = getAssociatedTokenAddressSync(new PublicKey(token.mint), fastKey.publicKey);
+          const acc = await connection.getTokenAccountBalance(ata);
+          setSessionTokenBal(new BN(acc.value.amount));
+        } catch {
+          setSessionTokenBal(new BN(0));
+        }
+      } else {
+        const balance = await connection.getBalance(publicKey!);
+        setSolBalance(balance / 1e9);
+        try {
+          const { PublicKey: PK } = await import("@solana/web3.js");
+          const { getAssociatedTokenAddressSync: getAta } = await import("@solana/spl-token");
+          const ata = getAta(new PK(token.mint), publicKey!);
+          const tokenAcct = await connection.getTokenAccountBalance(ata);
+          setTokenBalance(new BN(tokenAcct.value.amount));
+        } catch {
+          // ATA may not exist yet
+        }
       }
     } catch (err: any) {
       toast.dismiss(loadingToast);
@@ -295,7 +428,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, anchorWallet, inputAmount, tab, token, slippageBps, sendTransaction, connection, calculation, virtualSol, virtualTokens, realTokenReserves, solBalance, tokenBalance]);
+  }, [publicKey, anchorWallet, fastTradeEnabled, effectiveSolBalance, effectiveTokenBalance, inputAmount, tab, token, slippageBps, sendTransaction, connection, calculation, virtualSol, virtualTokens, realTokenReserves, realSolReserves, solBalance, tokenBalance]);
 
   const highImpact = calculation && calculation.priceImpact > 5;
 
@@ -319,30 +452,96 @@ export function TradingPanel({ token }: TradingPanelProps) {
           </a>
         </div>
       ) : (
-      <><div className="flex gap-1 p-1.5">
+      <>
+      {/* Buy / Sell tabs + Fast Trade toggle */}
+      <div className="flex items-center gap-1 p-1.5">
+        <div className="flex flex-1 gap-1">
+          <button
+            onClick={() => { setTab("buy"); setInputAmount(""); }}
+            className={clsx(
+              "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
+              tab === "buy"
+                ? "bg-[#00ff88]/10 text-[#00ff88] shadow-[inset_0_0_0_1px_rgba(0,255,136,0.35),0_0_22px_rgba(0,255,136,0.12)]"
+                : "text-white/40 hover:text-white border border-transparent"
+            )}
+          >
+            Buy
+          </button>
+          <button
+            onClick={() => { setTab("sell"); setInputAmount(""); }}
+            className={clsx(
+              "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
+              tab === "sell"
+                ? "bg-[#ff4444]/10 text-[#ff7b88] shadow-[inset_0_0_0_1px_rgba(255,68,68,0.35),0_0_22px_rgba(255,68,68,0.12)]"
+                : "text-white/40 hover:text-white border border-transparent"
+            )}
+          >
+            Sell
+          </button>
+        </div>
+        {/* Fast Trade Toggle */}
         <button
-          onClick={() => { setTab("buy"); setInputAmount(""); }}
+          onClick={toggleFastTrade}
+          title={fastTradeEnabled ? "Fast Trade ON — click to disable" : "Enable Fast Trade (no wallet popup)"}
           className={clsx(
-            "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
-            tab === "buy"
-              ? "bg-[#00ff88]/10 text-[#00ff88] shadow-[inset_0_0_0_1px_rgba(0,255,136,0.35),0_0_22px_rgba(0,255,136,0.12)]"
-              : "text-white/40 hover:text-white border border-transparent"
+            "flex items-center gap-1 rounded-2xl px-2.5 py-3 text-xs font-semibold transition-all border",
+            fastTradeEnabled
+              ? "bg-[#ffaa00]/15 border-[#ffaa00]/40 text-[#ffaa00] shadow-[0_0_12px_rgba(255,170,0,0.2)]"
+              : "border-white/10 text-white/30 hover:text-white/60 hover:border-white/20"
           )}
         >
-          Buy
-        </button>
-        <button
-          onClick={() => { setTab("sell"); setInputAmount(""); }}
-          className={clsx(
-            "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
-            tab === "sell"
-              ? "bg-[#ff4444]/10 text-[#ff7b88] shadow-[inset_0_0_0_1px_rgba(255,68,68,0.35),0_0_22px_rgba(255,68,68,0.12)]"
-              : "text-white/40 hover:text-white border border-transparent"
-          )}
-        >
-          Sell
+          ⚡
         </button>
       </div>
+
+      {/* Fast Trade Info Panel */}
+      {fastTradeEnabled && sessionPubkey && (
+        <div className="mx-3 mb-1 rounded-2xl border border-[#ffaa00]/25 bg-[#ffaa00]/8 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[#ffaa00] text-xs font-semibold">⚡ Fast Trade Wallet</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[#ffaa00] text-xs font-mono">{sessionSolBal.toFixed(4)} SOL</span>
+              <button
+                onClick={() => setShowFastInfo(!showFastInfo)}
+                className="text-[#888] hover:text-white text-xs"
+              >
+                {showFastInfo ? "▲" : "▼"}
+              </button>
+            </div>
+          </div>
+
+          {showFastInfo && (
+            <div className="space-y-2 pt-1 border-t border-[#ffaa00]/15">
+              <div className="flex items-center gap-1">
+                <span className="text-[#888] text-[10px] font-mono flex-1 truncate">{sessionPubkey}</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(sessionPubkey); toast.success("Address copied"); }}
+                  className="text-[#888] hover:text-white text-[10px] px-1.5 py-0.5 rounded border border-white/10 hover:border-white/25 flex-shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+              {sessionTokenBal.gtn(0) && (
+                <div className="text-[#aaa] text-[10px]">{formatTokenAmount(sessionTokenBal)} {token.symbol} in session</div>
+              )}
+              {sessionSolBal < 0.01 && (
+                <div className="text-[#ffcc44] text-[10px]">⚠ Fund this address with SOL to trade without wallet popups</div>
+              )}
+              <div className="text-[#555] text-[10px]">Session key is stored locally in this browser tab only. Tokens go to this address — send back to your main wallet when done.</div>
+              <button
+                onClick={revokeSessionKey}
+                className="text-[#ff4444]/60 hover:text-[#ff4444] text-[10px] underline"
+              >
+                Revoke session key
+              </button>
+            </div>
+          )}
+
+          {!showFastInfo && sessionSolBal < 0.01 && (
+            <div className="text-[#ffcc44] text-[10px]">⚠ Fund {sessionPubkey.slice(0, 8)}…{sessionPubkey.slice(-4)} with SOL</div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-4 p-4">
         {/* Preset amounts */}
@@ -365,7 +564,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           </div>
         )}
 
-        {tab === "sell" && tokenBalance.gtn(0) && (
+        {tab === "sell" && effectiveTokenBalance.gtn(0) && (
           <div className="flex gap-2">
             {TOKEN_PRESETS.map((pct) => (
               <button
@@ -386,8 +585,8 @@ export function TradingPanel({ token }: TradingPanelProps) {
             <span>
               Balance:{" "}
               {tab === "buy"
-                ? `${solBalance.toFixed(3)} SOL`
-                : `${formatTokenAmount(tokenBalance)} ${token.symbol}`}
+                ? `${effectiveSolBalance.toFixed(3)} SOL`
+                : `${formatTokenAmount(effectiveTokenBalance)} ${token.symbol}`}
             </span>
           </div>
           <div className="relative">
@@ -408,7 +607,6 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         {/* Output preview */}
         {calculation && (() => {
-          // PnL calculation for sell tab
           let pnlSol: number | null = null;
           let pnlPct: number | null = null;
           if (tab === "sell" && avgBuyPriceSol !== null && inputAmount && parseFloat(inputAmount) > 0) {
@@ -469,18 +667,18 @@ export function TradingPanel({ token }: TradingPanelProps) {
           </div>
         )}
 
-        {/* Insufficient balance warning (inline) */}
-        {publicKey && inputAmount && parseFloat(inputAmount) > 0 && (
-          tab === "buy" && parseFloat(inputAmount) * 1.015 > solBalance ? (
+        {/* Insufficient balance warning */}
+        {(fastTradeEnabled ? true : !!publicKey) && inputAmount && parseFloat(inputAmount) > 0 && (
+          tab === "buy" && parseFloat(inputAmount) * 1.015 > effectiveSolBalance ? (
             <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
-              {solBalance < 0.001
-                ? "Your SOL balance is empty. Fund your wallet to trade."
-                : `Insufficient SOL — need ~${(parseFloat(inputAmount) * 1.015).toFixed(3)} SOL, have ${solBalance.toFixed(3)} SOL.`}
+              {effectiveSolBalance < 0.001
+                ? `${fastTradeEnabled ? "Fast trade wallet" : "Your wallet"} has no SOL.`
+                : `Insufficient SOL — need ~${(parseFloat(inputAmount) * 1.015).toFixed(3)} SOL, have ${effectiveSolBalance.toFixed(3)} SOL.`}
             </div>
-          ) : tab === "sell" && parseTokenAmount(inputAmount).gt(tokenBalance) ? (
+          ) : tab === "sell" && parseTokenAmount(inputAmount).gt(effectiveTokenBalance) ? (
             <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
-              {tokenBalance.isZero()
-                ? `You don't hold any ${token.symbol}.`
+              {effectiveTokenBalance.isZero()
+                ? `No ${token.symbol} in ${fastTradeEnabled ? "fast trade wallet" : "your wallet"}.`
                 : `Insufficient ${token.symbol} balance.`}
             </div>
           ) : null
@@ -527,7 +725,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
         {/* Trade button */}
         <button
           onClick={handleTrade}
-          disabled={isLoading || !publicKey || !inputAmount || parseFloat(inputAmount) <= 0 || token.isGraduated}
+          disabled={isLoading || (!fastTradeEnabled && !publicKey) || !inputAmount || parseFloat(inputAmount) <= 0 || token.isGraduated}
           className={clsx(
             "w-full rounded-2xl py-3.5 text-sm font-bold transition-all",
             tab === "buy"
@@ -543,6 +741,8 @@ export function TradingPanel({ token }: TradingPanelProps) {
               </svg>
               Processing...
             </span>
+          ) : fastTradeEnabled ? (
+            tab === "buy" ? `⚡ Buy ${token.symbol}` : `⚡ Sell ${token.symbol}`
           ) : !publicKey ? (
             "Connect Wallet"
           ) : tab === "buy" ? (
