@@ -47,6 +47,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("usd");
   const [showTrades, setShowTrades] = useState(true);
   const [showBubbles, setShowBubbles] = useState(true);
+  const [crosshairMode, setCrosshairMode] = useState<"normal" | "magnet">("normal");
 
   // ATH tracking
   const [ath, setAth] = useState<number | null>(null);
@@ -211,7 +212,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         position: t.type === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
         color: t.type === "BUY" ? "#00ff88" : "#ff4444",
         shape: "circle" as const,
-        text: t.trader === creator
+        text: (showBubbles && t.trader === creator)
           ? (t.type === "BUY" ? "Dev Buy" : "Dev Sell")
           : "",
         size: 0.6,
@@ -426,7 +427,150 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       </div>
 
       {/* Chart area */}
-      <div className="relative">
+      <div className="relative flex">
+        {/* Left toolbar — desktop only */}
+        <div className="hidden sm:flex flex-col items-center gap-0.5 py-2 px-1 border-r border-white/8 bg-[#090909] shrink-0 z-10 w-9">
+          {/* Crosshair — functional */}
+          <button
+            title={crosshairMode === "normal" ? "Normal crosshair" : "Magnet crosshair (active)"}
+            onClick={() => {
+              if (!chartRef.current) return;
+              const next = crosshairMode === "normal" ? "magnet" : "normal";
+              setCrosshairMode(next);
+              import("lightweight-charts").then(({ CrosshairMode }) => {
+                chartRef.current?.applyOptions({
+                  crosshair: { mode: next === "magnet" ? CrosshairMode.Magnet : CrosshairMode.Normal },
+                });
+              });
+            }}
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded transition-colors",
+              crosshairMode === "magnet" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/40 hover:text-white hover:bg-white/8"
+            )}
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" strokeWidth="1.3" />
+              <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" strokeWidth="1.3" />
+              <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
+
+          {/* Fit content — functional */}
+          <button
+            title="Fit chart to data"
+            onClick={() => chartRef.current?.timeScale().fitContent()}
+            className="w-7 h-7 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/8 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M1 4V1h3M10 1h3v3M13 10v3h-3M4 13H1v-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="w-5 h-px bg-white/10 my-0.5" />
+
+          {/* Trend line */}
+          <button title="Trend line" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="13" x2="13" y2="1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <circle cx="1" cy="13" r="1.5" fill="currentColor" />
+              <circle cx="13" cy="1" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Horizontal line */}
+          <button title="Horizontal line" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <circle cx="2" cy="7" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Ray */}
+          <button title="Ray" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="11" x2="13" y2="3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="1 0 8 100" />
+              <circle cx="1" cy="11" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          <div className="w-5 h-px bg-white/10 my-0.5" />
+
+          {/* Pen/draw */}
+          <button title="Draw" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 10L9 3l2 2-7 7-3 1 1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {/* Text */}
+          <button title="Text annotation" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 3h10M7 3v8M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="w-5 h-px bg-white/10 my-0.5" />
+
+          {/* Ruler / measure */}
+          <button title="Measure" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="5" width="12" height="4" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <line x1="4" y1="5" x2="4" y2="9" stroke="currentColor" strokeWidth="1" />
+              <line x1="7" y1="5" x2="7" y2="9" stroke="currentColor" strokeWidth="1" />
+              <line x1="10" y1="5" x2="10" y2="9" stroke="currentColor" strokeWidth="1" />
+            </svg>
+          </button>
+
+          {/* Zoom in */}
+          <button title="Zoom in" onClick={() => {
+            const ts = chartRef.current?.timeScale();
+            if (ts) {
+              const range = ts.getVisibleLogicalRange();
+              if (range) ts.setVisibleLogicalRange({ from: range.from + 5, to: range.to - 5 });
+            }
+          }} className="w-7 h-7 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/8 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+              <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <line x1="4" y1="6" x2="8" y2="6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <line x1="6" y1="4" x2="6" y2="8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* Magnet mode */}
+          <button title="Magnet mode" onClick={() => {
+              if (!chartRef.current) return;
+              const next = crosshairMode === "normal" ? "magnet" : "normal";
+              setCrosshairMode(next);
+              import("lightweight-charts").then(({ CrosshairMode }) => {
+                chartRef.current?.applyOptions({
+                  crosshair: { mode: next === "magnet" ? CrosshairMode.Magnet : CrosshairMode.Normal },
+                });
+              });
+            }}
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded transition-colors",
+              crosshairMode === "magnet" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/30 hover:text-white/60 hover:bg-white/5"
+            )}>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M3 2a4 4 0 0 1 8 0v4h-2V2a2 2 0 0 0-4 0v4H3V2z" stroke="currentColor" strokeWidth="1.1" fill="none" />
+              <path d="M1 6h4M9 6h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <path d="M3 10v2M11 10v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="w-5 h-px bg-white/10 my-0.5" />
+
+          {/* Trash / clear */}
+          <button title="Reset zoom" onClick={() => chartRef.current?.timeScale().fitContent()} className="w-7 h-7 flex items-center justify-center rounded text-white/25 hover:text-[#ff4444]/70 hover:bg-white/5 transition-colors">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Chart + overlay layer */}
+        <div className="relative flex-1 min-w-0">
         {/* Live trade bubbles */}
         {showBubbles && flashTrades.length > 0 && (
           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
@@ -477,7 +621,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
         <div ref={chartContainerRef} className="w-full" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
-      </div>
+        </div>{/* end chart+overlay layer */}
+      </div>{/* end chart area flex */}
     </div>
   );
 }
