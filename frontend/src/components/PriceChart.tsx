@@ -5,6 +5,7 @@ import { clsx } from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
 import { useSocket } from "@/hooks/useLiveFeed";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 type Interval = "1s" | "1m" | "5m" | "15m" | "30m" | "1h" | "1d";
 type PriceMode = "mcap" | "price";
@@ -53,6 +54,7 @@ function toHeikinAshi(candles: OHLC[]): OHLC[] {
 }
 
 export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
+  const { publicKey } = useWallet();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
@@ -229,21 +231,34 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       return;
     }
 
+    const myAddress = publicKey?.toBase58();
+
     const markers = tradesData.trades
+      .filter((t) => {
+        const isDevTrade = t.trader === creator;
+        const isMyTrade = myAddress && t.trader === myAddress;
+        // Dev trades: controlled by "Hide Bubbles" toggle
+        if (isDevTrade) return showBubbles;
+        // My trades: controlled by "Trade Display" toggle
+        if (isMyTrade) return showTrades;
+        return false;
+      })
       .map((t) => ({
         time: Math.floor(new Date(t.timestamp).getTime() / 1000) as any,
         position: t.type === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
-        color: t.type === "BUY" ? "#00ff88" : "#ff4444",
+        color: t.trader === creator
+          ? (t.type === "BUY" ? "#ffaa00" : "#ff6600")   // dev = orange
+          : (t.type === "BUY" ? "#00ff88" : "#ff4444"),  // mine = green/red
         shape: "circle" as const,
-        text: (showBubbles && t.trader === creator)
+        text: t.trader === creator
           ? (t.type === "BUY" ? "Dev Buy" : "Dev Sell")
           : "",
-        size: 0.6,
+        size: t.trader === creator ? 0.8 : 0.6,
       }))
       .sort((a, b) => a.time - b.time);
 
     candleSeriesRef.current.setMarkers(markers);
-  }, [tradesData, creator, ohlcv, showTrades]);
+  }, [tradesData, creator, ohlcv, showTrades, showBubbles, publicKey]);
 
   // Live trade flash bubble
   const [flashTrades, setFlashTrades] = useState<Array<{
