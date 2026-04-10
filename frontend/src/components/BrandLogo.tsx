@@ -23,7 +23,7 @@ export function BrandLogo({
       <div className="leading-tight">
         <div
           className={clsx(
-            "bg-[linear-gradient(90deg,#ffffff_0%,#f3fff9_24%,#45ff90_65%,#00d9ff_100%)] bg-clip-text text-[17px] font-black tracking-tight text-transparent sm:text-[19px]",
+            "bg-[linear-gradient(90deg,#ffffff_0%,#f3fff9_24%,#45ff90_65%,#00d9ff_100%)] bg-clip-text pb-0.5 text-[17px] font-black tracking-tight text-transparent sm:text-[19px]",
             titleClassName
           )}
         >
