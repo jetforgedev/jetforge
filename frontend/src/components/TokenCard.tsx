@@ -115,10 +115,10 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
           className={clsx(
             "token-card relative flex h-full flex-col overflow-hidden rounded-[16px] border bg-white/[0.03] p-2.5 backdrop-blur-sm sm:rounded-[26px] sm:p-4",
             "border-white/[0.08]",
-            !isActive15m && !isHot15m && !isNearGrad && "shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
-            isActive15m && !isNearGrad && !isHot15m && "animate-pulse-glow border-[#00ff88]/20",
-            isHot15m && !isNearGrad && "animate-hot-glow border-[#ff8c00]/30",
-            isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
+            (token.isGraduated || (!isActive15m && !isHot15m && !isNearGrad)) && "shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
+            !token.isGraduated && isActive15m && !isNearGrad && !isHot15m && "animate-pulse-glow border-[#00ff88]/20",
+            !token.isGraduated && isHot15m && !isNearGrad && "animate-hot-glow border-[#ff8c00]/30",
+            !token.isGraduated && isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
           )}
         >
           <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_70%)]" />
