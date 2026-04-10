@@ -102,7 +102,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           rightOffset: 5,
         },
         width: chartContainerRef.current.clientWidth,
-        height: 420,
+        height: 480,
       });
 
       const candleSeries = chart.addCandlestickSeries({
@@ -320,9 +320,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
   return (
     <div className="glass-panel rounded-[28px] overflow-hidden">
-      {/* Top toolbar */}
-      <div className="border-b border-white/8 px-3 py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: price mode label + current value */}
+      {/* Row 1: Value + ATH */}
+      <div className="border-b border-white/8 px-3 pt-2.5 pb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-white/40 text-xs shrink-0">
             {priceMode === "mcap" ? "Market Cap" : "Price"}
@@ -336,56 +335,56 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
                     : `${currentVal.toFixed(8)} SOL`)}
             </span>
           )}
-          {ath !== null && (
-            <span className="text-[#555] text-[10px] font-mono shrink-0">
-              ATH{" "}
-              <span className="text-[#888]">
-                {priceMode === "mcap"
-                  ? (currencyMode === "usd" ? fmtMcap(ath) : fmtMcapSol(ath))
-                  : (currencyMode === "usd" ? `$${ath.toFixed(8)}` : `${ath.toFixed(8)} SOL`)}
-              </span>
-            </span>
-          )}
         </div>
+        {ath !== null && (
+          <span className="text-[#555] text-[10px] font-mono shrink-0">
+            ATH{" "}
+            <span className="text-[#888]">
+              {priceMode === "mcap"
+                ? (currencyMode === "usd" ? fmtMcap(ath) : fmtMcapSol(ath))
+                : (currencyMode === "usd" ? `$${ath.toFixed(8)}` : `${ath.toFixed(8)} SOL`)}
+            </span>
+          </span>
+        )}
+      </div>
 
-        {/* Right: controls */}
-        <div className="flex items-center gap-1 flex-wrap">
-          {/* Timeframe */}
-          <div className="flex gap-0.5 mr-1">
-            {intervals.map((i) => (
-              <button
-                key={i.value}
-                onClick={() => setInterval(i.value)}
-                className={clsx(
-                  "px-2 py-1 text-xs rounded font-medium transition-colors",
-                  interval === i.value
-                    ? "bg-[#00ff88]/12 text-[#00ff88]"
-                    : "text-white/35 hover:text-white/70"
-                )}
-              >
-                {i.label}
-              </button>
-            ))}
-          </div>
+      {/* Row 2: Timeframes + feature toggles — horizontally scrollable on mobile */}
+      <div className="border-b border-white/8 px-3 py-1.5 overflow-x-auto">
+        <div className="flex items-center gap-1 min-w-max">
+          {/* Timeframes */}
+          {intervals.map((i) => (
+            <button
+              key={i.value}
+              onClick={() => setInterval(i.value)}
+              className={clsx(
+                "px-2.5 py-1 text-xs rounded font-medium transition-colors whitespace-nowrap",
+                interval === i.value
+                  ? "bg-[#00ff88]/12 text-[#00ff88]"
+                  : "text-white/35 hover:text-white/70"
+              )}
+            >
+              {i.label}
+            </button>
+          ))}
 
-          <div className="w-px h-4 bg-white/10 mx-0.5" />
+          <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
 
           <ToolbarBtn active={showTrades} onClick={() => setShowTrades((v) => !v)}>
             Trade Display
           </ToolbarBtn>
 
           <ToolbarBtn active={!showBubbles} onClick={() => setShowBubbles((v) => !v)}>
-            {showBubbles ? "Show Bubbles" : "Hide Bubbles"}
+            {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
           </ToolbarBtn>
 
-          <div className="w-px h-4 bg-white/10 mx-0.5" />
+          <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
 
           {/* Price/MCap toggle */}
-          <div className="flex rounded border border-white/10 overflow-hidden">
+          <div className="flex rounded border border-white/10 overflow-hidden shrink-0">
             <button
               onClick={() => setPriceMode("price")}
               className={clsx(
-                "px-2 py-1 text-xs font-medium transition-colors",
+                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 priceMode === "price" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -394,7 +393,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             <button
               onClick={() => setPriceMode("mcap")}
               className={clsx(
-                "px-2 py-1 text-xs font-medium transition-colors border-l border-white/10",
+                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
                 priceMode === "mcap" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -403,11 +402,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
 
           {/* USD/SOL toggle */}
-          <div className="flex rounded border border-white/10 overflow-hidden">
+          <div className="flex rounded border border-white/10 overflow-hidden shrink-0">
             <button
               onClick={() => setCurrencyMode("usd")}
               className={clsx(
-                "px-2 py-1 text-xs font-medium transition-colors",
+                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 currencyMode === "usd" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -416,7 +415,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             <button
               onClick={() => setCurrencyMode("sol")}
               className={clsx(
-                "px-2 py-1 text-xs font-medium transition-colors border-l border-white/10",
+                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
                 currencyMode === "sol" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -467,7 +466,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[420px] items-center justify-center text-white/25">
+          <div className="flex h-[480px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
