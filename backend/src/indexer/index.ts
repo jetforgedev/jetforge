@@ -561,8 +561,8 @@ async function connect(io: Server): Promise<void> {
   if (pollInterval) clearInterval(pollInterval);
   // Initial poll to backfill recent history
   await pollRecentTransactions(io);
-  pollInterval = setInterval(() => pollRecentTransactions(io), 10_000);
-  console.log("[POLL] Transaction polling started (10s interval)");
+  pollInterval = setInterval(() => pollRecentTransactions(io), 3_000);
+  console.log("[POLL] Transaction polling started (3s interval)");
 
   console.log(`Indexer connected to ${config.solana.rpcUrl}`);
 }
