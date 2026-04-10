@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TokenCard } from "@/components/TokenCard";
 import { LiveFeed } from "@/components/LiveFeed";
-import { getTokens, getTopTokens, getPlatformStats, TokenData } from "@/lib/api";
+import { getTokens, getTopTokens, getPlatformStats, TokenData, resolveImageUrl } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
 import Image from "next/image";
@@ -186,9 +186,9 @@ function KingOfTheHill() {
                 </div>
               </div>
               <div className="mt-4 flex min-w-0 items-start gap-4">
-                {king.imageUrl ? (
+                {resolveImageUrl(king.imageUrl) ? (
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10">
-                    <Image src={king.imageUrl} alt={king.name} fill className="object-cover" unoptimized />
+                    <Image src={resolveImageUrl(king.imageUrl)!} alt={king.name} fill className="object-cover" unoptimized />
                   </div>
                 ) : (
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#ffcf5a]/15 text-lg font-bold text-[#ffcf5a]">

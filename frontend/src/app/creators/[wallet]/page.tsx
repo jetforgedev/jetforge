@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getCreatorProfile, truncateAddress, timeAgo } from "@/lib/api";
+import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -134,8 +134,8 @@ export default function CreatorProfilePage({ params }: PageProps) {
                 className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  {token.imageUrl ? (
-                    <img src={token.imageUrl} alt={token.symbol} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                  {resolveImageUrl(token.imageUrl) ? (
+                    <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
                       {token.symbol?.[0] ?? "?"}

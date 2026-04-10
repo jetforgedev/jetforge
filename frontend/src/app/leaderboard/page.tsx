@@ -7,6 +7,7 @@ import {
   getTopTraders,
   truncateAddress,
   timeAgo,
+  resolveImageUrl,
 } from "@/lib/api";
 
 type TokenTab = "volume" | "marketcap" | "trades" | "new";
@@ -159,9 +160,9 @@ export default function LeaderboardPage() {
                         <TokenRankBadge rank={(token as any).rank} />
                       </div>
                       <div className="flex items-center gap-2 min-w-0">
-                        {token.imageUrl ? (
+                        {resolveImageUrl(token.imageUrl) ? (
                           <img
-                            src={token.imageUrl}
+                            src={resolveImageUrl(token.imageUrl)!}
                             alt={token.symbol}
                             className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
                           />

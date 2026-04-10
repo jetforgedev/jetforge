@@ -16,6 +16,9 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
+// Trust reverse proxy (nginx) so req.protocol reflects X-Forwarded-Proto
+app.set("trust proxy", true);
+
 // Initialize Prisma
 export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === "development" ? ["query", "error"] : ["error"],

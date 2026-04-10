@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getCreators, CreatorData, truncateAddress } from "@/lib/api";
+import { getCreators, CreatorData, truncateAddress, resolveImageUrl } from "@/lib/api";
 
 type Metric = "volume" | "tokens";
 
@@ -139,9 +139,9 @@ export default function CreatorsPage() {
                   </div>
 
                   <div className="flex items-center gap-2 min-w-0">
-                    {creator.latestToken?.imageUrl ? (
+                    {resolveImageUrl(creator.latestToken?.imageUrl) ? (
                       <img
-                        src={creator.latestToken.imageUrl}
+                        src={resolveImageUrl(creator.latestToken?.imageUrl)!}
                         alt=""
                         className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
                       />

@@ -8,7 +8,7 @@ import { TradingPanel } from "@/components/TradingPanel";
 import { PriceChart } from "@/components/PriceChart";
 import { GraduationBar } from "@/components/GraduationBar";
 import { TradesList } from "@/components/TradesList";
-import { truncateAddress, timeAgo } from "@/lib/api";
+import { truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 import { formatSol } from "@/lib/bondingCurve";
 import BN from "bn.js";
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
@@ -596,8 +596,8 @@ export default function TokenPage({ params }: PageProps) {
           {/* Row 1: image + name + alert */}
           <div className="flex items-center gap-3">
             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] bg-white/[0.06]">
-              {token.imageUrl ? (
-                <Image src={token.imageUrl} alt={token.name} fill className="object-cover" unoptimized />
+              {resolveImageUrl(token.imageUrl) ? (
+                <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} fill className="object-cover" unoptimized />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xl font-bold text-[#00ff88]">
                   {token.symbol.slice(0, 2)}
@@ -654,8 +654,8 @@ export default function TokenPage({ params }: PageProps) {
         <div className="hidden sm:flex items-start gap-5">
           {/* Image */}
           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[24px] bg-white/[0.06]">
-            {token.imageUrl ? (
-              <Image src={token.imageUrl} alt={token.name} fill className="object-cover" unoptimized />
+            {resolveImageUrl(token.imageUrl) ? (
+              <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} fill className="object-cover" unoptimized />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#00ff88]">
                 {token.symbol.slice(0, 2)}

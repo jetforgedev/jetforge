@@ -1,5 +1,27 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
+// Base URL of the backend (strips trailing /api).
+// Used to rewrite image URLs that might have been stored with a stale host.
+const BACKEND_BASE = API_URL.replace(/\/api\/?$/, "");
+
+/**
+ * Rewrites a stored imageUrl so it always points to the currently-configured
+ * backend host. Fixes stale `http://localhost:4000/uploads/...` URLs when the
+ * site is accessed from production or a different machine.
+ */
+export function resolveImageUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return `${BACKEND_BASE}${parsed.pathname}`;
+    }
+  } catch {
+    // Not a valid URL — return as-is
+  }
+  return url;
+}
+
 // ─── Image upload ─────────────────────────────────────────────────────────────
 export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();

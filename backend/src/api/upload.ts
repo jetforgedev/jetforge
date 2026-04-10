@@ -40,10 +40,12 @@ uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: R
     return res.status(400).json({ error: "No image file provided" });
   }
 
-  // Build the public URL — use SITE_URL env var (set to https://jetforge.io on VPS)
+  // Build the public URL pointing to THIS backend server, not the frontend.
+  // SITE_URL must be set to the backend's public URL (e.g. https://api.jetforge.io).
+  // If unset, fall back to the request's own host/protocol (works behind nginx
+  // with trust proxy enabled so X-Forwarded-Proto is respected).
   const baseUrl =
     process.env.SITE_URL ||
-    process.env.FRONTEND_URL ||
     `${req.protocol}://${req.get("host")}`;
 
   const url = `${baseUrl}/uploads/${req.file.filename}`;

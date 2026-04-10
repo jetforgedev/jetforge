@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { clsx } from "clsx";
-import { TokenData, truncateAddress, timeAgo } from "@/lib/api";
+import { TokenData, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 import { formatSol } from "@/lib/bondingCurve";
 import BN from "bn.js";
 
@@ -83,7 +83,7 @@ function isTrending(token: TokenData): boolean {
 
 export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCardProps) {
   const graduationPct = Math.min(100, token.graduationProgress || 0);
-  const isNearGrad = graduationPct >= 80;
+  const isNearGrad = graduationPct >= 80 && !token.isGraduated;
   const rug = computeRugScore(token);
   const trending = isTrending(token);
 
@@ -126,7 +126,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
           {/* Header: avatar + name + badges */}
           <div className="relative mb-2 flex items-start gap-2 sm:mb-3.5 sm:gap-3">
             <div className="relative h-11 w-11 shrink-0 sm:h-14 sm:w-14">
-              <TokenAvatar name={token.name} imageUrl={token.imageUrl} mint={token.mint} />
+              <TokenAvatar name={token.name} imageUrl={resolveImageUrl(token.imageUrl)} mint={token.mint} />
             </div>
             <div className="min-w-0 flex-1 pr-7">
               <div className="flex items-center gap-1.5">

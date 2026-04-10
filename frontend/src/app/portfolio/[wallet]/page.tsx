@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { getUserTrades, getTokensByCreator, truncateAddress, timeAgo } from "@/lib/api";
+import { getUserTrades, getTokensByCreator, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -188,8 +188,8 @@ export default function PortfolioPage({ params }: PageProps) {
                   {/* Token info */}
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 flex items-center justify-center">
-                      {h.imageUrl ? (
-                        <Image src={h.imageUrl} alt={h.name} width={32} height={32} className="object-cover" unoptimized />
+                      {resolveImageUrl(h.imageUrl) ? (
+                        <Image src={resolveImageUrl(h.imageUrl)!} alt={h.name} width={32} height={32} className="object-cover" unoptimized />
                       ) : (
                         <span className="text-[#00ff88] font-bold text-[10px]">{h.symbol.slice(0, 2)}</span>
                       )}
@@ -246,8 +246,8 @@ export default function PortfolioPage({ params }: PageProps) {
               <Link key={token.mint} href={`/token/${token.mint}`}
                 className="flex items-center gap-3 bg-[#111] border border-[#1a1a1a] hover:border-[#2a2a2a] rounded-xl p-3 transition-colors">
                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 flex items-center justify-center">
-                  {token.imageUrl ? (
-                    <Image src={token.imageUrl} alt={token.name} width={40} height={40} className="object-cover" unoptimized />
+                  {resolveImageUrl(token.imageUrl) ? (
+                    <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} width={40} height={40} className="object-cover" unoptimized />
                   ) : (
                     <span className="text-[#00ff88] font-bold text-xs">{token.symbol.slice(0, 2)}</span>
                   )}
