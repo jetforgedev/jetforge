@@ -108,7 +108,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
           className={clsx(
             "token-card relative flex h-full flex-col overflow-hidden rounded-[16px] border bg-white/[0.03] p-2.5 backdrop-blur-sm sm:rounded-[26px] sm:p-4",
             "border-white/[0.08] shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
-            trending && "before:absolute before:inset-0 before:rounded-[16px] before:border before:border-[#00ff88]/25 before:content-[''] before:animate-shimmer sm:before:rounded-[26px]",
+            trending && "animate-pulse-glow border-[#00ff88]/20",
             isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
           )}
         >
