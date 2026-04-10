@@ -37,6 +37,8 @@ const config: Config = {
         "flash-green": "flashGreen 0.5s ease-out",
         "flash-red": "flashRed 0.5s ease-out",
         "pulse-glow": "pulseGlow 2s ease-in-out infinite",
+        "glow-pulse": "glowPulse 2s ease-in-out infinite",
+        "shimmer": "shimmer 2.2s linear infinite",
         "slide-in": "slideIn 0.3s ease-out",
         "fade-in": "fadeIn 0.2s ease-out",
         ticker: "ticker 20s linear infinite",
@@ -51,8 +53,16 @@ const config: Config = {
           "100%": { backgroundColor: "transparent" },
         },
         pulseGlow: {
-          "0%, 100%": { boxShadow: "0 0 5px #00ff8840" },
-          "50%": { boxShadow: "0 0 20px #00ff8880, 0 0 40px #00ff8840" },
+          "0%, 100%": { boxShadow: "0 0 0 rgba(0,255,136,0)" },
+          "50%": { boxShadow: "0 0 28px rgba(0,255,136,0.22), 0 0 64px rgba(0,255,136,0.08)" },
+        },
+        glowPulse: {
+          "0%, 100%": { boxShadow: "0 0 0 1px rgba(255,207,90,0.16), 0 0 26px rgba(255,207,90,0.05)" },
+          "50%": { boxShadow: "0 0 0 1px rgba(255,207,90,0.45), 0 0 32px rgba(255,207,90,0.22)" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-120%)" },
+          "100%": { transform: "translateX(120%)" },
         },
         slideIn: {
           "0%": { transform: "translateY(-10px)", opacity: "0" },
