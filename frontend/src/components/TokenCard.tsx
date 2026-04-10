@@ -160,15 +160,15 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
 
           {/* Stats grid */}
           <div className="mb-2 grid grid-cols-3 gap-1.5 sm:mb-3.5 sm:gap-2.5">
-            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 14px rgba(255,255,255,0.10)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Mkt Cap</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.marketCapSol.toFixed(2)}<span className="text-[9px] text-white/50"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-white/8 bg-[#00ff88]/[0.05] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-white/8 bg-[#00ff88]/[0.05] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 14px rgba(255,255,255,0.10)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Volume</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-[#8dffc9] sm:mt-2 sm:text-sm">{token.volume24h.toFixed(2)}<span className="text-[9px] text-[#8dffc9]/60"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-white/8 bg-white/[0.04] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 14px rgba(255,255,255,0.10)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Trades</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.trades.toLocaleString()}</div>
             </div>
