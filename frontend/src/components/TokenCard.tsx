@@ -86,6 +86,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
   const isNearGrad = graduationPct >= 80;
   const rug = computeRugScore(token);
   const trending = isTrending(token);
+  const hasActivity = token.trades > 0 || token.volume24h > 0;
 
   return (
     <div className="relative h-full">
@@ -108,7 +109,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
           className={clsx(
             "token-card relative flex h-full flex-col overflow-hidden rounded-[16px] border bg-white/[0.03] p-2.5 backdrop-blur-sm sm:rounded-[26px] sm:p-4",
             "border-white/[0.08] shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
-            trending && "animate-pulse-glow border-[#00ff88]/20",
+            hasActivity && !isNearGrad && "animate-pulse-glow border-[#00ff88]/20",
             isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
           )}
         >

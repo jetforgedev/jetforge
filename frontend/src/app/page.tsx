@@ -239,7 +239,7 @@ function useWatchlist() {
 }
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<SortTab>("new");
+  const [activeTab, setActiveTab] = useState<SortTab>("trending");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
