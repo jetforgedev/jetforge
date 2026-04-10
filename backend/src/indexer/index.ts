@@ -396,9 +396,10 @@ async function handleGraduationEvent(
 
   try {
     // Mark graduated immediately so frontend reflects the state
-    await prisma.token.update({
+    const tokenRecord = await prisma.token.update({
       where: { mint },
       data: { isGraduated: true, graduatedAt: new Date() },
+      select: { raydiumPoolId: true },
     });
 
     broadcastGraduation(io, {
@@ -409,6 +410,12 @@ async function handleGraduationEvent(
       timestamp,
     });
     console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} poolTokens=${Number(liquidityTokens)/1e6} burned=${Number(tokensBurned)/1e6}`);
+
+    // Skip pool creation if poolId is already stored (idempotency for polling re-runs)
+    if (tokenRecord.raydiumPoolId) {
+      console.log(`[RAYDIUM] Pool already stored for ${mint.slice(0, 8)}…: ${tokenRecord.raydiumPoolId}`);
+      return;
+    }
 
     // Create Raydium CPMM pool asynchronously — non-blocking
     // Pool creation can take several seconds; we don't want to block the indexer

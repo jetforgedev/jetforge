@@ -25,7 +25,7 @@ model Token {
   virtualSolReserves    BigInt @default(30000000000)
   virtualTokenReserves  BigInt @default(1073000191000000)
   realSolReserves       BigInt @default(0)
-  realTokenReserves     BigInt @default(1000000000000000)
+  realTokenReserves     BigInt @default(700000000000000)
   totalSupply           BigInt @default(1000000000000000)
 
   // Stats

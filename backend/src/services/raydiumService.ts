@@ -11,7 +11,7 @@
  */
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { Raydium, TxVersion, DEVNET_PROGRAM_ID } = require("@raydium-io/raydium-sdk-v2");
+const { Raydium, TxVersion, DEVNET_PROGRAM_ID, MAINNET_PROGRAM_ID } = require("@raydium-io/raydium-sdk-v2");
 
 import {
   Connection,
@@ -112,12 +112,19 @@ export async function createRaydiumPool(
     const mintAAmount = new BN(wsolFirst ? solLamports.toString() : tokenAmount.toString());
     const mintBAmount = new BN(wsolFirst ? tokenAmount.toString() : solLamports.toString());
 
-    console.log(`[RAYDIUM] DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM = ${DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toBase58?.() ?? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM}`);
-    console.log(`[RAYDIUM] DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC = ${DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toBase58?.() ?? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC}`);
+    // ── DEVNET-TEST: program IDs are cluster-selected at runtime ──────────────
+    // isDevnet is derived from config.solana.rpcUrl (set in .env).
+    // BEFORE MAINNET: ensure SOLANA_RPC_URL points to a mainnet endpoint so
+    // isDevnet=false and MAINNET_PROGRAM_ID is used here automatically.
+    // ─────────────────────────────────────────────────────────────────────────
+    const CLUSTER_PROGRAM_ID = isDevnet ? DEVNET_PROGRAM_ID : MAINNET_PROGRAM_ID;
+    console.log(`[RAYDIUM] Using ${isDevnet ? "DEVNET" : "MAINNET"} program IDs`);
+    console.log(`[RAYDIUM] CPMM_POOL_PROGRAM = ${CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM?.toBase58?.() ?? CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM}`);
+    console.log(`[RAYDIUM] CPMM_POOL_FEE_ACC = ${CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC?.toBase58?.() ?? CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC}`);
 
     const { execute, extInfo } = await raydium.cpmm.createPool({
-      programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
-      poolFeeAccount: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
+      programId: CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
+      poolFeeAccount: CLUSTER_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
       mintA,
       mintB,
       mintAAmount,
@@ -129,11 +136,31 @@ export async function createRaydiumPool(
       txVersion: TxVersion.LEGACY,
     });
 
-    const { txId } = await execute({ sendAndConfirm: true });
-    console.log(`[RAYDIUM] Pool created! Tx: ${Array.isArray(txId) ? txId[0] : txId}`);
-
+    // Extract poolId and lpMint BEFORE execute() — they are deterministic and
+    // available immediately from extInfo. This way, if execute() throws a
+    // confirmation timeout (tx already landed), we can still verify and return
+    // the poolId rather than losing it.
     const poolId: string = extInfo.address.poolId.toBase58();
     const lpMint: PublicKey = extInfo.address.lpMint;
+    console.log(`[RAYDIUM] Expected Pool ID: ${poolId}`);
+    console.log(`[RAYDIUM] Expected LP Mint: ${lpMint.toBase58()}`);
+
+    try {
+      const { txId } = await execute({ sendAndConfirm: true });
+      console.log(`[RAYDIUM] Pool created! Tx: ${Array.isArray(txId) ? txId[0] : txId}`);
+    } catch (execErr: any) {
+      // execute() can throw a confirmation timeout even when the tx already
+      // landed on-chain (common on devnet). Verify the pool state account
+      // exists before deciding to give up.
+      console.warn(`[RAYDIUM] execute() threw — verifying pool on-chain: ${execErr?.message?.slice(0, 120)}`);
+      const poolStateInfo = await connection.getAccountInfo(new PublicKey(poolId)).catch(() => null);
+      if (!poolStateInfo) {
+        // Pool did not land — propagate the error to outer catch
+        throw execErr;
+      }
+      console.log(`[RAYDIUM] Pool confirmed on-chain despite execute() error — proceeding`);
+    }
+
     console.log(`[RAYDIUM] Pool ID: ${poolId}`);
     console.log(`[RAYDIUM] LP Mint: ${lpMint.toBase58()}`);
 

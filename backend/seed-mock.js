@@ -36,7 +36,7 @@ async function main() {
 
     // Derive bonding curve state from market cap
     const realSolReserves = BigInt(Math.floor(mcapSol * 1e9));
-    const realTokenReserves = BigInt(793100000000000) - BigInt(Math.floor(t.trades * 100000000));
+    const realTokenReserves = BigInt(700000000000000) - BigInt(Math.floor(t.trades * 100000000));
 
     const token = await prisma.token.create({
       data: {
