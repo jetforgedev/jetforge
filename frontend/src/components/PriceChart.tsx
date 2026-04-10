@@ -57,7 +57,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const { publicKey } = useWallet();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
-  const candleSeriesRef = useRef<any>(null);
+  const candleSeriesRef = useRef<any>(null);  // candlestick + HA
+  const lineSeriesRef = useRef<any>(null);
+  const areaSeriesRef = useRef<any>(null);
+  const barSeriesRef = useRef<any>(null);
+  const activeSeriesRef = useRef<any>(null);  // always points to visible series
   const volumeSeriesRef = useRef<any>(null);
   const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
 
@@ -67,7 +71,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const [showTrades, setShowTrades] = useState(true);
   const [showBubbles, setShowBubbles] = useState(true);
   const [crosshairMode, setCrosshairMode] = useState<"normal" | "magnet">("normal");
-  const [chartType, setChartType] = useState<"candles" | "heikinashi">("candles");
+  type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
+  const [chartType, setChartType] = useState<ChartType>("heikinashi");
+  const [showChartDropdown, setShowChartDropdown] = useState(false);
+  const chartTypeRef = useRef<ChartType>("heikinashi");
 
   // ATH tracking
   const [ath, setAth] = useState<number | null>(null);
@@ -136,6 +143,22 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         priceFormat: { type: "price", precision: 2, minMove: 0.01 },
       });
 
+      const lineSeries = chart.addLineSeries({
+        color: "#00ff88", lineWidth: 2, visible: false,
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      });
+
+      const areaSeries = chart.addAreaSeries({
+        lineColor: "#00ff88", topColor: "#00ff8820", bottomColor: "#00ff8800",
+        lineWidth: 2, visible: false,
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      });
+
+      const barSeries = chart.addBarSeries({
+        upColor: "#00ff88", downColor: "#ff4444", visible: false,
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+      });
+
       const volumeSeries = chart.addHistogramSeries({
         color: "#1a1a1a",
         priceFormat: { type: "volume" },
@@ -149,6 +172,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       state.chart = chart;
       chartRef.current = chart;
       candleSeriesRef.current = candleSeries;
+      lineSeriesRef.current = lineSeries;
+      areaSeriesRef.current = areaSeries;
+      barSeriesRef.current = barSeries;
+      activeSeriesRef.current = candleSeries;
       volumeSeriesRef.current = volumeSeries;
 
       const resizeObserver = new ResizeObserver(() => {
@@ -169,6 +196,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       state.chart?.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
+      lineSeriesRef.current = null;
+      areaSeriesRef.current = null;
+      barSeriesRef.current = null;
+      activeSeriesRef.current = null;
       volumeSeriesRef.current = null;
       liveCandle.current = null;
     };
@@ -182,6 +213,22 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     });
     liveCandle.current = null;
   }, [interval]);
+
+  // Sync chartType to ref + switch visible series
+  useEffect(() => {
+    chartTypeRef.current = chartType;
+    if (!candleSeriesRef.current) return;
+
+    candleSeriesRef.current.applyOptions({ visible: chartType === "candles" || chartType === "heikinashi" });
+    lineSeriesRef.current?.applyOptions({ visible: chartType === "line" });
+    areaSeriesRef.current?.applyOptions({ visible: chartType === "area" });
+    barSeriesRef.current?.applyOptions({ visible: chartType === "bars" });
+
+    if (chartType === "line") activeSeriesRef.current = lineSeriesRef.current;
+    else if (chartType === "area") activeSeriesRef.current = areaSeriesRef.current;
+    else if (chartType === "bars") activeSeriesRef.current = barSeriesRef.current;
+    else activeSeriesRef.current = candleSeriesRef.current;
+  }, [chartType]);
 
   // Load OHLCV data
   useEffect(() => {
@@ -204,8 +251,12 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     }));
 
     const displayCandles = chartType === "heikinashi" ? toHeikinAshi(candles) : candles;
+    const lineData = candles.map((c) => ({ time: c.time as any, value: c.close }));
 
     candleSeriesRef.current.setData(displayCandles);
+    lineSeriesRef.current?.setData(lineData);
+    areaSeriesRef.current?.setData(lineData);
+    barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
     chartRef.current?.timeScale().fitContent();
 
@@ -224,10 +275,16 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
   // Trade markers
   useEffect(() => {
-    if (!candleSeriesRef.current) return;
+    const series = activeSeriesRef.current ?? candleSeriesRef.current;
+    if (!series) return;
 
-    if (!showTrades || !tradesData?.trades?.length) {
-      candleSeriesRef.current.setMarkers([]);
+    if (!showTrades && !showBubbles) {
+      series.setMarkers([]);
+      return;
+    }
+
+    if (!tradesData?.trades?.length) {
+      series.setMarkers([]);
       return;
     }
 
@@ -257,8 +314,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       }))
       .sort((a, b) => a.time - b.time);
 
-    candleSeriesRef.current.setMarkers(markers);
-  }, [tradesData, creator, ohlcv, showTrades, showBubbles, publicKey]);
+    series.setMarkers(markers);
+  }, [tradesData, creator, ohlcv, showTrades, showBubbles, publicKey, chartType]);
 
   // Live trade flash bubble
   const [flashTrades, setFlashTrades] = useState<Array<{
@@ -321,8 +378,19 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       // Update ATH
       setAth((prev) => prev === null ? val : Math.max(prev, val));
 
+      const ct = chartTypeRef.current;
       try {
-        candleSeriesRef.current.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
+        if (ct === "candles" || ct === "heikinashi") {
+          candleSeriesRef.current?.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
+        } else if (ct === "line") {
+          lineSeriesRef.current?.update({ time: updated.time as any, value: updated.close });
+        } else if (ct === "area") {
+          areaSeriesRef.current?.update({ time: updated.time as any, value: updated.close });
+        } else if (ct === "bars") {
+          barSeriesRef.current?.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
+        }
+        // Auto-scroll to keep latest candle visible
+        chartRef.current?.timeScale().scrollToRealTime();
       } catch { /* time went backwards */ }
     });
 
@@ -416,26 +484,49 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
           </ToolbarBtn>
 
-          {/* Chart type — Candles / Heikin Ashi */}
-          <div className="flex rounded border border-white/10 overflow-hidden shrink-0">
+          {/* Chart type dropdown */}
+          <div className="relative shrink-0">
             <button
-              onClick={() => setChartType("candles")}
+              onClick={() => setShowChartDropdown((v) => !v)}
               className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                chartType === "candles" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+                "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors whitespace-nowrap",
+                showChartDropdown
+                  ? "border-[#00ff88]/40 bg-[#00ff88]/10 text-[#00ff88]"
+                  : "border-white/10 text-white/50 hover:text-white/80 hover:border-white/20"
               )}
             >
-              Candles
+              {chartType === "heikinashi" ? "Heikin Ashi"
+                : chartType === "candles" ? "Candles"
+                : chartType === "line" ? "Line"
+                : chartType === "area" ? "Area"
+                : "Bars"}
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" className={clsx("transition-transform", showChartDropdown && "rotate-180")}>
+                <path d="M1 2l3 3 3-3" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+              </svg>
             </button>
-            <button
-              onClick={() => setChartType("heikinashi")}
-              className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
-                chartType === "heikinashi" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
-              )}
-            >
-              Heikin Ashi
-            </button>
+            {showChartDropdown && (
+              <div className="absolute top-full left-0 mt-1 z-50 bg-[#111] border border-white/12 rounded-xl overflow-hidden shadow-2xl min-w-[120px]">
+                {(["heikinashi", "candles", "line", "area", "bars"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => { setChartType(type); setShowChartDropdown(false); }}
+                    className={clsx(
+                      "flex items-center justify-between w-full px-3 py-2 text-xs text-left hover:bg-white/6 transition-colors",
+                      chartType === type ? "text-[#00ff88]" : "text-white/55"
+                    )}
+                  >
+                    <span>
+                      {type === "heikinashi" ? "Heikin Ashi"
+                        : type === "candles" ? "Candles"
+                        : type === "line" ? "Line"
+                        : type === "area" ? "Area"
+                        : "Bars"}
+                    </span>
+                    {chartType === type && <span className="text-[#00ff88] text-[10px]">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
