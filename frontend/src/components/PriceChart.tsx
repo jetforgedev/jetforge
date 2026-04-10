@@ -244,13 +244,13 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       close: d.close * mult,
     }));
 
-    const volumes = ohlcv.map((d) => ({
+    const displayCandles = chartType === "heikinashi" ? toHeikinAshi(candles) : candles;
+
+    const volumes = ohlcv.map((d, i) => ({
       time: d.time as any,
       value: d.volume,
-      color: d.close >= d.open ? "#00ff8830" : "#ff444430",
+      color: (displayCandles[i]?.close ?? d.close) >= (displayCandles[i]?.open ?? d.open) ? "#00ff8830" : "#ff444430",
     }));
-
-    const displayCandles = chartType === "heikinashi" ? toHeikinAshi(candles) : candles;
     const lineData = candles.map((c) => ({ time: c.time as any, value: c.close }));
 
     candleSeriesRef.current.setData(displayCandles);
