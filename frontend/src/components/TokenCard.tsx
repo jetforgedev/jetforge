@@ -160,15 +160,15 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
 
           {/* Stats grid */}
           <div className="mb-2 grid grid-cols-3 gap-1.5 sm:mb-3.5 sm:gap-2.5">
-            <div className="rounded-[10px] border border-white/10 bg-white/[0.05] p-1.5 shadow-[0_0_12px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)] sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-white/20 bg-white/[0.07] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 24px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.20)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Mkt Cap</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.marketCapSol.toFixed(2)}<span className="text-[9px] text-white/50"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-[#00ff88]/20 bg-[#00ff88]/[0.07] p-1.5 shadow-[0_0_14px_rgba(0,255,136,0.12),inset_0_1px_0_rgba(0,255,136,0.10)] sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-[#00ff88]/40 bg-[#00ff88]/[0.09] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 24px rgba(0,255,136,0.30), inset 0 1px 0 rgba(0,255,136,0.25)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Volume</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-[#8dffc9] sm:mt-2 sm:text-sm">{token.volume24h.toFixed(2)}<span className="text-[9px] text-[#8dffc9]/60"> SOL</span></div>
             </div>
-            <div className="rounded-[10px] border border-white/10 bg-white/[0.05] p-1.5 shadow-[0_0_12px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)] sm:rounded-2xl sm:p-3">
+            <div className="rounded-[10px] border border-white/20 bg-white/[0.07] p-1.5 sm:rounded-2xl sm:p-3" style={{ boxShadow: "0 0 24px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.20)" }}>
               <div className="truncate text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[10px] sm:tracking-[0.16em]">Trades</div>
               <div className="mt-1 whitespace-nowrap text-[11px] font-bold text-white sm:mt-2 sm:text-sm">{token.trades.toLocaleString()}</div>
             </div>
