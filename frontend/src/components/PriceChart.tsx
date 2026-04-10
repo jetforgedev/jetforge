@@ -35,6 +35,23 @@ function fmtMcapSol(val: number): string {
   return `${val.toFixed(2)} SOL`;
 }
 
+interface OHLC { time: number; open: number; high: number; low: number; close: number; }
+
+function toHeikinAshi(candles: OHLC[]): OHLC[] {
+  const ha: OHLC[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const haClose = (c.open + c.high + c.low + c.close) / 4;
+    const haOpen = i === 0
+      ? (c.open + c.close) / 2
+      : (ha[i - 1].open + ha[i - 1].close) / 2;
+    const haHigh = Math.max(c.high, haOpen, haClose);
+    const haLow = Math.min(c.low, haOpen, haClose);
+    ha.push({ time: c.time, open: haOpen, high: haHigh, low: haLow, close: haClose });
+  }
+  return ha;
+}
+
 export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -48,6 +65,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const [showTrades, setShowTrades] = useState(true);
   const [showBubbles, setShowBubbles] = useState(true);
   const [crosshairMode, setCrosshairMode] = useState<"normal" | "magnet">("normal");
+  const [chartType, setChartType] = useState<"candles" | "heikinashi">("candles");
 
   // ATH tracking
   const [ath, setAth] = useState<number | null>(null);
@@ -67,16 +85,16 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     enabled: showTrades,
   });
 
-  // Compute display multiplier based on mode
+  // Compute display multiplier based on mode.
+  // ohlcv price values are in "SOL per token × 1e6" units (mcap-scale).
+  // Original working formula for MCap USD was: solPrice * 1_000_000
   const getMultiplier = useCallback((sp: number | null) => {
     const solUsd = sp ?? 0;
     if (priceMode === "mcap") {
-      // price (sol per token lamport) * supply / 1e9 * solUsd = mcap in USD
-      // raw ohlcv values are already in SOL-per-1M-tokens units
-      return currencyMode === "usd" ? solUsd * TOTAL_SUPPLY / 1_000_000 : TOTAL_SUPPLY / 1_000_000;
+      return currencyMode === "usd" ? solUsd * 1_000_000 : 1_000_000;
     } else {
-      // per-token price
-      return currencyMode === "usd" ? solUsd / 1_000_000 : 1 / 1_000_000;
+      // Per-token price: mcap_value / total_supply (1B) = value / 1000
+      return currencyMode === "usd" ? solUsd * 1_000 : 1_000;
     }
   }, [priceMode, currencyMode]);
 
@@ -103,7 +121,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           rightOffset: 5,
         },
         width: chartContainerRef.current.clientWidth,
-        height: 480,
+        height: chartContainerRef.current.clientHeight || 560,
       });
 
       const candleSeries = chart.addCandlestickSeries({
@@ -133,7 +151,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
 
       const resizeObserver = new ResizeObserver(() => {
         if (chartContainerRef.current) {
-          chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+          chart.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+            height: chartContainerRef.current.clientHeight || 560,
+          });
         }
       });
       resizeObserver.observe(chartContainerRef.current);
@@ -180,22 +201,24 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       color: d.close >= d.open ? "#00ff8830" : "#ff444430",
     }));
 
-    candleSeriesRef.current.setData(candles);
+    const displayCandles = chartType === "heikinashi" ? toHeikinAshi(candles) : candles;
+
+    candleSeriesRef.current.setData(displayCandles);
     volumeSeriesRef.current?.setData(volumes);
     chartRef.current?.timeScale().fitContent();
 
-    // Compute ATH
+    // Compute ATH from raw candles (not HA)
     const maxHigh = Math.max(...candles.map((c) => c.high));
     setAth(maxHigh);
 
-    if (candles.length > 0) {
-      const last = candles[candles.length - 1];
+    if (displayCandles.length > 0) {
+      const last = displayCandles[displayCandles.length - 1];
       liveCandle.current = {
         time: last.time as number,
         open: last.open, high: last.high, low: last.low, close: last.close,
       };
     }
-  }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier]);
+  }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier, chartType]);
 
   // Trade markers
   useEffect(() => {
@@ -377,6 +400,28 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           <ToolbarBtn active={!showBubbles} onClick={() => setShowBubbles((v) => !v)}>
             {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
           </ToolbarBtn>
+
+          {/* Chart type — Candles / Heikin Ashi */}
+          <div className="flex rounded border border-white/10 overflow-hidden shrink-0">
+            <button
+              onClick={() => setChartType("candles")}
+              className={clsx(
+                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                chartType === "candles" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+              )}
+            >
+              Candles
+            </button>
+            <button
+              onClick={() => setChartType("heikinashi")}
+              className={clsx(
+                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
+                chartType === "heikinashi" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+              )}
+            >
+              Heikin Ashi
+            </button>
+          </div>
 
           <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
 
@@ -610,7 +655,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[480px] items-center justify-center text-white/25">
+          <div className="flex h-[560px] lg:h-[calc(100vh-320px)] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -619,7 +664,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full" />
+        <div ref={chartContainerRef} className="w-full h-[560px] lg:h-[calc(100vh-320px)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}

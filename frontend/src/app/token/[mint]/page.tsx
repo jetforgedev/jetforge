@@ -785,15 +785,15 @@ export default function TokenPage({ params }: PageProps) {
       {/* Social proof strip */}
       <SocialProofStrip mint={mint} trades={token.trades} holders={token.holders} />
 
-      {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Chart — mobile: order 1, desktop: col-span-2 */}
-        <div className="lg:col-span-2 order-1">
+      {/* Main content grid — desktop: chart fills viewport height, right panel is sticky sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 lg:items-start">
+        {/* Chart — mobile: order 1, desktop: col 1 */}
+        <div className="order-1">
           <PriceChart mint={mint} symbol={token.symbol} solPrice={solPrice ?? null} creator={token.creator} />
         </div>
 
-        {/* Trading panel — mobile: order 2 (right after chart), desktop: right col spans all rows */}
-        <div className="space-y-4 order-2 lg:row-span-3">
+        {/* Trading panel — mobile: order 2, desktop: sticky right sidebar */}
+        <div className="space-y-4 order-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
           <TradingPanel token={token} />
 
           {/* Token details */}
