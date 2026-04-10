@@ -39,6 +39,8 @@ export interface TokenData {
   volume24h: number;
   trades: number;
   holders: number;
+  trades15m: number;
+  lastTradeAt?: string | null;
   isGraduated: boolean;
   graduatedAt?: string;
   graduationProgress: number;

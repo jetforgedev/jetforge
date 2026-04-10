@@ -105,6 +105,15 @@ a {
   50% { box-shadow: 0 0 0 1px rgba(255, 207, 90, 0.45), 0 0 32px rgba(255, 207, 90, 0.22); }
 }
 
+@keyframes hotGlow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 140, 0, 0.20), 0 0 20px rgba(255, 140, 0, 0.10); }
+  50% { box-shadow: 0 0 0 1px rgba(255, 140, 0, 0.55), 0 0 35px rgba(255, 140, 0, 0.30); }
+}
+
+.animate-hot-glow {
+  animation: hotGlow 1.4s ease-in-out infinite;
+}
+
 @keyframes slideIn {
   0% { transform: translateY(-8px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }

@@ -38,6 +38,7 @@ const config: Config = {
         "flash-red": "flashRed 0.5s ease-out",
         "pulse-glow": "pulseGlow 2s ease-in-out infinite",
         "glow-pulse": "glowPulse 2s ease-in-out infinite",
+        "hot-glow": "hotGlow 1.4s ease-in-out infinite",
         "shimmer": "shimmer 2.2s linear infinite",
         "slide-in": "slideIn 0.3s ease-out",
         "fade-in": "fadeIn 0.2s ease-out",
@@ -59,6 +60,10 @@ const config: Config = {
         glowPulse: {
           "0%, 100%": { boxShadow: "0 0 0 1px rgba(255,207,90,0.16), 0 0 26px rgba(255,207,90,0.05)" },
           "50%": { boxShadow: "0 0 0 1px rgba(255,207,90,0.45), 0 0 32px rgba(255,207,90,0.22)" },
+        },
+        hotGlow: {
+          "0%, 100%": { boxShadow: "0 0 0 1px rgba(255,140,0,0.20), 0 0 20px rgba(255,140,0,0.10)" },
+          "50%": { boxShadow: "0 0 0 1px rgba(255,140,0,0.55), 0 0 35px rgba(255,140,0,0.30)" },
         },
         shimmer: {
           "0%": { transform: "translateX(-120%)" },

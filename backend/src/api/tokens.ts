@@ -104,15 +104,40 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
     ]);
 
     const mints = tokens.map((t) => t.mint);
-    const holderRows = mints.length
-      ? await prisma.trade.groupBy({
-          by: ["mint", "trader"],
-          where: { mint: { in: mints } },
-        })
-      : [];
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
+      mints.length
+        ? prisma.trade.groupBy({ by: ["mint", "trader"], where: { mint: { in: mints } } })
+        : Promise.resolve([]),
+      mints.length
+        ? prisma.trade.groupBy({
+            by: ["mint"],
+            where: { mint: { in: mints }, timestamp: { gte: fifteenMinAgo } },
+            _count: { mint: true },
+          })
+        : Promise.resolve([]),
+      mints.length
+        ? prisma.trade.findMany({
+            where: { mint: { in: mints } },
+            orderBy: { timestamp: "desc" },
+            distinct: ["mint"],
+            select: { mint: true, timestamp: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
     const holderCountByMint: Record<string, number> = {};
     for (const row of holderRows) {
       holderCountByMint[row.mint] = (holderCountByMint[row.mint] ?? 0) + 1;
+    }
+    const trades15mByMint: Record<string, number> = {};
+    for (const row of recentTradeRows) {
+      trades15mByMint[row.mint] = (row as any)._count.mint;
+    }
+    const lastTradeByMint: Record<string, Date> = {};
+    for (const row of lastTradeRows) {
+      lastTradeByMint[row.mint] = row.timestamp;
     }
 
     const formattedTokens = tokens.map((token) => {
@@ -126,6 +151,8 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
         totalSupply: token.totalSupply.toString(),
         trades: _count.tradeHistory,
         holders: holderCountByMint[token.mint] ?? 0,
+        trades15m: trades15mByMint[token.mint] ?? 0,
+        lastTradeAt: lastTradeByMint[token.mint] ?? null,
         currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
         graduationProgress:
           (Number(token.realSolReserves) /
