@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
 import { useSocket } from "@/hooks/useLiveFeed";
 
 type Interval = "1s" | "1m" | "5m" | "15m" | "30m" | "1h" | "1d";
+type PriceMode = "mcap" | "price";
+type CurrencyMode = "usd" | "sol";
 
 interface PriceChartProps {
   mint: string;
@@ -20,15 +22,35 @@ const INTERVAL_MS: Record<Interval, number> = {
   "15m": 900_000, "30m": 1_800_000, "1h": 3_600_000, "1d": 86_400_000,
 };
 
+const TOTAL_SUPPLY = 1_000_000_000; // 1B tokens
+
+function fmtMcap(val: number): string {
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
+  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
+  return `$${val.toFixed(2)}`;
+}
+
+function fmtMcapSol(val: number): string {
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K SOL`;
+  return `${val.toFixed(2)} SOL`;
+}
+
 export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
-  // Track current live candle so we keep correct open/high/low
   const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
 
   const [interval, setInterval] = useState<Interval>("1m");
+  const [priceMode, setPriceMode] = useState<PriceMode>("mcap");
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("usd");
+  const [showTrades, setShowTrades] = useState(true);
+  const [showBubbles, setShowBubbles] = useState(true);
+
+  // ATH tracking
+  const [ath, setAth] = useState<number | null>(null);
+
   const socket = useSocket();
 
   const { data: ohlcv, isLoading } = useQuery({
@@ -37,13 +59,25 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     staleTime: 30_000,
   });
 
-  // Only fetch dev trades if a creator is provided
   const { data: tradesData } = useQuery({
     queryKey: ["trades-markers", mint],
     queryFn: () => getTrades(mint, 1, 500),
     staleTime: 60_000,
-    enabled: !!creator,
+    enabled: showTrades,
   });
+
+  // Compute display multiplier based on mode
+  const getMultiplier = useCallback((sp: number | null) => {
+    const solUsd = sp ?? 0;
+    if (priceMode === "mcap") {
+      // price (sol per token lamport) * supply / 1e9 * solUsd = mcap in USD
+      // raw ohlcv values are already in SOL-per-1M-tokens units
+      return currencyMode === "usd" ? solUsd * TOTAL_SUPPLY / 1_000_000 : TOTAL_SUPPLY / 1_000_000;
+    } else {
+      // per-token price
+      return currencyMode === "usd" ? solUsd / 1_000_000 : 1 / 1_000_000;
+    }
+  }, [priceMode, currencyMode]);
 
   // Initialize chart
   useEffect(() => {
@@ -64,18 +98,12 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         timeScale: {
           borderColor: "#1a1a1a",
           timeVisible: true,
-          secondsVisible: interval === "1s",
+          secondsVisible: false,
           rightOffset: 5,
         },
         width: chartContainerRef.current.clientWidth,
-        height: 400,
+        height: 420,
       });
-
-      const mcapFormatter = (price: number) => {
-        if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(2)}M`;
-        if (price >= 1_000)     return `$${(price / 1_000).toFixed(1)}K`;
-        return `$${price.toFixed(2)}`;
-      };
 
       const candleSeries = chart.addCandlestickSeries({
         upColor: "#00ff88",
@@ -84,7 +112,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         borderDownColor: "#ff4444",
         wickUpColor: "#00ff8880",
         wickDownColor: "#ff444480",
-        priceFormat: { type: "custom", formatter: mcapFormatter, minMove: 0.01 },
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
       });
 
       const volumeSeries = chart.addHistogramSeries({
@@ -122,7 +150,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     };
   }, []);
 
-  // Update secondsVisible when interval changes
+  // Update interval config
   useEffect(() => {
     if (!chartRef.current) return;
     chartRef.current.applyOptions({
@@ -135,13 +163,14 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   useEffect(() => {
     if (!candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
-    const priceMultiplier = (solPrice ?? 1) * 1_000_000;
+    const mult = getMultiplier(solPrice);
+
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
-      open:  d.open  * priceMultiplier,
-      high:  d.high  * priceMultiplier,
-      low:   d.low   * priceMultiplier,
-      close: d.close * priceMultiplier,
+      open:  d.open  * mult,
+      high:  d.high  * mult,
+      low:   d.low   * mult,
+      close: d.close * mult,
     }));
 
     const volumes = ohlcv.map((d) => ({
@@ -154,7 +183,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     volumeSeriesRef.current?.setData(volumes);
     chartRef.current?.timeScale().fitContent();
 
-    // Seed liveCandle with the last known candle so real-time updates continue it
+    // Compute ATH
+    const maxHigh = Math.max(...candles.map((c) => c.high));
+    setAth(maxHigh);
+
     if (candles.length > 0) {
       const last = candles[candles.length - 1];
       liveCandle.current = {
@@ -162,58 +194,62 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         open: last.open, high: last.high, low: last.low, close: last.close,
       };
     }
-  }, [ohlcv, solPrice]);
+  }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier]);
 
-  // Dev buy/sell markers — small dots only, no text
+  // Trade markers
   useEffect(() => {
-    if (!candleSeriesRef.current || !creator || !tradesData?.trades?.length) return;
+    if (!candleSeriesRef.current) return;
 
-    const devTrades = tradesData.trades.filter((t) => t.trader === creator);
-    if (devTrades.length === 0) {
+    if (!showTrades || !tradesData?.trades?.length) {
       candleSeriesRef.current.setMarkers([]);
       return;
     }
 
-    const markers = devTrades
+    const markers = tradesData.trades
       .map((t) => ({
         time: Math.floor(new Date(t.timestamp).getTime() / 1000) as any,
         position: t.type === "BUY" ? ("belowBar" as const) : ("aboveBar" as const),
-        color: t.type === "BUY" ? "#00ff8880" : "#ff444480",
+        color: t.type === "BUY" ? "#00ff88" : "#ff4444",
         shape: "circle" as const,
-        text: "",
-        size: 0.5,
+        text: t.trader === creator
+          ? (t.type === "BUY" ? "Dev Buy" : "Dev Sell")
+          : "",
+        size: 0.6,
       }))
       .sort((a, b) => a.time - b.time);
 
     candleSeriesRef.current.setMarkers(markers);
-  }, [tradesData, creator, ohlcv]);
+  }, [tradesData, creator, ohlcv, showTrades]);
 
-  // Live trade flash
-  const [flashTrade, setFlashTrade] = useState<{ type: "BUY" | "SELL"; trader: string; solAmount: string } | null>(null);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Live trade flash bubble
+  const [flashTrades, setFlashTrades] = useState<Array<{
+    id: number; type: "BUY" | "SELL"; trader: string; solAmount: string;
+  }>>([]);
+  const flashIdRef = useRef(0);
 
   useEffect(() => {
     if (!socket || !mint) return;
 
     socket.on("new_trade", (trade: any) => {
       if (trade.mint !== mint) return;
-      setFlashTrade({ type: trade.type, trader: trade.trader, solAmount: trade.solAmount });
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-      flashTimer.current = setTimeout(() => setFlashTrade(null), 4000);
+      const id = ++flashIdRef.current;
+      setFlashTrades((prev) => [...prev.slice(-4), { id, type: trade.type, trader: trade.trader, solAmount: trade.solAmount }]);
+      setTimeout(() => {
+        setFlashTrades((prev) => prev.filter((f) => f.id !== id));
+      }, 5000);
     });
 
-    return () => {
-      socket.off("new_trade");
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-    };
+    return () => { socket.off("new_trade"); };
   }, [socket, mint]);
 
   const intervalRef = useRef(interval);
   const solPriceRef = useRef(solPrice);
+  const getMult = useRef(getMultiplier);
   useEffect(() => { intervalRef.current = interval; }, [interval]);
   useEffect(() => { solPriceRef.current = solPrice; }, [solPrice]);
+  useEffect(() => { getMult.current = getMultiplier; }, [getMultiplier]);
 
-  // Real-time candle updates — properly maintain open/high/low/close
+  // Real-time candle updates
   useEffect(() => {
     if (!socket || !mint) return;
 
@@ -222,45 +258,42 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       if (!candleSeriesRef.current) return;
 
       const ms = INTERVAL_MS[intervalRef.current] ?? 60_000;
-      const priceMultiplier = (solPriceRef.current ?? 1) * 1_000_000;
+      const mult = getMult.current(solPriceRef.current);
       const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
-      const val = data.price * priceMultiplier;
+      const val = data.price * mult;
 
       const prev = liveCandle.current;
-
       let updated: typeof prev;
 
       if (prev && prev.time === candleTime) {
-        // Same candle — update high, low, close but keep open
         updated = {
           time: candleTime,
-          open:  prev.open,
-          high:  Math.max(prev.high, val),
-          low:   Math.min(prev.low,  val),
+          open: prev.open,
+          high: Math.max(prev.high, val),
+          low: Math.min(prev.low, val),
           close: val,
         };
       } else {
-        // New candle bucket
         updated = { time: candleTime, open: val, high: val, low: val, close: val };
       }
 
       liveCandle.current = updated;
 
+      // Update ATH
+      setAth((prev) => prev === null ? val : Math.max(prev, val));
+
       try {
-        candleSeriesRef.current.update({
-          time:  updated.time as any,
-          open:  updated.open,
-          high:  updated.high,
-          low:   updated.low,
-          close: updated.close,
-        });
-      } catch {
-        // time went backwards — safe to ignore
-      }
+        candleSeriesRef.current.update({ time: updated.time as any, ...updated });
+      } catch { /* time went backwards */ }
     });
 
     return () => { socket.off("price_update"); };
   }, [socket, mint]);
+
+  // Compute current display price from last ohlcv candle
+  const currentVal = ohlcv && ohlcv.length > 0
+    ? ohlcv[ohlcv.length - 1].close * getMultiplier(solPrice)
+    : null;
 
   const intervals: { label: string; value: Interval }[] = [
     { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
@@ -269,64 +302,158 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     { label: "1d", value: "1d" },
   ];
 
+  const ToolbarBtn = ({
+    active, onClick, children,
+  }: { active?: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap",
+        active
+          ? "bg-[#00ff88]/12 text-[#00ff88] border border-[#00ff88]/30"
+          : "text-white/40 hover:text-white/70 border border-transparent hover:border-white/10"
+      )}
+    >
+      {children}
+    </button>
+  );
+
   return (
     <div className="glass-panel rounded-[28px] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-white text-sm font-semibold">{symbol}</span>
-          <span className="text-xs text-white/35">Market Cap</span>
-          {ohlcv && ohlcv.length > 0 && (() => {
-            const lastClose = ohlcv[ohlcv.length - 1].close;
-            const pricePerTokenSol = lastClose / 1000;
-            return (
-              <span className="text-[#888] text-xs font-mono">
-                Price:{" "}
-                <span className="text-white">
-                  {solPrice
-                    ? `$${(pricePerTokenSol * solPrice).toFixed(8)}`
-                    : `${pricePerTokenSol.toFixed(8)} SOL`}
-                </span>
+      {/* Top toolbar */}
+      <div className="border-b border-white/8 px-3 py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Left: price mode label + current value */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-white/40 text-xs shrink-0">
+            {priceMode === "mcap" ? "Market Cap" : "Price"}
+          </span>
+          {currentVal !== null && (
+            <span className="text-white text-sm font-bold font-mono truncate">
+              {priceMode === "mcap"
+                ? (currencyMode === "usd" ? fmtMcap(currentVal) : fmtMcapSol(currentVal))
+                : (currencyMode === "usd"
+                    ? `$${currentVal.toFixed(8)}`
+                    : `${currentVal.toFixed(8)} SOL`)}
+            </span>
+          )}
+          {ath !== null && (
+            <span className="text-[#555] text-[10px] font-mono shrink-0">
+              ATH{" "}
+              <span className="text-[#888]">
+                {priceMode === "mcap"
+                  ? (currencyMode === "usd" ? fmtMcap(ath) : fmtMcapSol(ath))
+                  : (currencyMode === "usd" ? `$${ath.toFixed(8)}` : `${ath.toFixed(8)} SOL`)}
               </span>
-            );
-          })()}
+            </span>
+          )}
         </div>
-        <div className="flex gap-0.5">
-          {intervals.map((i) => (
+
+        {/* Right: controls */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {/* Timeframe */}
+          <div className="flex gap-0.5 mr-1">
+            {intervals.map((i) => (
+              <button
+                key={i.value}
+                onClick={() => setInterval(i.value)}
+                className={clsx(
+                  "px-2 py-1 text-xs rounded font-medium transition-colors",
+                  interval === i.value
+                    ? "bg-[#00ff88]/12 text-[#00ff88]"
+                    : "text-white/35 hover:text-white/70"
+                )}
+              >
+                {i.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-px h-4 bg-white/10 mx-0.5" />
+
+          <ToolbarBtn active={showTrades} onClick={() => setShowTrades((v) => !v)}>
+            Trade Display
+          </ToolbarBtn>
+
+          <ToolbarBtn active={!showBubbles} onClick={() => setShowBubbles((v) => !v)}>
+            {showBubbles ? "Show Bubbles" : "Hide Bubbles"}
+          </ToolbarBtn>
+
+          <div className="w-px h-4 bg-white/10 mx-0.5" />
+
+          {/* Price/MCap toggle */}
+          <div className="flex rounded border border-white/10 overflow-hidden">
             <button
-              key={i.value}
-              onClick={() => setInterval(i.value)}
+              onClick={() => setPriceMode("price")}
               className={clsx(
-                "px-2 py-1 text-xs rounded font-medium transition-colors",
-                interval === i.value
-              ? "bg-[#00ff88]/12 text-[#00ff88]"
-              : "text-white/35 hover:text-white/70"
+                "px-2 py-1 text-xs font-medium transition-colors",
+                priceMode === "price" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
-              {i.label}
+              Price
             </button>
-          ))}
+            <button
+              onClick={() => setPriceMode("mcap")}
+              className={clsx(
+                "px-2 py-1 text-xs font-medium transition-colors border-l border-white/10",
+                priceMode === "mcap" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+              )}
+            >
+              MCap
+            </button>
+          </div>
+
+          {/* USD/SOL toggle */}
+          <div className="flex rounded border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setCurrencyMode("usd")}
+              className={clsx(
+                "px-2 py-1 text-xs font-medium transition-colors",
+                currencyMode === "usd" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+              )}
+            >
+              USD
+            </button>
+            <button
+              onClick={() => setCurrencyMode("sol")}
+              className={clsx(
+                "px-2 py-1 text-xs font-medium transition-colors border-l border-white/10",
+                currencyMode === "sol" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
+              )}
+            >
+              SOL
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart area */}
       <div className="relative">
-        {flashTrade && (
-          <div
-            className="absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold shadow-lg animate-slide-in"
-            style={{
-              background: flashTrade.type === "BUY" ? "#00ff8815" : "#ff444415",
-              borderColor: flashTrade.type === "BUY" ? "#00ff8840" : "#ff444440",
-              color: flashTrade.type === "BUY" ? "#00ff88" : "#ff4444",
-            }}
-          >
-            <span>{flashTrade.type === "BUY" ? "▲" : "▼"}</span>
-            <span>{flashTrade.trader.slice(0, 4)}...{flashTrade.trader.slice(-4)}</span>
-            <span className="text-white font-mono">
-              {(Number(flashTrade.solAmount) / 1e9).toFixed(3)} SOL
-            </span>
+        {/* Live trade bubbles */}
+        {showBubbles && flashTrades.length > 0 && (
+          <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+            {flashTrades.map((ft) => (
+              <div
+                key={ft.id}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-lg animate-slide-in",
+                  ft.type === "BUY"
+                    ? "bg-[#00ff88]/12 border-[#00ff88]/35 text-[#00ff88]"
+                    : "bg-[#ff4444]/12 border-[#ff4444]/35 text-[#ff4444]"
+                )}
+              >
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                  style={{ background: ft.type === "BUY" ? "rgba(0,255,136,0.2)" : "rgba(255,68,68,0.2)" }}>
+                  {ft.type === "BUY" ? "▲" : "▼"}
+                </span>
+                <span className="font-mono">{ft.trader.slice(0, 4)}…{ft.trader.slice(-4)}</span>
+                <span className="text-white font-mono">
+                  {(Number(ft.solAmount) / 1e9).toFixed(3)} SOL
+                </span>
+              </div>
+            ))}
           </div>
         )}
+
         {isLoading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#091210]/90 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-white/42">
@@ -334,12 +461,13 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span className="text-sm">Loading chart...</span>
+              <span className="text-sm">Loading chart…</span>
             </div>
           </div>
         )}
+
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[400px] items-center justify-center text-white/25">
+          <div className="flex h-[420px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -347,8 +475,9 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             </div>
           </div>
         )}
+
         <div ref={chartContainerRef} className="w-full" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.92))]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
       </div>
     </div>
   );
