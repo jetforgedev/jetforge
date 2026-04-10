@@ -35,7 +35,7 @@ const upload = multer({
 });
 
 // POST /api/upload/image
-uploadRouter.post("/image", upload.single("image"), (req: Request, res: Response) => {
+uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ error: "No image file provided" });
   }
