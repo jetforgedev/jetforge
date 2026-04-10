@@ -267,7 +267,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           <a
             href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="underline"
           >
             View tx

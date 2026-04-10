@@ -154,6 +154,11 @@ async function handleBuyEvent(
     });
     const volume24h = Number(vol24h._sum.solAmount ?? 0n) / 1e9;
 
+    const uniqueTraders = await prisma.trade.groupBy({
+      by: ["trader"],
+      where: { mint },
+    });
+
     await prisma.token.update({
       where: { mint },
       data: {
@@ -166,6 +171,7 @@ async function handleBuyEvent(
         isGraduated,
         graduatedAt: isGraduated ? new Date() : undefined,
         trades: { increment: 1 },
+        holders: uniqueTraders.length,
       },
     });
 
@@ -276,6 +282,11 @@ async function handleSellEvent(
     });
     const volume24h = Number(vol24h._sum.solAmount ?? 0n) / 1e9;
 
+    const uniqueTraders = await prisma.trade.groupBy({
+      by: ["trader"],
+      where: { mint },
+    });
+
     await prisma.token.update({
       where: { mint },
       data: {
@@ -286,6 +297,7 @@ async function handleSellEvent(
         marketCapSol,
         volume24h,
         trades: { increment: 1 },
+        holders: uniqueTraders.length,
       },
     });
 

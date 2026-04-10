@@ -103,6 +103,18 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
       prisma.token.count({ where }),
     ]);
 
+    const mints = tokens.map((t) => t.mint);
+    const holderRows = mints.length
+      ? await prisma.trade.groupBy({
+          by: ["mint", "trader"],
+          where: { mint: { in: mints } },
+        })
+      : [];
+    const holderCountByMint: Record<string, number> = {};
+    for (const row of holderRows) {
+      holderCountByMint[row.mint] = (holderCountByMint[row.mint] ?? 0) + 1;
+    }
+
     const formattedTokens = tokens.map((token) => {
       const { id: _id, _count, ...rest } = token as any;
       return {
@@ -113,6 +125,7 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
         realTokenReserves: token.realTokenReserves.toString(),
         totalSupply: token.totalSupply.toString(),
         trades: _count.tradeHistory,
+        holders: holderCountByMint[token.mint] ?? 0,
         currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
         graduationProgress:
           (Number(token.realSolReserves) /
