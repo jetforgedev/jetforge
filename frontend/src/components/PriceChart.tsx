@@ -165,8 +165,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         priceScaleId: "volume",
       });
 
+      // On mobile (narrow viewport) give volume only 6% of chart height,
+      // keeping most of the 300px for candles. On desktop keep 15%.
+      const isMobile = window.innerWidth < 1024;
       chart.priceScale("volume").applyOptions({
-        scaleMargins: { top: 0.85, bottom: 0 },
+        scaleMargins: { top: isMobile ? 0.94 : 0.85, bottom: 0 },
       });
 
       state.chart = chart;
