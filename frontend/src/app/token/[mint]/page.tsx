@@ -795,13 +795,13 @@ export default function TokenPage({ params }: PageProps) {
 
       {/* Main content grid — desktop: chart fills viewport height, right panel is sticky sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 lg:items-start">
-        {/* Chart — mobile: order 2 (below trading panel), desktop: col 1 */}
-        <div className="order-2 lg:order-1">
+        {/* Chart — mobile: order 1 (first), desktop: col 1 */}
+        <div className="order-1">
           <PriceChart mint={mint} symbol={token.symbol} solPrice={solPrice ?? null} creator={token.creator} />
         </div>
 
-        {/* Trading panel — mobile: order 1 (first, above chart), desktop: sticky right sidebar */}
-        <div className="space-y-4 order-1 lg:order-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
+        {/* Trading panel — mobile: order 2, desktop: sticky right sidebar */}
+        <div className="space-y-4 order-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
           <TradingPanel token={token} />
 
           {/* Token details */}
