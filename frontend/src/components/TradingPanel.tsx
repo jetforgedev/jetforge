@@ -29,7 +29,7 @@ interface TradingPanelProps {
 
 const SOL_PRESETS = [0.1, 0.5, 1, 5];
 const TOKEN_PRESETS = [25, 50, 75, 100]; // percentage of balance
-const DEFAULT_SLIPPAGE_BPS = 100; // 1%
+const DEFAULT_SLIPPAGE_BPS = 50; // 0.5% — tighter default makes sandwich attacks harder
 
 export function TradingPanel({ token }: TradingPanelProps) {
   const { publicKey, sendTransaction } = useWallet();
@@ -386,7 +386,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
         <span>
           {tab === "buy" ? "Bought" : "Sold"} successfully!{" "}
           <a
-            href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
+            href={`https://explorer.solana.com/tx/${sig}${process.env.NEXT_PUBLIC_NETWORK && process.env.NEXT_PUBLIC_NETWORK !== "mainnet-beta" ? `?cluster=${process.env.NEXT_PUBLIC_NETWORK}` : ""}`}
             target="_blank"
             rel="noreferrer"
             className="underline"
@@ -430,6 +430,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
     }
   }, [publicKey, anchorWallet, fastTradeEnabled, effectiveSolBalance, effectiveTokenBalance, inputAmount, tab, token, slippageBps, sendTransaction, connection, calculation, virtualSol, virtualTokens, realTokenReserves, realSolReserves, solBalance, tokenBalance]);
 
+  const mediumImpact = calculation && calculation.priceImpact > 2 && calculation.priceImpact <= 5;
   const highImpact = calculation && calculation.priceImpact > 5;
 
   return (
@@ -660,10 +661,15 @@ export function TradingPanel({ token }: TradingPanelProps) {
           );
         })()}
 
-        {/* High impact warning */}
+        {/* Price impact warnings */}
         {highImpact && (
           <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
-            ⚠️ High price impact ({calculation!.priceImpact.toFixed(1)}%). Consider splitting into smaller trades.
+            🚨 Very high price impact ({calculation!.priceImpact.toFixed(1)}%). You may be sandwiched by bots. Split into smaller trades.
+          </div>
+        )}
+        {mediumImpact && (
+          <div className="rounded-[20px] border border-[#ffcf5a30] bg-[#ffcf5a10] p-3 text-xs text-[#ffcf5a]">
+            ⚠️ Price impact {calculation!.priceImpact.toFixed(1)}% — bots may front-run this trade.
           </div>
         )}
 
