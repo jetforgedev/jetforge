@@ -101,7 +101,7 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
         <div className="text-white text-sm font-semibold">Top Holders</div>
-        <div className="text-[#555] text-xs">Live · {process.env.NEXT_PUBLIC_NETWORK || "devnet"}</div>
+        <div className="text-[#555] text-xs">Live · devnet</div>
       </div>
 
       {isLoading ? (
@@ -572,9 +572,6 @@ export default function TokenPage({ params }: PageProps) {
     : `${token.marketCapSol.toFixed(2)} SOL`;
 
   const devPct = devHoldings?.pct ?? 0;
-  const tokenAgeMs = Date.now() - new Date(token.createdAt).getTime();
-  const isNewToken = tokenAgeMs < 5 * 60 * 1000; // younger than 5 minutes
-
   const devHoldingColor =
     devPct === 0 ? "text-[#00ff88]" :
     devPct < 5   ? "text-[#888]" :
@@ -623,11 +620,6 @@ export default function TokenPage({ params }: PageProps) {
           </div>
           {/* Row 2: badges scrollable */}
           <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {isNewToken && !token.isGraduated && (
-              <span className="shrink-0 px-2 py-1 bg-[#ff8c0020] border border-[#ff8c0050] rounded-full text-[#ff8c00] text-[11px] font-semibold animate-pulse">
-                ⚡ New — Bot Risk
-              </span>
-            )}
             {token.isGraduated && (
               <span className="shrink-0 px-2 py-1 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-[11px] font-medium">
                 🎓 Graduated
@@ -795,7 +787,7 @@ export default function TokenPage({ params }: PageProps) {
 
       {/* Main content grid — desktop: chart fills viewport height, right panel is sticky sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 lg:items-start">
-        {/* Chart — mobile: order 1 (first), desktop: col 1 */}
+        {/* Chart — mobile: order 1, desktop: col 1 */}
         <div className="order-1">
           <PriceChart mint={mint} symbol={token.symbol} solPrice={solPrice ?? null} creator={token.creator} />
         </div>
