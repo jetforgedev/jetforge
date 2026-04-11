@@ -192,7 +192,7 @@ pub fn sell(
 
     // Update curve state
     let bonding_curve = &mut ctx.accounts.bonding_curve;
-    bonding_curve.apply_sell(token_amount, sol_out_before_fee);
+    bonding_curve.apply_sell(token_amount, sol_out_before_fee)?;
     bonding_curve.total_volume_sol = bonding_curve
         .total_volume_sol
         .saturating_add(sol_out_before_fee);

@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { getComments, postComment, truncateAddress, CommentData } from "@/lib/api";
+import { getComments, postComment, buildCommentMessage, truncateAddress, CommentData } from "@/lib/api";
+import bs58 from "bs58";
 import { useSocket } from "@/hooks/useLiveFeed";
 import { clsx } from "clsx";
 
@@ -12,7 +13,7 @@ interface TokenCommentsProps {
 }
 
 export function TokenComments({ mint }: TokenCommentsProps) {
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
   const socket = useSocket();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
@@ -41,11 +42,15 @@ export function TokenComments({ mint }: TokenCommentsProps) {
   }, [socket, mint, queryClient]);
 
   const handlePost = async () => {
-    if (!publicKey || !text.trim()) return;
+    if (!publicKey || !signMessage || !text.trim()) return;
     setPosting(true);
     setError(null);
     try {
-      await postComment(mint, publicKey.toBase58(), text.trim());
+      const message = buildCommentMessage(mint, text.trim());
+      const msgBytes = new TextEncoder().encode(message);
+      const sigBytes = await signMessage(msgBytes);
+      const signature = bs58.encode(sigBytes);
+      await postComment(mint, publicKey.toBase58(), text.trim(), signature, message);
       setText("");
       queryClient.invalidateQueries({ queryKey: ["comments", mint] });
     } catch (e: any) {

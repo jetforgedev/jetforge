@@ -82,7 +82,12 @@ export default async function TokenLayout({ children, params }: Props) {
       {tokenJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(tokenJsonLd) }}
+          dangerouslySetInnerHTML={{
+          __html: JSON.stringify(tokenJsonLd)
+            .replace(/</g, "\\u003c")
+            .replace(/>/g, "\\u003e")
+            .replace(/&/g, "\\u0026"),
+        }}
         />
       )}
       {children}

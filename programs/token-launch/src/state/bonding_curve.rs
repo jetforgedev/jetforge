@@ -17,7 +17,9 @@ pub const REAL_TOKEN_RESERVES_INIT: u64 = 700_000_000_000_000;
 /// These 300M tokens are NEVER for sale — they ALWAYS seed the Raydium CPMM pool
 pub const RESERVE_TOKEN_AMOUNT: u64 = 300_000_000_000_000;
 
-/// Graduation threshold in lamports (0.5 SOL for local testing)
+/// Graduation threshold in lamports.
+/// DEVNET-TEST: 0.5 SOL for rapid flow testing.
+/// BEFORE MAINNET: recompile with 85_000_000_000 (85 SOL) and redeploy program.
 pub const GRADUATION_THRESHOLD: u64 = 500_000_000;
 
 /// Fee in basis points (1%)
@@ -35,7 +37,9 @@ pub const TREASURY_FEE_SHARE: u64 = 40;
 /// Buyback-and-burn fee share of total fee (20%)
 pub const BUYBACK_FEE_SHARE: u64 = 20;
 
-/// Minimum SOL accumulated before a buyback is triggered (0.1 SOL)
+/// Minimum SOL accumulated before a buyback-and-burn is triggered.
+/// DEVNET-TEST: 0.1 SOL for rapid flow testing.
+/// BEFORE MAINNET: recompile with a production value (e.g. 1_000_000_000 = 1 SOL) and redeploy.
 pub const BUYBACK_THRESHOLD: u64 = 100_000_000;
 
 /// Fee share denominator
@@ -139,19 +143,41 @@ impl BondingCurveState {
     }
 
     /// Apply buy: update reserves after purchase
-    pub fn apply_buy(&mut self, sol_in_after_fee: u64, tokens_out: u64) {
-        self.virtual_sol_reserves = self.virtual_sol_reserves.saturating_add(sol_in_after_fee);
-        self.virtual_token_reserves = self.virtual_token_reserves.saturating_sub(tokens_out);
-        self.real_sol_reserves = self.real_sol_reserves.saturating_add(sol_in_after_fee);
-        self.real_token_reserves = self.real_token_reserves.saturating_sub(tokens_out);
+    /// Returns error if arithmetic would overflow/underflow — amounts must be
+    /// pre-validated by get_tokens_for_sol() before calling this.
+    pub fn apply_buy(&mut self, sol_in_after_fee: u64, tokens_out: u64) -> Result<()> {
+        self.virtual_sol_reserves = self.virtual_sol_reserves
+            .checked_add(sol_in_after_fee)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.virtual_token_reserves = self.virtual_token_reserves
+            .checked_sub(tokens_out)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.real_sol_reserves = self.real_sol_reserves
+            .checked_add(sol_in_after_fee)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.real_token_reserves = self.real_token_reserves
+            .checked_sub(tokens_out)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        Ok(())
     }
 
     /// Apply sell: update reserves after sale
-    pub fn apply_sell(&mut self, tokens_in: u64, sol_out_before_fee: u64) {
-        self.virtual_token_reserves = self.virtual_token_reserves.saturating_add(tokens_in);
-        self.virtual_sol_reserves = self.virtual_sol_reserves.saturating_sub(sol_out_before_fee);
-        self.real_token_reserves = self.real_token_reserves.saturating_add(tokens_in);
-        self.real_sol_reserves = self.real_sol_reserves.saturating_sub(sol_out_before_fee);
+    /// Returns error if arithmetic would overflow/underflow — amounts must be
+    /// pre-validated by get_sol_for_tokens() before calling this.
+    pub fn apply_sell(&mut self, tokens_in: u64, sol_out_before_fee: u64) -> Result<()> {
+        self.virtual_token_reserves = self.virtual_token_reserves
+            .checked_add(tokens_in)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.virtual_sol_reserves = self.virtual_sol_reserves
+            .checked_sub(sol_out_before_fee)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.real_token_reserves = self.real_token_reserves
+            .checked_add(tokens_in)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        self.real_sol_reserves = self.real_sol_reserves
+            .checked_sub(sol_out_before_fee)
+            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+        Ok(())
     }
 
     /// Check if graduation threshold is reached

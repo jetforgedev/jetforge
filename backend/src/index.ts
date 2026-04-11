@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { PrismaClient } from "@prisma/client";
+import rateLimit from "express-rate-limit";
 
 import { config } from "./config";
 import { createRouter } from "./api/router";
@@ -35,6 +36,30 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting — general API: 120 req/min per IP
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please slow down." },
+  })
+);
+
+// Stricter limit for write endpoints: 20 req/min per IP
+app.use(
+  ["/api/tokens", "/api/comments", "/api/upload"],
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please slow down." },
+  })
+);
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {

@@ -19,6 +19,7 @@
     "@tanstack/react-query": "^5.28.0",
     "bn.js": "^5.2.1",
     "browserify-zlib": "^0.2.0",
+    "bs58": "^6.0.0",
     "clsx": "^2.1.0",
     "crypto-browserify": "^3.12.1",
     "https-browserify": "^1.0.0",

@@ -215,7 +215,7 @@ pub fn buy(
 
     // Update curve state
     let bonding_curve = &mut ctx.accounts.bonding_curve;
-    bonding_curve.apply_buy(sol_in_after_fee, tokens_out);
+    bonding_curve.apply_buy(sol_in_after_fee, tokens_out)?;
     bonding_curve.total_volume_sol = bonding_curve
         .total_volume_sol
         .saturating_add(sol_amount);

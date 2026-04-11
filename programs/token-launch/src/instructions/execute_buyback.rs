@@ -128,7 +128,7 @@ pub fn execute_buyback(ctx: Context<ExecuteBuyback>) -> Result<()> {
 
     // Update curve state: same as apply_buy (SOL added, tokens removed)
     let bonding_curve = &mut ctx.accounts.bonding_curve;
-    bonding_curve.apply_buy(available_sol, tokens_to_burn);
+    bonding_curve.apply_buy(available_sol, tokens_to_burn)?;
 
     // Buyback could push the curve to graduation
     if bonding_curve.should_graduate() {

@@ -311,9 +311,33 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
 });
 
 // POST /api/tokens - create token record (called after on-chain creation)
+// Verifies the creator matches the on-chain bonding curve PDA to prevent spoofing
 tokensRouter.post("/", async (req: Request, res: Response) => {
   try {
     const data = createTokenSchema.parse(req.body);
+
+    // Verify creator matches on-chain bonding curve state
+    try {
+      const mintPk = new PublicKey(data.mint);
+      const programId = new PublicKey(config.solana.programId);
+      const connection = new Connection(config.solana.rpcUrl, "confirmed");
+      const [bcPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("bonding_curve"), mintPk.toBuffer()],
+        programId
+      );
+      const info = await connection.getAccountInfo(bcPDA);
+      if (!info) {
+        return res.status(400).json({ error: "Token not found on-chain" });
+      }
+      // Creator pubkey is stored at offset 8 (discriminator) + 32 (mint) = 40
+      const onChainCreator = new PublicKey(info.data.slice(40, 72)).toBase58();
+      if (onChainCreator !== data.creator) {
+        return res.status(403).json({ error: "Creator mismatch — not the token creator" });
+      }
+    } catch (chainErr: any) {
+      console.error("[TOKENS] On-chain creator verification failed:", chainErr?.message);
+      return res.status(400).json({ error: "Failed to verify token on-chain" });
+    }
 
     const tokenData = {
       name: data.name,
