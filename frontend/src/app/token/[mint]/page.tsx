@@ -758,26 +758,20 @@ export default function TokenPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Stats row — compact single line */}
+      <div className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
-          { label: "Market Cap", value: marketCapUsdt, accent: true },
-          { label: token.isGraduated ? "24h Volume" : "SOL Raised", value: `${realSolRaised} SOL` },
-          { label: "Holders", value: token.holders.toLocaleString() },
-          { label: "Total Trades", value: token.trades.toLocaleString() },
+          { label: "MCap", value: marketCapUsdt, accent: true },
+          { label: token.isGraduated ? "Vol" : "Raised", value: `${realSolRaised} SOL` },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="glass-panel rounded-[24px] p-4"
+            className="shrink-0 flex items-center gap-2 glass-panel rounded-2xl px-3 py-2"
           >
-            <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-white/35">{stat.label}</div>
-            <div
-              className={`font-mono font-semibold text-sm ${
-                stat.accent ? "text-[#00ff88]" : "text-white"
-              }`}
-            >
+            <span className="text-[10px] uppercase tracking-widest text-white/30">{stat.label}</span>
+            <span className={`text-[12px] font-mono font-bold ${stat.accent ? "text-[#00ff88]" : "text-white"}`}>
               {stat.value}
-            </div>
+            </span>
           </div>
         ))}
       </div>
