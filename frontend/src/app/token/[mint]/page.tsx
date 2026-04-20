@@ -308,124 +308,7 @@ function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: num
 }
 
 
-const GRADUATION_SOL = 0.5; // SOL target for graduation
 
-function BondingCurveVisual({ graduationProgress, realSolReserves }: { graduationProgress: number; realSolReserves: string }) {
-  const pct = Math.min(100, Math.max(0, graduationProgress));
-  const solRaised = Number(realSolReserves) / 1e9;
-  const solLeft = Math.max(0, GRADUATION_SOL - solRaised);
-
-  // Generate curve points (hyperbolic bonding curve shape)
-  const W = 280; const H = 90;
-  const points: string[] = [];
-  for (let i = 0; i <= 50; i++) {
-    const t = i / 50;
-    const x = t * W;
-    // Bonding curve: price accelerates as supply decreases
-    const y = H - H * (1 - Math.pow(1 - t, 1.8));
-    points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  }
-  const polyline = points.join(" ");
-
-  // Current position on the curve
-  const curT = pct / 100;
-  const curX = curT * W;
-  const curY = H - H * (1 - Math.pow(1 - curT, 1.8));
-
-  // Milestones
-  const milestones = [25, 50, 75];
-
-  return (
-    <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-white text-sm font-semibold">Bonding Curve</div>
-        <div className="flex items-center gap-3 text-xs text-[#555]">
-          <span><span className="text-[#00ff88] font-mono">{solRaised.toFixed(2)}</span> SOL raised</span>
-          <span><span className="text-[#ffaa00] font-mono">{solLeft.toFixed(2)}</span> SOL to graduation</span>
-        </div>
-      </div>
-
-      <div className="relative">
-        <svg width="100%" viewBox={`0 0 ${W} ${H + 20}`} preserveAspectRatio="none" className="overflow-visible">
-          {/* Background grid lines */}
-          {milestones.map((m) => (
-            <line key={m} x1={(m / 100) * W} y1="0" x2={(m / 100) * W} y2={H} stroke="#1a1a1a" strokeWidth="1" strokeDasharray="3,3" />
-          ))}
-
-          {/* Filled area under curve (progress) */}
-          <defs>
-            <linearGradient id="curveGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#00ff88" stopOpacity="0.15" />
-              <stop offset={`${pct}%`} stopColor="#00ff88" stopOpacity="0.08" />
-              <stop offset={`${pct}%`} stopColor="#1a1a1a" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#1a1a1a" stopOpacity="0.05" />
-            </linearGradient>
-            <clipPath id="progressClip">
-              <rect x="0" y="0" width={curX} height={H + 5} />
-            </clipPath>
-          </defs>
-
-          {/* Full curve (faded) */}
-          <polyline points={polyline} fill="none" stroke="#2a2a2a" strokeWidth="1.5" />
-
-          {/* Progress curve (bright) */}
-          <polyline points={polyline} fill="none" stroke="#00ff88" strokeWidth="2" clipPath="url(#progressClip)" />
-
-          {/* Area fill */}
-          <polygon
-            points={`0,${H} ${polyline} ${W},${H}`}
-            fill="url(#curveGradient)"
-          />
-
-          {/* Milestone markers */}
-          {milestones.map((m) => {
-            const mt = m / 100;
-            const my = H - H * (1 - Math.pow(1 - mt, 1.8));
-            return (
-              <text key={m} x={(m / 100) * W} y={H + 14} textAnchor="middle" fill="#333" fontSize="8">{m}%</text>
-            );
-          })}
-          <text x="0" y={H + 14} textAnchor="start" fill="#333" fontSize="8">0%</text>
-          <text x={W} y={H + 14} textAnchor="end" fill="#555" fontSize="8">🎓 100%</text>
-
-          {/* Current position dot */}
-          {pct > 0 && (
-            <>
-              <circle cx={curX} cy={curY} r="5" fill="#00ff88" opacity="0.2" />
-              <circle cx={curX} cy={curY} r="3" fill="#00ff88" />
-              {/* Tooltip line */}
-              <line x1={curX} y1={curY} x2={curX} y2={H} stroke="#00ff88" strokeWidth="1" strokeDasharray="2,2" opacity="0.4" />
-              {/* Percentage label */}
-              <text
-                x={Math.min(Math.max(curX, 20), W - 20)}
-                y={Math.max(curY - 7, 10)}
-                textAnchor="middle"
-                fill="#00ff88"
-                fontSize="9"
-                fontWeight="bold"
-              >
-                {pct.toFixed(1)}%
-              </text>
-            </>
-          )}
-        </svg>
-      </div>
-
-      {/* Bottom bar */}
-      <div className="mt-2 flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-[#00ff88] to-[#00cc6e] transition-all duration-700"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span className="text-[#555] text-[10px] shrink-0">
-          {pct >= 100 ? "🎓 Ready!" : `${(100 - pct).toFixed(1)}% remaining`}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function useBuybackVault(mint: string) {
   const { connection } = useConnection();
@@ -787,7 +670,7 @@ export default function TokenPage({ params }: PageProps) {
         </div>
 
         {/* Trading panel — mobile: order 2, desktop: sticky right sidebar */}
-        <div className="space-y-4 order-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden">
+        <div className="space-y-4 order-2 lg:sticky lg:top-4">
           <TradingPanel token={token} />
 
           {/* Token details */}
@@ -909,17 +792,13 @@ export default function TokenPage({ params }: PageProps) {
         </div>
 
         {/* Graduation bar — mobile: order 3, desktop: col-span-2 row 2 */}
-        <div className="lg:col-span-2 order-3 space-y-4">
+        <div className="lg:col-span-2 order-3">
           <GraduationBar
             realSolReserves={token.realSolReserves}
             isGraduated={token.isGraduated}
             mint={mint}
             raydiumPoolId={token.raydiumPoolId ?? undefined}
           />
-          {/* Bonding curve visualizer */}
-          {!token.isGraduated && (
-            <BondingCurveVisual graduationProgress={token.graduationProgress} realSolReserves={token.realSolReserves} />
-          )}
         </div>
 
         {/* Holders + Trades — mobile: order 4 & 5, desktop: col-span-2 rows 3-4 */}
