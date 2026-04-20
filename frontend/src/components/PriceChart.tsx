@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
 import { useSocket } from "@/hooks/useLiveFeed";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -55,6 +55,7 @@ function toHeikinAshi(candles: OHLC[]): OHLC[] {
 
 export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
   const { publicKey } = useWallet();
+  const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candleSeriesRef = useRef<any>(null);  // candlestick + HA
@@ -334,10 +335,12 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       setTimeout(() => {
         setFlashTrades((prev) => prev.filter((f) => f.id !== id));
       }, 5000);
+      // Refresh trade markers so the new trade appears on the chart immediately
+      queryClient.invalidateQueries({ queryKey: ["trades-markers", mint] });
     });
 
     return () => { socket.off("new_trade"); };
-  }, [socket, mint]);
+  }, [socket, mint, queryClient]);
 
   const intervalRef = useRef(interval);
   const solPriceRef = useRef(solPrice);
