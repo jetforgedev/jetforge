@@ -405,7 +405,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
 
     // Fetch top 20 largest token accounts for this mint
     const largest = await connection.getTokenLargestAccounts(mintPubkey);
-    const accounts = largest.value.slice(0, 10);
+    const accounts = largest.value.slice(0, 20);
 
     // Resolve the owner of each token account
     const holdersWithOwners = await Promise.all(

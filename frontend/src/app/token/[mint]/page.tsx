@@ -65,11 +65,12 @@ function TokenSyncing({ mint }: { mint: string }) {
 const TOTAL_SUPPLY = 1_000_000_000; // 1B tokens (UI display, no decimals)
 
 function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["holders", mint],
     queryFn: () => getTopHolders(mint),
     refetchInterval: 30_000,
     staleTime: 15_000,
+    retry: 2,
   });
 
   // Compute platform addresses to exclude from holders list
@@ -109,6 +110,10 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-8 bg-[#1a1a1a] rounded animate-pulse" />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="p-6 text-center text-[#555] text-sm">
+          Could not load holders — RPC rate limit, try again shortly.
         </div>
       ) : holders.length === 0 ? (
         <div className="p-6 text-center text-[#555] text-sm">
@@ -177,6 +182,19 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
 
 const BUYBACK_THRESHOLD_SOL = 0.1;
 const WHALE_THRESHOLD_SOL = 1;
+
+function useFollowCreator(creatorWallet: string) {
+  const key = `follow_${creatorWallet}`;
+  const [following, setFollowing] = React.useState(() => {
+    try { return localStorage.getItem(key) === "1"; } catch { return false; }
+  });
+  const toggle = () => {
+    const next = !following;
+    try { next ? localStorage.setItem(key, "1") : localStorage.removeItem(key); } catch {}
+    setFollowing(next);
+  };
+  return { following, toggle };
+}
 
 function useWhaleAlert(mint: string) {
   const socket = useSocket();
@@ -414,6 +432,7 @@ export default function TokenPage({ params }: PageProps) {
   if (error || !token) return <TokenSyncing mint={mint} />;
 
   const isCreator = publicKey?.toBase58() === token.creator;
+  const { following, toggle: toggleFollow } = useFollowCreator(token.creator);
 
   const handleWithdraw = async () => {
     if (!anchorWallet || !isCreator) return;
@@ -492,9 +511,26 @@ export default function TokenPage({ params }: PageProps) {
                 <h1 className="truncate text-xl font-extrabold tracking-tight text-white">{token.name}</h1>
                 <span className="shrink-0 text-xs font-mono text-white/38">${token.symbol}</span>
               </div>
-              <div className="mt-0.5 text-xs text-white/40">
-                by <span className="font-mono text-white/60">{truncateAddress(token.creator)}</span>
-                {" · "}{timeAgo(token.createdAt)}
+              <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-white/40">
+                  by{" "}
+                  <Link href={`/creators/${token.creator}`} className="font-mono text-white/60 hover:text-[#00ff88] transition-colors">
+                    {truncateAddress(token.creator)}
+                  </Link>
+                  {" · "}{timeAgo(token.createdAt)}
+                </span>
+                {!isCreator && (
+                  <button
+                    onClick={toggleFollow}
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+                      following
+                        ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
+                        : "border-[#2a2a2a] text-[#555] hover:text-white"
+                    }`}
+                  >
+                    {following ? "✓" : "+Follow"}
+                  </button>
+                )}
               </div>
             </div>
             <div className="shrink-0">
@@ -556,10 +592,34 @@ export default function TokenPage({ params }: PageProps) {
                 <PriceAlertWidget mint={mint} currentMcapSol={token.marketCapSol} />
               </div>
             </div>
-            {/* Creator */}
-            <div className="mt-1 text-xs text-white/40">
-              by <span className="font-mono text-white/60">{truncateAddress(token.creator)}</span>
-              {" · "}{timeAgo(token.createdAt)}
+            {/* Creator + follow */}
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-white/40">
+                by{" "}
+                <Link href={`/creators/${token.creator}`} className="font-mono text-white/60 hover:text-[#00ff88] transition-colors">
+                  {truncateAddress(token.creator)}
+                </Link>
+                {" · "}{timeAgo(token.createdAt)}
+              </span>
+              <button
+                onClick={() => navigator.clipboard.writeText(mint)}
+                className="text-[10px] font-mono text-[#444] hover:text-[#888] border border-[#1a1a1a] px-1.5 py-0.5 rounded transition-colors"
+                title="Copy mint address"
+              >
+                {truncateAddress(mint, 4)} 📋
+              </button>
+              {!isCreator && (
+                <button
+                  onClick={toggleFollow}
+                  className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors ${
+                    following
+                      ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
+                      : "border-[#2a2a2a] text-[#555] hover:text-white hover:border-[#444]"
+                  }`}
+                >
+                  {following ? "✓ Following" : "+ Follow"}
+                </button>
+              )}
             </div>
             {/* Badges — inline row, no overflow needed on desktop */}
             <div className="mt-3 flex items-center gap-2 flex-wrap">
