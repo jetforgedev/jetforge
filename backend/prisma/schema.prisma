@@ -86,3 +86,15 @@ model Comment {
   @@index([mint])
   @@index([createdAt])
 }
+
+// Social follow graph — wallet-to-wallet, no auth required (wallet IS identity)
+model Follow {
+  id          String   @id @default(cuid())
+  follower    String   // wallet that is following
+  following   String   // wallet being followed (creator)
+  createdAt   DateTime @default(now())
+
+  @@unique([follower, following])
+  @@index([follower])
+  @@index([following])
+}

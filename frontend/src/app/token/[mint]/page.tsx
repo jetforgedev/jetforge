@@ -8,13 +8,13 @@ import { TradingPanel } from "@/components/TradingPanel";
 import { PriceChart } from "@/components/PriceChart";
 import { GraduationBar } from "@/components/GraduationBar";
 import { TradesList } from "@/components/TradesList";
-import { truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
 import { formatSol } from "@/lib/bondingCurve";
 import BN from "bn.js";
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTopHolders } from "@/lib/api";
 import { PROGRAM_ID, TREASURY, getBuybackVaultPDA, getCreatorVaultPDA, buildWithdrawCreatorFeesTransaction } from "@/lib/program";
 import { useTrades as useLiveTrades } from "@/hooks/useTrades";
@@ -183,17 +183,34 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
 const BUYBACK_THRESHOLD_SOL = 0.1;
 const WHALE_THRESHOLD_SOL = 1;
 
-function useFollowCreator(creatorWallet: string) {
-  const key = `follow_${creatorWallet}`;
-  const [following, setFollowing] = React.useState(() => {
-    try { return localStorage.getItem(key) === "1"; } catch { return false; }
+function useFollowCreator(creatorWallet: string, viewerWallet?: string) {
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["follow-stats", creatorWallet, viewerWallet],
+    queryFn: () => getFollowStats(creatorWallet, viewerWallet),
+    enabled: !!creatorWallet,
+    staleTime: 30_000,
   });
-  const toggle = () => {
-    const next = !following;
-    try { next ? localStorage.setItem(key, "1") : localStorage.removeItem(key); } catch {}
-    setFollowing(next);
+
+  const toggle = async () => {
+    if (!viewerWallet) return;
+    try {
+      if (data?.isFollowing) {
+        await unfollowCreator(viewerWallet, creatorWallet);
+      } else {
+        await followCreator(viewerWallet, creatorWallet);
+      }
+      queryClient.invalidateQueries({ queryKey: ["follow-stats", creatorWallet] });
+    } catch {}
   };
-  return { following, toggle };
+
+  return {
+    following: data?.isFollowing ?? false,
+    followerCount: data?.followerCount ?? 0,
+    followingCount: data?.followingCount ?? 0,
+    isLoading,
+    toggle,
+  };
 }
 
 function useWhaleAlert(mint: string) {
@@ -432,7 +449,10 @@ export default function TokenPage({ params }: PageProps) {
   if (error || !token) return <TokenSyncing mint={mint} />;
 
   const isCreator = publicKey?.toBase58() === token.creator;
-  const { following, toggle: toggleFollow } = useFollowCreator(token.creator);
+  const { following, followerCount, toggle: toggleFollow } = useFollowCreator(
+    token.creator,
+    publicKey?.toBase58()
+  );
 
   const handleWithdraw = async () => {
     if (!anchorWallet || !isCreator) return;
@@ -611,13 +631,16 @@ export default function TokenPage({ params }: PageProps) {
               {!isCreator && (
                 <button
                   onClick={toggleFollow}
-                  className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors ${
+                  disabled={!publicKey}
+                  className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                     following
                       ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
                       : "border-[#2a2a2a] text-[#555] hover:text-white hover:border-[#444]"
                   }`}
+                  title={!publicKey ? "Connect wallet to follow" : undefined}
                 >
-                  {following ? "✓ Following" : "+ Follow"}
+                  {following ? `✓ Following` : `+ Follow`}
+                  {followerCount > 0 && <span className="ml-1 opacity-60">{followerCount}</span>}
                 </button>
               )}
             </div>

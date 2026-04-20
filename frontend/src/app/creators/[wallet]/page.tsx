@@ -2,8 +2,9 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -22,12 +23,34 @@ function ReputationBadge({ badge, label, color }: { badge: string; label: string
 
 export default function CreatorProfilePage({ params }: PageProps) {
   const { wallet } = React.use(params);
+  const { publicKey } = useWallet();
+  const queryClient = useQueryClient();
+  const viewer = publicKey?.toBase58();
+  const isOwn = viewer === wallet;
 
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
     retry: false,
   });
+
+  const { data: followStats } = useQuery({
+    queryKey: ["follow-stats", wallet, viewer],
+    queryFn: () => getFollowStats(wallet, viewer),
+    staleTime: 30_000,
+  });
+
+  const toggleFollow = async () => {
+    if (!viewer) return;
+    try {
+      if (followStats?.isFollowing) {
+        await unfollowCreator(viewer, wallet);
+      } else {
+        await followCreator(viewer, wallet);
+      }
+      queryClient.invalidateQueries({ queryKey: ["follow-stats", wallet] });
+    } catch {}
+  };
 
   if (isLoading) {
     return (
@@ -64,12 +87,34 @@ export default function CreatorProfilePage({ params }: PageProps) {
             </div>
           </div>
 
-          <Link
-            href={`/portfolio/${wallet}`}
-            className="text-xs text-[#555] hover:text-white border border-[#2a2a2a] px-3 py-1.5 rounded-md transition-colors"
-          >
-            View Portfolio →
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Follower stats */}
+            <div className="flex items-center gap-3 text-xs text-[#555] border border-[#1a1a1a] px-3 py-1.5 rounded-lg">
+              <span><span className="text-white font-semibold">{followStats?.followerCount ?? 0}</span> followers</span>
+              <span className="text-[#2a2a2a]">·</span>
+              <span><span className="text-white font-semibold">{followStats?.followingCount ?? 0}</span> following</span>
+            </div>
+            {!isOwn && (
+              <button
+                onClick={toggleFollow}
+                disabled={!viewer}
+                title={!viewer ? "Connect wallet to follow" : undefined}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  followStats?.isFollowing
+                    ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
+                    : "bg-white/[0.05] border-[#2a2a2a] text-white hover:bg-white/[0.08]"
+                }`}
+              >
+                {followStats?.isFollowing ? "✓ Following" : "+ Follow"}
+              </button>
+            )}
+            <Link
+              href={`/portfolio/${wallet}`}
+              className="text-xs text-[#555] hover:text-white border border-[#2a2a2a] px-3 py-1.5 rounded-md transition-colors"
+            >
+              Portfolio →
+            </Link>
+          </div>
         </div>
 
         {/* Stats grid */}

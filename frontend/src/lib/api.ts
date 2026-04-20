@@ -289,6 +289,34 @@ export async function getCreatorProfile(wallet: string): Promise<any> {
   return fetchApi(`/creators/${wallet}`);
 }
 
+// Follow endpoints
+export interface FollowStats {
+  followerCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+}
+
+export async function getFollowStats(wallet: string, viewer?: string): Promise<FollowStats> {
+  const q = viewer ? `?viewer=${viewer}` : "";
+  return fetchApi(`/follows/${wallet}/stats${q}`);
+}
+
+export async function followCreator(follower: string, following: string): Promise<{ following: boolean; followerCount: number }> {
+  return fetchApi("/follows", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ follower, following }) });
+}
+
+export async function unfollowCreator(follower: string, following: string): Promise<{ following: boolean; followerCount: number }> {
+  return fetchApi("/follows", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ follower, following }) });
+}
+
+export async function getFollowers(wallet: string, page = 1): Promise<{ followers: { follower: string; createdAt: string }[]; total: number }> {
+  return fetchApi(`/follows/${wallet}/followers?page=${page}`);
+}
+
+export async function getFollowing(wallet: string, page = 1): Promise<{ following: { following: string; createdAt: string }[]; total: number }> {
+  return fetchApi(`/follows/${wallet}/following?page=${page}`);
+}
+
 // Utility: format wallet address
 export function truncateAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;
