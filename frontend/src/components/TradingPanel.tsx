@@ -8,7 +8,7 @@ import { PublicKey, Keypair, Transaction, VersionedTransaction } from "@solana/w
 import toast from "react-hot-toast";
 import BN from "bn.js";
 import { clsx } from "clsx";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getBuyAmount,
   getSellAmount,
@@ -35,6 +35,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const { publicKey, sendTransaction } = useWallet();
   const anchorWallet = useAnchorWallet();
   const { connection } = useConnection();
+  const queryClient = useQueryClient();
 
   const [tab, setTab] = useState<"buy" | "sell">("buy");
   const [inputAmount, setInputAmount] = useState("");
@@ -381,6 +382,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
       await connection.confirmTransaction(sig, "confirmed");
 
+      // Invalidate trades + OHLCV so chart shows the new trade marker immediately
+      queryClient.invalidateQueries({ queryKey: ["trades-markers", token.mint] });
+      queryClient.invalidateQueries({ queryKey: ["ohlcv", token.mint] });
+
       toast.dismiss(loadingToast);
       toast.success(
         <span>
@@ -428,7 +433,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, anchorWallet, fastTradeEnabled, effectiveSolBalance, effectiveTokenBalance, inputAmount, tab, token, slippageBps, sendTransaction, connection, calculation, virtualSol, virtualTokens, realTokenReserves, realSolReserves, solBalance, tokenBalance]);
+  }, [publicKey, anchorWallet, fastTradeEnabled, effectiveSolBalance, effectiveTokenBalance, inputAmount, tab, token, slippageBps, sendTransaction, connection, calculation, virtualSol, virtualTokens, realTokenReserves, realSolReserves, solBalance, tokenBalance, queryClient]);
 
   const mediumImpact = calculation && calculation.priceImpact > 2 && calculation.priceImpact <= 5;
   const highImpact = calculation && calculation.priceImpact > 5;
