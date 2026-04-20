@@ -445,14 +445,16 @@ export default function TokenPage({ params }: PageProps) {
   });
   const isVerifiedCreator = (creatorProfile?.graduatedTokens ?? 0) >= 1;
 
+  // Must be called before early returns to satisfy rules of hooks
+  const { following, followerCount, toggle: toggleFollow } = useFollowCreator(
+    token?.creator ?? "",
+    publicKey?.toBase58()
+  );
+
   if (isLoading) return <TokenSkeleton />;
   if (error || !token) return <TokenSyncing mint={mint} />;
 
   const isCreator = publicKey?.toBase58() === token.creator;
-  const { following, followerCount, toggle: toggleFollow } = useFollowCreator(
-    token.creator,
-    publicKey?.toBase58()
-  );
 
   const handleWithdraw = async () => {
     if (!anchorWallet || !isCreator) return;
