@@ -357,42 +357,47 @@ export default function HomePage() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-4 sm:hidden">
-        <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
-          <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4]">
-            Live Market
-          </div>
-          <div className="mt-1.5 text-[1.85rem] font-extrabold leading-[0.98] tracking-tight text-white">
-            Trade what&apos;s moving
-          </div>
-          <div className="mt-1.5 text-[13px] leading-5 text-white/58">
-            Scan activity, check the leader, and jump into the market fast.
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Link
-              href="#market"
-              className="flex-1 rounded-[16px] border border-white/12 bg-white/[0.04] px-4 py-2.5 text-center text-sm font-semibold text-white"
-            >
-              View Market
-            </Link>
-            <Link
-              href="/launch"
-              className="flex-1 rounded-[16px] bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2.5 text-center text-sm font-extrabold text-[#03110d]"
-            >
-              Launch
-            </Link>
-          </div>
-        </div>
+      {/*
+        StatsBar and KingOfTheHill previously rendered twice — once inside the
+        sm:hidden mobile block and once inside the hidden sm:grid desktop block.
+        Both DOM trees mounted simultaneously, doubling query subscriptions.
 
-        <StatsBar />
-        <div className="mt-3">
-          <KingOfTheHill />
-        </div>
-      </div>
+        Fix: one unified container. Mobile hero gets sm:hidden; desktop hero gets
+        hidden sm:block. StatsBar / KingOfTheHill render exactly once inside the
+        shared left column. Layout and spacing are identical at every breakpoint.
+      */}
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-5">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
 
-      <div className="hidden gap-4 sm:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-5">
-        <div className="min-w-0 space-y-6">
-          <section className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.12),rgba(255,255,255,0.03)_35%,rgba(0,204,255,0.12))] px-4 py-5 shadow-[0_30px_80px_rgba(0,0,0,0.28)] sm:rounded-[32px] sm:px-8 sm:py-8">
+          {/* Mobile hero — hidden at sm and above */}
+          <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:hidden">
+            <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4]">
+              Live Market
+            </div>
+            <div className="mt-1.5 text-[1.85rem] font-extrabold leading-[0.98] tracking-tight text-white">
+              Trade what&apos;s moving
+            </div>
+            <div className="mt-1.5 text-[13px] leading-5 text-white/58">
+              Scan activity, check the leader, and jump into the market fast.
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Link
+                href="#market"
+                className="flex-1 rounded-[16px] border border-white/12 bg-white/[0.04] px-4 py-2.5 text-center text-sm font-semibold text-white"
+              >
+                View Market
+              </Link>
+              <Link
+                href="/launch"
+                className="flex-1 rounded-[16px] bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2.5 text-center text-sm font-extrabold text-[#03110d]"
+              >
+                Launch
+              </Link>
+            </div>
+          </div>
+
+          {/* Desktop hero — hidden below sm */}
+          <section className="relative hidden overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.12),rgba(255,255,255,0.03)_35%,rgba(0,204,255,0.12))] px-4 py-5 shadow-[0_30px_80px_rgba(0,0,0,0.28)] sm:block sm:rounded-[32px] sm:px-8 sm:py-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(0,255,136,0.14),transparent_24%)]" />
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px,transparent 1px)", backgroundSize: "42px 42px" }} />
             <div className="relative grid gap-5 lg:grid-cols-[1.45fr_0.9fr] lg:items-end">
@@ -442,7 +447,7 @@ export default function HomePage() {
           </section>
 
           <StatsBar />
-          <div className="mt-8">
+          <div className="mt-3 sm:mt-8">
             <KingOfTheHill />
           </div>
         </div>
