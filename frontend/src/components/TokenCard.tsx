@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { clsx } from "clsx";
 import { TokenData, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 import { formatSol } from "@/lib/bondingCurve";
@@ -20,13 +19,11 @@ function TokenAvatar({ name, imageUrl, mint }: { name: string; imageUrl?: string
   if (imageUrl && !imgError) {
     return (
       <div className="relative h-full w-full overflow-hidden rounded-[12px] border border-white/10 sm:rounded-2xl">
-        <Image
+        <img
           src={imageUrl}
           alt={name}
-          fill
-          className="object-cover"
+          className="w-full h-full object-cover"
           onError={() => setImgError(true)}
-          unoptimized
         />
       </div>
     );
@@ -113,7 +110,7 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
       <Link href={`/token/${token.mint}`} className="block h-full">
         <div
           className={clsx(
-            "token-card relative flex h-full flex-col overflow-hidden rounded-[16px] border bg-white/[0.03] p-2.5 backdrop-blur-sm sm:rounded-[26px] sm:p-4",
+            "token-card relative flex h-full flex-col overflow-hidden rounded-[16px] border bg-[#0a1513] p-2.5 sm:rounded-[26px] sm:p-4",
             "border-white/[0.08]",
             (token.isGraduated || (!isActive15m && !isHot15m && !isNearGrad)) && "shadow-[0_18px_40px_rgba(0,0,0,0.18)]",
             !token.isGraduated && isActive15m && !isNearGrad && !isHot15m && "animate-pulse-glow border-[#00ff88]/20",
