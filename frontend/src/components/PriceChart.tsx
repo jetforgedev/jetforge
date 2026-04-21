@@ -119,6 +119,15 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     import("lightweight-charts").then(({ createChart, CrosshairMode }) => {
       if (state.destroyed || !chartContainerRef.current) return;
 
+      // Wait for the browser to finish layout so clientWidth/Height are non-zero.
+      // This prevents the "blank chart on first load" race condition where the
+      // dynamic import resolves before the DOM has been painted.
+      requestAnimationFrame(() => {
+        if (state.destroyed || !chartContainerRef.current) return;
+
+        const containerW = chartContainerRef.current.clientWidth || chartContainerRef.current.offsetWidth || 600;
+        const containerH = chartContainerRef.current.clientHeight || chartContainerRef.current.offsetHeight || 560;
+
       const chart = createChart(chartContainerRef.current, {
         layout: { background: { color: "#0d0d0d" }, textColor: "#555" },
         grid: { vertLines: { color: "#111" }, horzLines: { color: "#111" } },
@@ -130,8 +139,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           secondsVisible: false,
           rightOffset: 5,
         },
-        width: chartContainerRef.current.clientWidth,
-        height: chartContainerRef.current.clientHeight || 560,
+        width: containerW,
+        height: containerH,
       });
 
       const candleSeries = chart.addCandlestickSeries({
@@ -183,14 +192,16 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       const resizeObserver = new ResizeObserver(() => {
         if (chartContainerRef.current) {
           chart.applyOptions({
-            width: chartContainerRef.current.clientWidth,
-            height: chartContainerRef.current.clientHeight || 560,
+            width: chartContainerRef.current.clientWidth || chartContainerRef.current.offsetWidth || containerW,
+            height: chartContainerRef.current.clientHeight || chartContainerRef.current.offsetHeight || containerH,
           });
         }
       });
       resizeObserver.observe(chartContainerRef.current);
       state.observer = resizeObserver;
-    });
+
+      }); // end requestAnimationFrame
+    }); // end import()
 
     return () => {
       state.destroyed = true;
