@@ -175,13 +175,15 @@ export default function LeaderboardPage() {
                         )}
                         <div className="min-w-0">
                           <div className="text-white text-xs font-semibold truncate">{token.name}</div>
-                          <div className="text-[#555] text-[10px]">${token.symbol}</div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[#555] text-[10px]">${token.symbol}</span>
+                            {token.isGraduated && (
+                              <span className="px-1 py-0 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[9px] font-semibold leading-4">
+                                GRAD
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {token.isGraduated && (
-                          <span className="ml-1 px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px] flex-shrink-0">
-                            GRAD
-                          </span>
-                        )}
                       </div>
                       <div className="text-right font-mono">
                         <span className="text-white text-xs">{fmtVol(Number(token.marketCapSol))}</span>
