@@ -37,7 +37,7 @@ function getNextMilestone(progress: number, solTarget: number): string | null {
   return `Next milestone: ${next}% · ${solAtMilestone} SOL`;
 }
 
-// ── Minimal hover tooltip ───────────────────────────────────────────────────
+// ── Minimal tooltip — works on hover (desktop) and tap (mobile) ─────────────
 function InfoTooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -47,13 +47,17 @@ function InfoTooltip({ text }: { text: string }) {
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        className="ml-1 text-[#444] hover:text-[#666] text-[11px] leading-none cursor-help"
+        onClick={() => setOpen((v) => !v)}
+        className="ml-1 text-[#444] hover:text-[#666] text-[11px] leading-none cursor-help select-none"
         aria-label="Info"
       >
         ⓘ
       </button>
       {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 w-56 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#999] shadow-xl pointer-events-none leading-5 whitespace-normal">
+        <span
+          className="absolute top-full left-0 mt-1.5 z-50 w-56 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#aaa] shadow-2xl pointer-events-none leading-[1.6] whitespace-normal"
+          style={{ minWidth: "200px" }}
+        >
           {text}
         </span>
       )}
@@ -121,15 +125,16 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
   return (
     <div
       className={clsx(
-        "relative overflow-hidden rounded-[28px] border bg-white/[0.04] p-4 sm:p-5",
+        "relative rounded-[28px] border bg-white/[0.04] p-4 sm:p-5",
         isFinalPhase
           ? "animate-glow-pulse border-[#ff6b6b]/40 shadow-[0_0_40px_rgba(255,107,107,0.12)]"
           : "border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.18)]"
       )}
     >
       <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_68%)]" />
+      {/* Shimmer lives in its own overflow-hidden so tooltip above is never clipped */}
       {isFinalPhase && (
-        <div className="absolute inset-0 overflow-hidden rounded-[28px]">
+        <div className="absolute inset-0 overflow-hidden rounded-[28px] pointer-events-none">
           <div className="absolute inset-y-0 left-[-35%] w-1/3 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
         </div>
       )}

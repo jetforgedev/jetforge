@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useToken } from "@/hooks/useTokenData";
 import { TradingPanel } from "@/components/TradingPanel";
@@ -407,6 +407,32 @@ function useDevHoldings(mint: string, creator: string) {
   });
 }
 
+/** Creator Activity label with tap/hover tooltip — works on mobile */
+function CreatorActivityLabel() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="text-[#555] flex items-center gap-1">
+      Creator Activity
+      <span className="relative inline-flex items-center">
+        <button
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onClick={() => setOpen((v) => !v)}
+          className="text-[10px] text-[#444] hover:text-[#666] cursor-help leading-none select-none"
+          aria-label="Creator activity info"
+        >
+          ⓘ
+        </button>
+        {open && (
+          <span className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#aaa] shadow-2xl pointer-events-none leading-[1.6] whitespace-normal">
+            Shows the percentage of tokens held by the creator wallet.
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 export default function TokenPage({ params }: PageProps) {
   const { mint } = React.use(params);
   const { data: token, isLoading, error } = useToken(mint);
@@ -790,15 +816,7 @@ export default function TokenPage({ params }: PageProps) {
               {/* Creator activity — key transparency metric */}
               <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#555] flex items-center gap-1">
-                    Creator Activity
-                    <span className="relative group inline-flex items-center">
-                      <span className="text-[10px] text-[#444] hover:text-[#666] cursor-help leading-none">ⓘ</span>
-                      <span className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-30 w-52 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#999] shadow-xl pointer-events-none leading-5 whitespace-normal">
-                        Shows the percentage of tokens held by the creator wallet.
-                      </span>
-                    </span>
-                  </span>
+                  <CreatorActivityLabel />
                   <span className={`font-mono font-semibold ${devHoldingColor}`}>
                     {devPct.toFixed(2)}%
                     {devPct === 0 && " ✓ sold/none"}
