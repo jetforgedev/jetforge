@@ -386,10 +386,21 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/tokens/:mint/holders - top 10 token holders from Solana RPC
+// Simple in-memory cache for holders — 30s TTL per mint
+const holdersCache = new Map<string, { data: any; ts: number }>();
+const HOLDERS_TTL = 30_000;
+
+// GET /api/tokens/:mint/holders - top token holders from Solana RPC
 tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
+
+    // Return cached result if still fresh
+    const cached = holdersCache.get(mint);
+    if (cached && Date.now() - cached.ts < HOLDERS_TTL) {
+      return res.json(cached.data);
+    }
+
     const mintPubkey = new PublicKey(mint);
     const connection = new Connection(config.solana.rpcUrl, "confirmed");
 
@@ -398,37 +409,37 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       where: { mint },
       select: { totalSupply: true },
     });
-    // Convert raw totalSupply to UI units (divide by 10^6 for 6 decimals)
     const totalSupplyUi = tokenRecord
       ? Number(tokenRecord.totalSupply) / 1e6
       : Number(BONDING_CURVE_CONSTANTS.TOTAL_SUPPLY) / 1e6;
 
-    // Fetch top 20 largest token accounts for this mint
+    // Fetch top 20 largest token accounts (1 RPC call)
     const largest = await connection.getTokenLargestAccounts(mintPubkey);
     const accounts = largest.value.slice(0, 20);
 
-    // Resolve the owner of each token account
-    const holdersWithOwners = await Promise.all(
-      accounts.map(async (acct) => {
-        try {
-          const info = await connection.getParsedAccountInfo(acct.address);
-          const parsed = (info.value?.data as any)?.parsed;
-          const owner: string = parsed?.info?.owner ?? acct.address.toBase58();
-          const amount = Number(acct.uiAmount ?? 0);
-          const pct = (amount / totalSupplyUi) * 100;
-          return { wallet: owner, amount, pct };
-        } catch {
-          const amount = Number(acct.uiAmount ?? 0);
-          return {
-            wallet: acct.address.toBase58(),
-            amount,
-            pct: (amount / totalSupplyUi) * 100,
-          };
-        }
-      })
+    if (accounts.length === 0) {
+      const result = { holders: [] };
+      holdersCache.set(mint, { data: result, ts: Date.now() });
+      return res.json(result);
+    }
+
+    // Batch-resolve all owners in ONE RPC call instead of N parallel calls
+    const accountInfos = await connection.getMultipleParsedAccounts(
+      accounts.map((a) => a.address)
     );
 
-    res.json({ holders: holdersWithOwners });
+    const holdersWithOwners = accounts.map((acct, i) => {
+      const info = accountInfos.value[i];
+      const parsed = (info?.data as any)?.parsed;
+      const owner: string = parsed?.info?.owner ?? acct.address.toBase58();
+      const amount = Number(acct.uiAmount ?? 0);
+      const pct = totalSupplyUi > 0 ? (amount / totalSupplyUi) * 100 : 0;
+      return { wallet: owner, amount, pct };
+    });
+
+    const result = { holders: holdersWithOwners };
+    holdersCache.set(mint, { data: result, ts: Date.now() });
+    res.json(result);
   } catch (error) {
     console.error("GET /tokens/:mint/holders error:", error);
     res.status(500).json({ error: "Failed to fetch holders" });
