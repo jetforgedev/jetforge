@@ -250,9 +250,12 @@ export async function getTopHolders(mint: string): Promise<{ holders: { wallet: 
 // Leaderboard endpoints
 export async function getTopTokens(
   metric: "volume" | "marketcap" | "trades" | "new" = "volume",
-  limit = 20
+  limit = 20,
+  excludeGraduated = false
 ): Promise<TokenData[]> {
-  return fetchApi(`/leaderboard/tokens?metric=${metric}&limit=${limit}`);
+  const params = new URLSearchParams({ metric, limit: String(limit) });
+  if (excludeGraduated) params.set("excludeGraduated", "true");
+  return fetchApi(`/leaderboard/tokens?${params}`);
 }
 
 export async function getTopTraders(

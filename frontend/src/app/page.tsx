@@ -133,12 +133,16 @@ function KingOfTheHill() {
   const countdown = useKothCountdown();
   const { data } = useQuery({
     queryKey: ["king-of-hill"],
-    queryFn: () => getTopTokens("volume", 1),
+    queryFn: () => getTopTokens("volume", 1, true),
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
 
   const king = data?.[0];
+  const gradPct = king ? Math.min(100, (king.graduationProgress ?? 0)) : 0;
+  const urgency = gradPct >= 80 ? "🔴 ALMOST GRADUATED" : gradPct >= 50 ? "🟠 HEATING UP" : "🟢 LIVE NOW";
+  const urgencyColor = gradPct >= 80 ? "#ff4444" : gradPct >= 50 ? "#ffaa00" : "#00ff88";
+
   if (!king) {
     return (
       <div className="relative overflow-hidden rounded-[16px] border border-[#ffcf5a]/20 bg-[linear-gradient(135deg,rgba(255,207,90,0.08),rgba(255,255,255,0.02))] p-3 sm:rounded-[28px] sm:p-5">
@@ -151,10 +155,10 @@ function KingOfTheHill() {
               King of the Hill
             </div>
             <div className="mt-0.5 text-[13px] font-semibold text-white/70 sm:text-base">
-              Waiting for a leader
+              Waiting for a leader…
             </div>
             <div className="mt-0.5 text-[11px] text-white/45 sm:text-sm">
-              The top volume token will appear here automatically.
+              The top active token will appear here automatically.
             </div>
           </div>
         </div>
@@ -171,76 +175,114 @@ function KingOfTheHill() {
 
           {/* ── Mobile layout ── */}
           <div className="flex items-center gap-3 sm:hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-[linear-gradient(135deg,rgba(255,207,90,0.24),rgba(255,152,0,0.12))] text-lg shadow-[0_0_18px_rgba(255,207,90,0.18)]">
-              👑
+            {/* Token image */}
+            <div className="relative shrink-0">
+              {resolveImageUrl(king.imageUrl) ? (
+                <div className="h-12 w-12 overflow-hidden rounded-[14px] border-2 border-[#ffcf5a]/40 shadow-[0_0_16px_rgba(255,207,90,0.3)]">
+                  <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-[14px] border-2 border-[#ffcf5a]/40 bg-[#ffcf5a]/15 text-xl font-bold text-[#ffcf5a] shadow-[0_0_16px_rgba(255,207,90,0.3)]">
+                  {king.symbol.slice(0, 2)}
+                </div>
+              )}
+              <span className="absolute -top-1.5 -right-1.5 text-base leading-none">👑</span>
             </div>
+
             <div className="min-w-0 flex-1">
+              {/* Status badge row */}
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a]">King of the Hill</span>
-                <span className="rounded-full bg-[#00ff88]/15 px-1.5 py-0.5 text-[8px] font-bold text-[#00ff88]">🔥 Top Gainer</span>
+                <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ backgroundColor: urgencyColor + "22", color: urgencyColor }}>{urgency}</span>
               </div>
+              {/* Token name — big & punchy */}
               <div className="flex items-baseline gap-1.5">
-                <span className="truncate text-[15px] font-extrabold leading-tight tracking-tight text-white">{king.name}</span>
-                <span className="shrink-0 text-[11px] font-mono text-white/50">${king.symbol}</span>
+                <span className="truncate text-[16px] font-extrabold leading-tight tracking-tight text-white">{king.name}</span>
+                <span className="shrink-0 text-[10px] font-mono text-white/45">${king.symbol}</span>
               </div>
-              <div className="mt-0.5 flex items-center gap-1 text-[8px] text-white/35">
-                <span>⏱</span>
-                <span>Next rotation in <span className="font-mono text-[#ffcf5a]/80">{countdown}</span></span>
+              {/* Grad progress bar */}
+              <div className="mt-1 flex items-center gap-1.5">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${gradPct}%`, background: `linear-gradient(90deg, #00ff88, ${urgencyColor})` }} />
+                </div>
+                <span className="text-[8px] font-mono font-semibold" style={{ color: urgencyColor }}>{gradPct.toFixed(0)}% to grad</span>
+              </div>
+              {/* Countdown */}
+              <div className="mt-0.5 flex items-center gap-1 text-[8px] text-white/30">
+                <span>⏱ Next rotation <span className="font-mono text-[#ffcf5a]/70">{countdown}</span></span>
               </div>
             </div>
+
+            {/* Stats */}
             <div className="shrink-0 text-right">
               <div className="text-[8px] uppercase tracking-[0.1em] text-white/35">Vol 24H</div>
-              <div className="text-[13px] font-bold text-white">{king.volume24h.toFixed(0)} SOL</div>
-              <div className="text-[8px] uppercase tracking-[0.1em] text-[#ffcf5a]/60">MCap</div>
-              <div className="text-[12px] font-bold text-[#fff1c2]">{king.marketCapSol.toFixed(0)} SOL</div>
+              <div className="text-[14px] font-bold text-white">{king.volume24h.toFixed(0)} SOL</div>
+              <div className="text-[8px] uppercase tracking-[0.1em] text-[#ffcf5a]/60">Trades</div>
+              <div className="text-[12px] font-bold text-[#fff1c2]">{king.trades}</div>
             </div>
           </div>
 
           {/* ── Desktop layout ── */}
-          <div className="hidden gap-2.5 sm:grid lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] lg:items-center">
+          <div className="hidden gap-4 sm:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.6fr)] lg:items-center">
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(255,207,90,0.24),rgba(255,152,0,0.12))] text-3xl shadow-[0_0_28px_rgba(255,207,90,0.18)]">
-                  👑
+              <div className="flex items-start gap-4">
+                {/* Token image large */}
+                <div className="relative shrink-0">
+                  {resolveImageUrl(king.imageUrl) ? (
+                    <div className="h-16 w-16 overflow-hidden rounded-2xl border-2 border-[#ffcf5a]/40 shadow-[0_0_24px_rgba(255,207,90,0.25)]">
+                      <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-[#ffcf5a]/40 bg-[#ffcf5a]/15 text-2xl font-bold text-[#ffcf5a] shadow-[0_0_24px_rgba(255,207,90,0.25)]">
+                      {king.symbol.slice(0, 2)}
+                    </div>
+                  )}
+                  <span className="absolute -top-2 -right-2 text-xl leading-none">👑</span>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#ffcf5a]">King of the Hill</span>
-                    <span className="rounded-full bg-[#00ff88]/15 border border-[#00ff88]/25 px-2 py-0.5 text-[9px] font-bold text-[#00ff88]">🔥 Top Gainer Now</span>
+
+                <div className="min-w-0 flex-1">
+                  {/* Title row */}
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#ffcf5a]">King of the Hill</span>
+                    <span className="rounded-full border px-2 py-0.5 text-[9px] font-bold" style={{ borderColor: urgencyColor + "40", backgroundColor: urgencyColor + "18", color: urgencyColor }}>{urgency}</span>
                   </div>
-                  <div className="mt-0.5 line-clamp-1 text-2xl font-extrabold leading-5 tracking-tight text-white">{king.name}</div>
-                  <div className="mt-1.5 flex items-center gap-3 text-sm text-white/55">
-                    <span className="font-mono text-white/70">${king.symbol}</span>
-                    <span className="flex items-center gap-1 text-[11px] text-white/35">
-                      <span>⏱</span>
-                      <span>Next rotation in <span className="font-mono font-semibold text-[#ffcf5a]/90">{countdown}</span></span>
-                    </span>
+                  {/* Token name — huge */}
+                  <div className="flex items-baseline gap-2">
+                    <span className="line-clamp-1 text-[1.6rem] font-extrabold leading-none tracking-tight text-white">{king.name}</span>
+                    <span className="font-mono text-base text-white/45">${king.symbol}</span>
+                  </div>
+                  {/* Countdown */}
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white/35">
+                    <span>⏱</span>
+                    <span>Next rotation in <span className="font-mono font-semibold text-[#ffcf5a]/80">{countdown}</span></span>
+                  </div>
+                  {/* Graduation progress bar */}
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-center justify-between text-[10px]">
+                      <span className="text-white/40 uppercase tracking-wider">Graduation Progress</span>
+                      <span className="font-mono font-bold" style={{ color: urgencyColor }}>{gradPct.toFixed(1)}% — {gradPct >= 80 ? "Buy before it's gone! 🚨" : gradPct >= 50 ? "Momentum building fast!" : "Early — catch the wave 🌊"}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${gradPct}%`, background: `linear-gradient(90deg, #00ff88, ${urgencyColor})` }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-4 flex min-w-0 items-start gap-4">
-                {resolveImageUrl(king.imageUrl) ? (
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10">
-                    <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#ffcf5a]/15 text-lg font-bold text-[#ffcf5a]">
-                    {king.symbol.slice(0, 2)}
-                  </div>
-                )}
-                <p className="max-w-xl text-sm leading-6 text-white/62">
-                  The highest-conviction chart on JetForge right now. Follow the strongest volume surge before it graduates.
-                </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 xl:grid-cols-2">
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-white/40">24H Volume</div>
-                <div className="mt-2 text-lg font-bold text-white">{king.volume24h.toFixed(2)} SOL</div>
+                <div className="mt-1.5 text-xl font-bold text-white">{king.volume24h.toFixed(2)} SOL</div>
               </div>
               <div className="rounded-2xl border border-[#ffcf5a]/20 bg-[#ffcf5a]/8 p-4">
                 <div className="text-[10px] uppercase tracking-[0.22em] text-[#ffcf5a]/70">Market Cap</div>
-                <div className="mt-2 text-lg font-bold text-[#fff1c2]">{king.marketCapSol.toFixed(2)} SOL</div>
+                <div className="mt-1.5 text-xl font-bold text-[#fff1c2]">{king.marketCapSol.toFixed(2)} SOL</div>
+              </div>
+              <div className="col-span-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 flex items-center justify-between">
+                <span className="text-[10px] text-white/35 uppercase tracking-wider">{king.trades} trades · actively pumping</span>
+                <span className="text-xs font-bold text-[#00ff88]">Trade now →</span>
               </div>
             </div>
           </div>

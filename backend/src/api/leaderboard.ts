@@ -27,7 +27,12 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         break;
     }
 
+    // KotH uses excludeGraduated=true so only tradeable tokens appear
+    const excludeGraduated = req.query.excludeGraduated === "true";
+    const whereClause = excludeGraduated ? { isGraduated: false } : {};
+
     const tokens = await prisma.token.findMany({
+      where: whereClause,
       orderBy,
       take: limit,
       select: {
