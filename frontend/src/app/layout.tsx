@@ -17,6 +17,13 @@ export const metadata: Metadata = {
     template: "%s | JetForge",
   },
   description: DEFAULT_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/brand/jetforge-favicon.png", type: "image/png", sizes: "any" },
+    ],
+    shortcut: "/brand/jetforge-favicon.png",
+    apple: "/brand/jetforge-favicon.png",
+  },
   keywords: [
     "Solana token launch",
     "pump fun alternative",
@@ -85,6 +92,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/brand/jetforge-favicon.png" type="image/png" />
+        <link rel="shortcut icon" href="/brand/jetforge-favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/brand/jetforge-favicon.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
