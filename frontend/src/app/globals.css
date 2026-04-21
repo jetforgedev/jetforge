@@ -261,23 +261,43 @@ a {
   width: 100%;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045);
+  background: #0e1c19;
   color: var(--text-primary);
   padding: 12px 14px;
   font-size: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-  backdrop-filter: blur(14px);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .input-field:focus {
   outline: none;
   border-color: rgba(0, 255, 136, 0.55);
-  background: rgba(255, 255, 255, 0.06);
+  background: #112119;
   box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.08);
 }
 
 .input-field::placeholder {
-  color: rgba(185, 200, 195, 0.45);
+  color: rgba(185, 200, 195, 0.35);
+}
+
+/* Hide number input spinners */
+.input-field::-webkit-outer-spin-button,
+.input-field::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-field[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Prevent browser autofill white overlay */
+.input-field:-webkit-autofill,
+.input-field:-webkit-autofill:hover,
+.input-field:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0e1c19 inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .btn-primary {
