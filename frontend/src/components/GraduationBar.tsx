@@ -12,13 +12,31 @@ interface GraduationBarProps {
   raydiumPoolId?: string;
 }
 
+function getPhase(progress: number): { label: string; color: string; bg: string; border: string } {
+  if (progress < 25)  return { label: "EARLY",    color: "#4fc3f7", bg: "#4fc3f710", border: "#4fc3f730" };
+  if (progress < 60)  return { label: "BUILDING",  color: "#a5d6a7", bg: "#a5d6a710", border: "#a5d6a730" };
+  if (progress < 85)  return { label: "HOT 🔥",    color: "#ffaa00", bg: "#ffaa0015", border: "#ffaa0030" };
+  return               { label: "FINAL 🚀",  color: "#ff6b6b", bg: "#ff6b6b15", border: "#ff6b6b40" };
+}
+
+function getNextMilestone(progress: number, solTarget: number): string | null {
+  const milestones = [25, 50, 75, 90, 100];
+  const next = milestones.find((m) => m > progress);
+  if (!next) return null;
+  const solAtMilestone = ((next / 100) * solTarget).toFixed(2);
+  return `Next milestone: ${next}% (${solAtMilestone} SOL)`;
+}
+
 export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolId }: GraduationBarProps) {
   const realSol = new BN(realSolReserves || "0");
   const target = GRADUATION_THRESHOLD;
   const progress = Math.min(100, (realSol.toNumber() / target.toNumber()) * 100);
   const isNearGrad = progress >= 80;
+  const isFinalPhase = progress >= 85;
   const solRaised = Number(realSolReserves) / 1e9;
   const solTarget = Number(target.toString()) / 1e9;
+  const phase = getPhase(progress);
+  const nextMilestone = getNextMilestone(progress, solTarget);
 
   if (isGraduated) {
     const raydiumSwapUrl = mint
@@ -71,8 +89,10 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
   return (
     <div
       className={clsx(
-        "relative overflow-hidden rounded-[28px] border bg-white/[0.04] p-4 backdrop-blur-sm sm:p-5",
-        isNearGrad
+        "relative overflow-hidden rounded-[28px] border bg-white/[0.04] p-4 sm:p-5",
+        isFinalPhase
+          ? "animate-glow-pulse border-[#ff6b6b]/40 shadow-[0_0_40px_rgba(255,107,107,0.12)]"
+          : isNearGrad
           ? "animate-glow-pulse border-[#ffcf5a]/35"
           : "border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.18)]"
       )}
@@ -86,19 +106,32 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
 
       <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#00ff88]/10 text-lg">📈</div>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#00ff88]/10 text-lg">
+            {isFinalPhase ? "🚀" : "📈"}
+          </div>
           <div>
             <div className="text-sm font-semibold text-white">Bonding Curve Progress</div>
-            <div className="text-xs leading-5 text-white/42">Liquidity marches toward DEX graduation</div>
+            <div className="text-xs leading-5 text-white/42">
+              {isFinalPhase
+                ? "Final push — every buy brings this closer to the DEX!"
+                : "Liquidity marches toward DEX graduation"}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap justify-end">
+          {/* Phase badge */}
+          <span
+            className="rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+            style={{ color: phase.color, background: phase.bg, borderColor: phase.border }}
+          >
+            {phase.label}
+          </span>
           {isNearGrad && (
             <span className="rounded-full border border-[#ffcf5a]/30 bg-[#ffcf5a]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffdf8c]">
               Near Graduation
             </span>
           )}
-          <span className={clsx("text-lg font-mono font-bold", isNearGrad ? "text-[#ffcf5a]" : "text-[#00ff88]")}>
+          <span className={clsx("text-lg font-mono font-bold", isFinalPhase ? "text-[#ff6b6b]" : isNearGrad ? "text-[#ffcf5a]" : "text-[#00ff88]")}>
             {progress.toFixed(1)}%
           </span>
         </div>
@@ -111,11 +144,21 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
         </div>
         <div className="h-4 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className={clsx("progress-bar-fill h-full rounded-full", isNearGrad && "near-grad")}
+            className={clsx("progress-bar-fill h-full rounded-full transition-all duration-700", isNearGrad && "near-grad")}
             style={{ width: `${progress}%` }}
           />
         </div>
+        {nextMilestone && (
+          <div className="mt-2 text-[10px] text-white/38 font-mono">{nextMilestone}</div>
+        )}
       </div>
+
+      {isFinalPhase && (
+        <div className="mb-4 rounded-2xl border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-center">
+          <div className="text-sm font-bold text-[#ff9090]">🚀 Final push to the DEX!</div>
+          <div className="text-xs text-white/50 mt-0.5">This token is about to graduate — buy now before it moves to Raydium.</div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 text-xs text-white/46 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
@@ -128,8 +171,11 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
         </div>
         <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
           <div className="mb-1 uppercase tracking-[0.18em] text-white/32">Status</div>
-          <div className={clsx("text-sm font-semibold", isNearGrad ? "text-[#ffdf8c]" : "text-[#8dffc9]")}>
-            {isNearGrad ? "Almost there" : "Building liquidity"}
+          <div
+            className="text-sm font-semibold"
+            style={{ color: phase.color }}
+          >
+            {isFinalPhase ? "Almost there 🚀" : isNearGrad ? "Almost there" : "Building liquidity"}
           </div>
         </div>
       </div>

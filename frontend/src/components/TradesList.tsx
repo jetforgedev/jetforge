@@ -10,6 +10,19 @@ interface TradesListProps {
   symbol: string;
 }
 
+function getTradeTag(solAmountRaw: string | number): { label: string; color: string } | null {
+  const sol = Number(solAmountRaw) / 1e9;
+  if (sol >= 0.3) return { label: "🐋 Whale", color: "#7c3aed" };
+  if (sol < 0.05) return { label: "🐣 Small", color: "#555" };
+  return null;
+}
+
+function getPressureLabel(buyPct: number): { label: string; icon: string; color: string } {
+  if (buyPct >= 65) return { label: "Strong Buy Pressure", icon: "🟢", color: "#00ff88" };
+  if (buyPct <= 35) return { label: "Strong Sell Pressure", icon: "🔴", color: "#ff4444" };
+  return { label: "Balanced", icon: "⚖️", color: "#888" };
+}
+
 export function TradesList({ mint, symbol }: TradesListProps) {
   const { trades, isLoading } = useTrades(mint);
 
@@ -26,7 +39,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
     );
   }
 
-  // Buy/sell pressure from recent 50 trades
+  // Buy/sell pressure from recent trades
   const buys = trades.filter((t) => t.type === "BUY");
   const sells = trades.filter((t) => t.type === "SELL");
   const buyVol = buys.reduce((s, t) => s + Number(t.solAmount), 0);
@@ -35,12 +48,39 @@ export function TradesList({ mint, symbol }: TradesListProps) {
   const buyPct = totalVol > 0 ? (buyVol / totalVol) * 100 : 50;
   const sellPct = 100 - buyPct;
 
+  // Momentum: trades in last 5 min vs last 30 min
+  const now = Date.now();
+  const trades5m = trades.filter((t) => now - new Date(t.timestamp).getTime() < 5 * 60 * 1000).length;
+  const trades30m = trades.filter((t) => now - new Date(t.timestamp).getTime() < 30 * 60 * 1000).length;
+  const momentumRatio = trades30m > 0 ? trades5m / trades30m : 0;
+  const isHotMomentum = trades5m >= 3 && momentumRatio >= 0.4;
+  const isCoolingMomentum = trades30m > 0 && trades5m === 0;
+
+  const pressure = getPressureLabel(buyPct);
+
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-[#1a1a1a] flex justify-between items-center">
-        <span className="text-white text-sm font-semibold">Recent Trades</span>
-        <span className="text-[#555] text-xs">{trades.length} trades</span>
+        <div className="flex items-center gap-2">
+          <span className="text-white text-sm font-semibold">Recent Trades</span>
+          {isHotMomentum && (
+            <span className="rounded-full border border-[#ff8c00]/30 bg-[#ff8c00]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-[#ffb347]">
+              🔥 Hot
+            </span>
+          )}
+          {isCoolingMomentum && (
+            <span className="rounded-full border border-[#555]/30 bg-[#555]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-[#666]">
+              💤 Cooling
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {trades5m > 0 && (
+            <span className="text-[10px] text-[#555]">{trades5m} in 5m</span>
+          )}
+          <span className="text-[#555] text-xs">{trades.length} trades</span>
+        </div>
       </div>
 
       {/* Buy/Sell pressure bar */}
@@ -50,7 +90,9 @@ export function TradesList({ mint, symbol }: TradesListProps) {
             <span className="text-[#00ff88] font-semibold">
               BUY {buyPct.toFixed(0)}%
             </span>
-            <span className="text-[#555] text-[10px]">Buy / Sell Pressure</span>
+            <span className="font-semibold text-[10px]" style={{ color: pressure.color }}>
+              {pressure.icon} {pressure.label}
+            </span>
             <span className="text-[#ff4444] font-semibold">
               {sellPct.toFixed(0)}% SELL
             </span>
@@ -69,7 +111,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
 
       {/* Column headers */}
       {trades.length > 0 && (
-        <div className="grid grid-cols-5 px-4 py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
+        <div className="grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
           <span>ACCOUNT</span>
           <span>TYPE</span>
           <span className="text-right">SOL</span>
@@ -91,18 +133,29 @@ export function TradesList({ mint, symbol }: TradesListProps) {
             const isBuy = trade.type === "BUY";
             const solAmt = (Number(trade.solAmount) / 1e9).toFixed(3);
             const tokenAmt = (Number(trade.tokenAmount) / 1_000_000).toFixed(0);
+            const tag = getTradeTag(trade.solAmount);
 
             return (
               <div
                 key={trade.id}
                 className={clsx(
-                  "grid grid-cols-5 px-4 py-2.5 border-b border-[#0a0a0a] text-xs hover:bg-[#0f0f0f] transition-colors",
+                  "grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2.5 border-b border-[#0a0a0a] text-xs hover:bg-[#0f0f0f] transition-colors",
                   "animate-slide-in"
                 )}
               >
-                <span className="text-[#666] font-mono">
-                  {truncateAddress(trade.trader, 4)}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[#666] font-mono truncate">
+                    {truncateAddress(trade.trader, 4)}
+                  </span>
+                  {tag && (
+                    <span
+                      className="shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
+                      style={{ color: tag.color, borderColor: tag.color + "40", background: tag.color + "15" }}
+                    >
+                      {tag.label}
+                    </span>
+                  )}
+                </div>
                 <span
                   className={clsx(
                     "font-semibold",

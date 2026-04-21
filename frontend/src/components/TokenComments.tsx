@@ -10,9 +10,44 @@ import { clsx } from "clsx";
 
 interface TokenCommentsProps {
   mint: string;
+  progress?: number;   // 0–100 bonding curve %
+  totalTrades?: number;
 }
 
-export function TokenComments({ mint }: TokenCommentsProps) {
+interface SystemMessage {
+  id: string;
+  isSystem: true;
+  icon: string;
+  text: string;
+}
+
+type DisplayComment = CommentData | SystemMessage;
+
+function buildSystemMessages(progress: number, totalTrades: number): SystemMessage[] {
+  const msgs: SystemMessage[] = [];
+
+  if (progress >= 100) {
+    msgs.push({ id: "sys-graduated", isSystem: true, icon: "🎓", text: "This token has graduated to the DEX! Trading now live on Raydium." });
+  } else if (progress >= 85) {
+    msgs.push({ id: "sys-final", isSystem: true, icon: "🚀", text: `Bonding curve is ${progress.toFixed(0)}% full — final push to the DEX! Buy now before graduation.` });
+  } else if (progress >= 50) {
+    msgs.push({ id: "sys-halfway", isSystem: true, icon: "🔥", text: `Halfway there! Curve is ${progress.toFixed(0)}% full and building strong momentum.` });
+  } else if (progress >= 25) {
+    msgs.push({ id: "sys-building", isSystem: true, icon: "📈", text: `Curve at ${progress.toFixed(0)}% — community is building liquidity. Early movers still have room.` });
+  }
+
+  if (totalTrades >= 100) {
+    msgs.push({ id: "sys-100trades", isSystem: true, icon: "💯", text: `${totalTrades} trades completed! This token has an active community.` });
+  } else if (totalTrades >= 50) {
+    msgs.push({ id: "sys-50trades", isSystem: true, icon: "⚡", text: `${totalTrades} trades in — momentum is building fast.` });
+  } else if (totalTrades >= 10) {
+    msgs.push({ id: "sys-10trades", isSystem: true, icon: "✅", text: `${totalTrades} trades completed — this token is getting traction.` });
+  }
+
+  return msgs;
+}
+
+export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenCommentsProps) {
   const { publicKey, signMessage } = useWallet();
   const socket = useSocket();
   const queryClient = useQueryClient();
@@ -60,6 +95,11 @@ export function TokenComments({ mint }: TokenCommentsProps) {
     }
   };
 
+  const systemMessages = buildSystemMessages(progress, totalTrades);
+
+  // Interleave: system messages first (as pinned context), then user comments
+  const displayItems: DisplayComment[] = [...systemMessages, ...comments];
+
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
@@ -75,28 +115,48 @@ export function TokenComments({ mint }: TokenCommentsProps) {
               <div key={i} className="h-12 bg-[#1a1a1a] rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : comments.length === 0 ? (
+        ) : displayItems.length === 0 ? (
           <div className="flex flex-col items-center py-8 text-[#333]">
             <div className="text-3xl mb-2">💬</div>
             <div className="text-sm">No comments yet — be the first!</div>
           </div>
         ) : (
-          comments.map((c) => (
-            <div key={c.id} className="flex gap-2.5 animate-slide-in">
-              <div className="w-7 h-7 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[10px] text-[#555] font-mono shrink-0">
-                {c.wallet.slice(0, 2)}
-              </div>
-              <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[#555] text-[10px] font-mono">{truncateAddress(c.wallet, 4)}</span>
-                  <span className="text-[#333] text-[10px]">
-                    {new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+          displayItems.map((item) => {
+            if ("isSystem" in item) {
+              return (
+                <div key={item.id} className="flex gap-2.5 animate-slide-in">
+                  <div className="w-7 h-7 rounded-full bg-[#00ff8815] border border-[#00ff8830] flex items-center justify-center text-sm shrink-0">
+                    {item.icon}
+                  </div>
+                  <div className="flex-1 min-w-0 bg-[#00ff8808] border border-[#00ff8818] rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[#00ff88] text-[10px] font-semibold">System</span>
+                      <span className="text-[#333] text-[10px]">auto</span>
+                    </div>
+                    <p className="text-[#8dffc9] text-xs break-words">{item.text}</p>
+                  </div>
                 </div>
-                <p className="text-[#aaa] text-xs break-words">{c.text}</p>
+              );
+            }
+
+            const c = item as CommentData;
+            return (
+              <div key={c.id} className="flex gap-2.5 animate-slide-in">
+                <div className="w-7 h-7 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[10px] text-[#555] font-mono shrink-0">
+                  {c.wallet.slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[#555] text-[10px] font-mono">{truncateAddress(c.wallet, 4)}</span>
+                    <span className="text-[#333] text-[10px]">
+                      {new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-[#aaa] text-xs break-words">{c.text}</p>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={bottomRef} />
       </div>

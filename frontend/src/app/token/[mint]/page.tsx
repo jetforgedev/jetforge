@@ -8,7 +8,7 @@ import { PriceChart } from "@/components/PriceChart";
 import { GraduationBar } from "@/components/GraduationBar";
 import { TradesList } from "@/components/TradesList";
 import { truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
-import { formatSol } from "@/lib/bondingCurve";
+import { formatSol, GRADUATION_THRESHOLD } from "@/lib/bondingCurve";
 import BN from "bn.js";
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -787,10 +787,10 @@ export default function TokenPage({ params }: PageProps) {
                 </div>
               ))}
 
-              {/* Dev holdings — key transparency metric */}
+              {/* Creator activity — key transparency metric */}
               <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#555]">Dev Holdings</span>
+                  <span className="text-[#555]">Creator Activity</span>
                   <span className={`font-mono font-semibold ${devHoldingColor}`}>
                     {devPct.toFixed(2)}%
                     {devPct === 0 && " ✓ sold/none"}
@@ -896,7 +896,11 @@ export default function TokenPage({ params }: PageProps) {
           <TradesList mint={mint} symbol={token.symbol} />
         </div>
         <div className="lg:col-span-2 order-6">
-          <TokenComments mint={mint} />
+          <TokenComments
+            mint={mint}
+            progress={token.isGraduated ? 100 : Math.min(100, (Number(token.realSolReserves) / GRADUATION_THRESHOLD.toNumber()) * 100)}
+            totalTrades={token.trades}
+          />
         </div>
       </div>
     </div>

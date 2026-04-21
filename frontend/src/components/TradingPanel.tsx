@@ -762,6 +762,11 @@ export function TradingPanel({ token }: TradingPanelProps) {
             `Sell ${token.symbol}`
           )}
         </button>
+        {tab === "buy" && !token.isGraduated && (
+          <div className="text-center text-[10px] text-white/30 mt-1.5 leading-4">
+            📈 Price increases as more users buy
+          </div>
+        )}
       </div>
       </>
       )}
