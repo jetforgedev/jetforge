@@ -394,7 +394,7 @@ export default function HomePage() {
         <div className="min-w-0 space-y-6">
           <section className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.12),rgba(255,255,255,0.03)_35%,rgba(0,204,255,0.12))] px-4 py-5 shadow-[0_30px_80px_rgba(0,0,0,0.28)] sm:rounded-[32px] sm:px-8 sm:py-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(0,255,136,0.14),transparent_24%)]" />
-            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.05) 1px,transparent 1px)", backgroundSize: "42px 42px" }} />
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px,transparent 1px)", backgroundSize: "42px 42px" }} />
             <div className="relative grid gap-5 lg:grid-cols-[1.45fr_0.9fr] lg:items-end">
               <div className="max-w-3xl">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#00ff88]/20 bg-[#00ff88]/8 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4] sm:mb-4 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.28em]">
