@@ -10,7 +10,7 @@ import { clsx } from "clsx";
 
 interface TokenCommentsProps {
   mint: string;
-  progress?: number;   // 0–100 bonding curve %
+  progress?: number;    // 0–100 bonding curve %
   totalTrades?: number;
 }
 
@@ -23,28 +23,41 @@ interface SystemMessage {
 
 type DisplayComment = CommentData | SystemMessage;
 
+// FINAL_PHASE_PCT must match GraduationBar.tsx
+const FINAL_PHASE_PCT = 85;
+const MAX_SYSTEM_MESSAGES = 2;
+
+/**
+ * Build at most MAX_SYSTEM_MESSAGES system messages.
+ * Priority order: graduated > final > halfway/building > trade count.
+ * Only the single most relevant progress message is shown.
+ */
 function buildSystemMessages(progress: number, totalTrades: number): SystemMessage[] {
   const msgs: SystemMessage[] = [];
 
+  // Exactly one progress message (most specific wins)
   if (progress >= 100) {
-    msgs.push({ id: "sys-graduated", isSystem: true, icon: "🎓", text: "This token has graduated to the DEX! Trading now live on Raydium." });
-  } else if (progress >= 85) {
-    msgs.push({ id: "sys-final", isSystem: true, icon: "🚀", text: `Bonding curve is ${progress.toFixed(0)}% full — final push to the DEX! Buy now before graduation.` });
+    msgs.push({ id: "sys-progress", isSystem: true, icon: "🎓", text: "This token has graduated to the DEX! Trading is now live." });
+  } else if (progress >= FINAL_PHASE_PCT) {
+    msgs.push({ id: "sys-progress", isSystem: true, icon: "🚀", text: `Bonding curve is ${progress.toFixed(0)}% full — final push to the DEX! Buy now before graduation.` });
   } else if (progress >= 50) {
-    msgs.push({ id: "sys-halfway", isSystem: true, icon: "🔥", text: `Halfway there! Curve is ${progress.toFixed(0)}% full and building strong momentum.` });
+    msgs.push({ id: "sys-progress", isSystem: true, icon: "🔥", text: `Curve at ${progress.toFixed(0)}% — strong momentum building toward DEX graduation.` });
   } else if (progress >= 25) {
-    msgs.push({ id: "sys-building", isSystem: true, icon: "📈", text: `Curve at ${progress.toFixed(0)}% — community is building liquidity. Early movers still have room.` });
+    msgs.push({ id: "sys-progress", isSystem: true, icon: "📈", text: `Curve at ${progress.toFixed(0)}% — early movers still have room.` });
   }
 
-  if (totalTrades >= 100) {
-    msgs.push({ id: "sys-100trades", isSystem: true, icon: "💯", text: `${totalTrades} trades completed! This token has an active community.` });
-  } else if (totalTrades >= 50) {
-    msgs.push({ id: "sys-50trades", isSystem: true, icon: "⚡", text: `${totalTrades} trades in — momentum is building fast.` });
-  } else if (totalTrades >= 10) {
-    msgs.push({ id: "sys-10trades", isSystem: true, icon: "✅", text: `${totalTrades} trades completed — this token is getting traction.` });
+  // One trade-count message (only if slot is still available)
+  if (msgs.length < MAX_SYSTEM_MESSAGES) {
+    if (totalTrades >= 100) {
+      msgs.push({ id: "sys-trades", isSystem: true, icon: "💯", text: `${totalTrades} trades completed — this token has an active community.` });
+    } else if (totalTrades >= 50) {
+      msgs.push({ id: "sys-trades", isSystem: true, icon: "⚡", text: `${totalTrades} trades in — momentum is building fast.` });
+    } else if (totalTrades >= 10) {
+      msgs.push({ id: "sys-trades", isSystem: true, icon: "✅", text: `${totalTrades} trades completed — this token is getting traction.` });
+    }
   }
 
-  return msgs;
+  return msgs; // guaranteed ≤ MAX_SYSTEM_MESSAGES
 }
 
 export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenCommentsProps) {
@@ -96,8 +109,6 @@ export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenComm
   };
 
   const systemMessages = buildSystemMessages(progress, totalTrades);
-
-  // Interleave: system messages first (as pinned context), then user comments
   const displayItems: DisplayComment[] = [...systemMessages, ...comments];
 
   return (
@@ -189,7 +200,7 @@ export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenComm
         )}
         {error && <div className="text-[#ff4444] text-[10px] mt-1">{error}</div>}
         {text.length > 240 && (
-          <div className="text-[#555] text-[10px] mt-1">{280 - text.length} characters left</div>
+          <div className="text-[#555] text-[10px] mt-1">{280 - text.length} chars left</div>
         )}
       </div>
     </div>

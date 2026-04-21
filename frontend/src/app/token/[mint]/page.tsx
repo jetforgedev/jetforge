@@ -790,7 +790,15 @@ export default function TokenPage({ params }: PageProps) {
               {/* Creator activity — key transparency metric */}
               <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#555]">Creator Activity</span>
+                  <span className="text-[#555] flex items-center gap-1">
+                    Creator Activity
+                    <span className="relative group inline-flex items-center">
+                      <span className="text-[10px] text-[#444] hover:text-[#666] cursor-help leading-none">ⓘ</span>
+                      <span className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-30 w-52 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#999] shadow-xl pointer-events-none leading-5 whitespace-normal">
+                        Shows the percentage of tokens held by the creator wallet.
+                      </span>
+                    </span>
+                  </span>
                   <span className={`font-mono font-semibold ${devHoldingColor}`}>
                     {devPct.toFixed(2)}%
                     {devPct === 0 && " ✓ sold/none"}

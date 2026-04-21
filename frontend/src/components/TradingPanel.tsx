@@ -763,8 +763,16 @@ export function TradingPanel({ token }: TradingPanelProps) {
           )}
         </button>
         {tab === "buy" && !token.isGraduated && (
-          <div className="text-center text-[10px] text-white/30 mt-1.5 leading-4">
-            📈 Price increases as more users buy
+          <div className="flex items-center justify-center gap-1 mt-1.5">
+            <span className="text-[10px] text-white/30 leading-4">
+              📈 Price increases as more users buy
+            </span>
+            <span className="relative group inline-flex items-center">
+              <span className="text-[10px] text-[#444] hover:text-[#666] cursor-help leading-none">ⓘ</span>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 w-48 rounded-xl bg-[#1c1c1c] border border-[#2a2a2a] px-3 py-2 text-[11px] text-[#999] shadow-xl pointer-events-none leading-5 whitespace-normal">
+                Price follows a bonding curve. Earlier buyers get lower prices.
+              </span>
+            </span>
           </div>
         )}
       </div>
