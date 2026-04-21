@@ -41,6 +41,54 @@ export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
 
+// ─── Runtime env guard ───────────────────────────────────────────────────────
+// getConfig() is called at the top of every transaction builder so that a
+// misconfigured .env.local produces a clear error before any RPC call or
+// signing attempt.
+//
+// It is NEVER called at module load, during SSR, or during `next build`:
+//   - transaction builders are only reachable from wallet-connected click handlers
+//   - PROGRAM_ID / TREASURY (above) keep their fallback values for PDA derivation
+//     during React Query fetches and server rendering without a .env.local
+//
+// Validation: throws if the value is absent, blank, contains "XXX" (placeholder),
+// or is not decodable as a valid base58 Solana public key.
+
+function validateEnvKey(name: string, raw: string | undefined): PublicKey {
+  if (!raw || raw.trim() === "" || raw.includes("XXX")) {
+    throw new Error(
+      `[JetForge] ${name} is missing or contains a placeholder.\n` +
+      `Add a valid Solana base58 public key to frontend/.env.local:\n` +
+      `  ${name}=<your-value>`,
+    );
+  }
+  try {
+    return new PublicKey(raw);
+  } catch {
+    throw new Error(
+      `[JetForge] ${name} is not a valid Solana public key (got "${raw}").\n` +
+      `Correct the value in frontend/.env.local.`,
+    );
+  }
+}
+
+// Cached after the first successful validation — pays the validation cost once
+// per browser session rather than once per transaction.
+let _validatedProgramId: PublicKey | null = null;
+let _validatedTreasury: PublicKey | null = null;
+
+function getConfig(): { programId: PublicKey; treasury: PublicKey } {
+  const programId = (_validatedProgramId ??= validateEnvKey(
+    "NEXT_PUBLIC_PROGRAM_ID",
+    process.env.NEXT_PUBLIC_PROGRAM_ID,
+  ));
+  const treasury = (_validatedTreasury ??= validateEnvKey(
+    "NEXT_PUBLIC_TREASURY_ADDRESS",
+    process.env.NEXT_PUBLIC_TREASURY_ADDRESS,
+  ));
+  return { programId, treasury };
+}
+
 // ─── Minimal IDL ─────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,6 +293,7 @@ export interface BuyParams {
 }
 
 export async function buildBuyTransaction(params: BuyParams): Promise<Transaction> {
+  const { treasury } = getConfig(); // throws with a clear message if env is missing/malformed
   const { connection, wallet, mintAddress, solAmountLamports, minTokensOut } = params;
 
   const mint = new PublicKey(mintAddress);
@@ -264,7 +313,7 @@ export async function buildBuyTransaction(params: BuyParams): Promise<Transactio
       bondingCurve,
       tokenVault,
       buyerTokenAccount,
-      treasury: TREASURY,
+      treasury,
       buybackVault,
       creatorVault,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -291,6 +340,7 @@ export interface SellParams {
 }
 
 export async function buildSellTransaction(params: SellParams): Promise<Transaction> {
+  const { treasury } = getConfig(); // throws with a clear message if env is missing/malformed
   const { connection, wallet, mintAddress, tokenAmountRaw, minSolOut } = params;
 
   const mint = new PublicKey(mintAddress);
@@ -310,7 +360,7 @@ export async function buildSellTransaction(params: SellParams): Promise<Transact
       bondingCurve,
       tokenVault,
       sellerTokenAccount,
-      treasury: TREASURY,
+      treasury,
       buybackVault,
       creatorVault,
       tokenProgram: TOKEN_PROGRAM_ID,
@@ -344,6 +394,7 @@ export interface CreateTokenResult {
 export async function buildCreateTokenTransaction(
   params: CreateTokenParams
 ): Promise<CreateTokenResult> {
+  getConfig(); // throws with a clear message if env is missing/malformed
   const { connection, wallet, name, symbol, uri, mintKeypair: providedKeypair } = params;
 
   const mintKeypair = providedKeypair ?? Keypair.generate();
@@ -396,6 +447,7 @@ export interface ExecuteBuybackParams {
 export async function buildExecuteBuybackTransaction(
   params: ExecuteBuybackParams
 ): Promise<Transaction> {
+  getConfig(); // throws with a clear message if env is missing/malformed
   const { connection, wallet, mintAddress } = params;
   const mint = new PublicKey(mintAddress);
   const [bondingCurve] = getBondingCurvePDA(mint);
@@ -435,6 +487,7 @@ export interface WithdrawCreatorFeesParams {
 export async function buildWithdrawCreatorFeesTransaction(
   params: WithdrawCreatorFeesParams
 ): Promise<Transaction> {
+  getConfig(); // throws with a clear message if env is missing/malformed
   const { connection, wallet, mintAddress } = params;
   const mint = new PublicKey(mintAddress);
   const [bondingCurve] = getBondingCurvePDA(mint);
