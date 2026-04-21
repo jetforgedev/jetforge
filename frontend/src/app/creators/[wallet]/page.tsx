@@ -167,61 +167,105 @@ export default function CreatorProfilePage({ params }: PageProps) {
             No tokens launched yet
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl">
-            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[400px]">
-            <div className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
-              <div>Token</div>
-              <div className="text-right">Raised</div>
-              <div className="text-right">Trades</div>
-              <div className="text-right">Claimable</div>
-              <div className="text-right">Status</div>
-            </div>
-            {creator.tokens.map((token: any) => (
-              <Link
-                key={token.mint}
-                href={`/token/${token.mint}`}
-                className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
-              >
-                <div className="flex items-center gap-2 min-w-0">
+          <>
+            {/* ── Mobile card list ── */}
+            <div className="sm:hidden space-y-2">
+              {creator.tokens.map((token: any) => (
+                <Link
+                  key={token.mint}
+                  href={`/token/${token.mint}`}
+                  className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#2a2a2a] transition-colors"
+                >
+                  {/* Image */}
                   {resolveImageUrl(token.imageUrl) ? (
-                    <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                    <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-sm font-bold text-[#555] flex-shrink-0">
                       {token.symbol?.[0] ?? "?"}
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <div className="text-white text-xs font-semibold truncate">{token.name}</div>
-                    <div className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</div>
+                  {/* Name + time */}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-white text-sm font-semibold truncate">{token.name}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[#555] text-[10px] font-mono">${token.symbol}</span>
+                      <span className="text-[#333] text-[10px]">·</span>
+                      <span className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[#666] text-[10px]">{parseFloat(token.realSolReserves).toFixed(2)} SOL raised</span>
+                      <span className="text-[#333] text-[10px]">·</span>
+                      <span className="text-[#666] text-[10px]">{token.trades} trades</span>
+                    </div>
                   </div>
+                  {/* Right: status + claimable */}
+                  <div className="flex-shrink-0 text-right">
+                    {token.isGraduated ? (
+                      <span className="px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px] font-semibold">GRAD</span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[#555] text-[10px]">LIVE</span>
+                    )}
+                    {parseFloat(token.claimableEarnings) > 0 && (
+                      <div className="text-[#00ff88] text-[10px] font-mono mt-1">{parseFloat(token.claimableEarnings).toFixed(3)} SOL</div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* ── Desktop table ── */}
+            <div className="hidden sm:block overflow-x-auto rounded-xl">
+              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[400px]">
+                <div className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
+                  <div>Token</div>
+                  <div className="text-right">Raised</div>
+                  <div className="text-right">Trades</div>
+                  <div className="text-right">Claimable</div>
+                  <div className="text-right">Status</div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[#888] text-xs">{parseFloat(token.realSolReserves).toFixed(2)}</span>
-                  <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
-                </div>
-                <div className="text-right text-[#666] text-xs">{token.trades}</div>
-                <div className="text-right">
-                  {parseFloat(token.claimableEarnings) > 0 ? (
-                    <span className="text-[#00ff88] text-xs font-mono">{parseFloat(token.claimableEarnings).toFixed(4)}</span>
-                  ) : (
-                    <span className="text-[#333] text-xs">—</span>
-                  )}
-                </div>
-                <div className="flex justify-end">
-                  {token.isGraduated ? (
-                    <span className="px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px]">
-                      GRAD
-                    </span>
-                  ) : (
-                    <span className="px-1.5 py-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[#555] text-[10px]">
-                      LIVE
-                    </span>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-          </div>
+                {creator.tokens.map((token: any) => (
+                  <Link
+                    key={token.mint}
+                    href={`/token/${token.mint}`}
+                    className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {resolveImageUrl(token.imageUrl) ? (
+                        <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
+                          {token.symbol?.[0] ?? "?"}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-white text-xs font-semibold truncate">{token.name}</div>
+                        <div className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[#888] text-xs">{parseFloat(token.realSolReserves).toFixed(2)}</span>
+                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                    </div>
+                    <div className="text-right text-[#666] text-xs">{token.trades}</div>
+                    <div className="text-right">
+                      {parseFloat(token.claimableEarnings) > 0 ? (
+                        <span className="text-[#00ff88] text-xs font-mono">{parseFloat(token.claimableEarnings).toFixed(4)}</span>
+                      ) : (
+                        <span className="text-[#333] text-xs">—</span>
+                      )}
+                    </div>
+                    <div className="flex justify-end">
+                      {token.isGraduated ? (
+                        <span className="px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px]">GRAD</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[#555] text-[10px]">LIVE</span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
