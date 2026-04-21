@@ -54,3 +54,9 @@ desktop.ini
 # ─── Misc ─────────────────────────────────────────────────────────────────────
 .cache/
 *.tgz
+
+# ─── Claude Code internals ────────────────────────────────────────────────────
+.claude/
+
+# ─── TypeScript incremental build info ───────────────────────────────────────
+**/*.tsbuildinfo
