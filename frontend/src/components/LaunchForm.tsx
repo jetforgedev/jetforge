@@ -74,8 +74,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       toast.error("Please select an image file (JPEG, PNG, GIF, WebP)");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5 MB");
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Image is too large — please use an image under 4 MB.");
       return;
     }
     // Show local preview immediately

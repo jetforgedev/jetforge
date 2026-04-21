@@ -31,6 +31,11 @@ export async function uploadImage(file: File): Promise<string> {
     body: formData,
   });
   if (!res.ok) {
+    // 413 comes from nginx (client_max_body_size) before Express even sees the
+    // request — the body is an HTML error page, not JSON, so we handle it first.
+    if (res.status === 413) {
+      throw new Error("Image is too large. Please use an image under 5 MB.");
+    }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "Image upload failed");
   }
