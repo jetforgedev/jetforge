@@ -145,7 +145,6 @@ function KingOfTheHill() {
     <Link href={`/token/${king.mint}`}>
       <div className="group relative overflow-hidden rounded-[16px] p-[1px] sm:rounded-[28px]">
         <div className="absolute inset-0 animate-gradient-shift rounded-[16px] bg-[linear-gradient(115deg,rgba(255,207,90,0.9),rgba(255,255,255,0.2),rgba(255,207,90,0.95))] sm:rounded-[28px]" />
-        <div className="absolute inset-0 animate-shimmer rounded-[16px] bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.22),transparent)] opacity-40 sm:rounded-[28px]" />
         <div className="glass-panel-dark relative overflow-hidden rounded-[15px] border border-transparent px-3 py-3 transition-transform duration-200 group-hover:scale-[1.01] sm:rounded-[27px] sm:px-6 sm:py-5 lg:px-7">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,207,90,0.18),transparent_70%)]" />
 

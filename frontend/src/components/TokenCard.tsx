@@ -121,7 +121,6 @@ export function TokenCard({ token, isWatched = false, onWatchToggle }: TokenCard
             !token.isGraduated && isNearGrad && "animate-glow-pulse border-[#ffcf5a]/35"
           )}
         >
-          <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.10),transparent_70%)]" />
 
           {/* Header: avatar + name + badges */}
           <div className="relative mb-2 flex items-start gap-2 sm:mb-3.5 sm:gap-3">
