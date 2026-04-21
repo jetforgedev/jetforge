@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useToken } from "@/hooks/useTokenData";
 import { TradingPanel } from "@/components/TradingPanel";
@@ -521,7 +520,7 @@ export default function TokenPage({ params }: PageProps) {
           <div className="flex items-center gap-3">
             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] bg-white/[0.06]">
               {resolveImageUrl(token.imageUrl) ? (
-                <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} fill className="object-cover" unoptimized />
+                <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xl font-bold text-[#00ff88]">
                   {token.symbol.slice(0, 2)}
@@ -598,7 +597,7 @@ export default function TokenPage({ params }: PageProps) {
           {/* Image */}
           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[24px] bg-white/[0.06]">
             {resolveImageUrl(token.imageUrl) ? (
-              <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} fill className="object-cover" unoptimized />
+              <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} className="w-full h-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-[#00ff88]">
                 {token.symbol.slice(0, 2)}

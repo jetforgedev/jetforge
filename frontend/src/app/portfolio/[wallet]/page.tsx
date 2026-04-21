@@ -2,7 +2,6 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 
@@ -315,7 +314,7 @@ export default function PortfolioPage({ params }: PageProps) {
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 flex items-center justify-center">
                       {resolveImageUrl(h.imageUrl) ? (
-                        <Image src={resolveImageUrl(h.imageUrl)!} alt={h.name} width={32} height={32} className="object-cover" unoptimized />
+                        <img src={resolveImageUrl(h.imageUrl)!} alt={h.name} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-[#00ff88] font-bold text-[10px]">{h.symbol.slice(0, 2)}</span>
                       )}
@@ -374,7 +373,7 @@ export default function PortfolioPage({ params }: PageProps) {
                 className="flex items-center gap-3 bg-[#111] border border-[#1a1a1a] hover:border-[#2a2a2a] rounded-xl p-3 transition-colors">
                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 flex items-center justify-center">
                   {resolveImageUrl(token.imageUrl) ? (
-                    <Image src={resolveImageUrl(token.imageUrl)!} alt={token.name} width={40} height={40} className="object-cover" unoptimized />
+                    <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-[#00ff88] font-bold text-xs">{token.symbol.slice(0, 2)}</span>
                   )}
