@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TokenCard } from "@/components/TokenCard";
 import { LiveFeed } from "@/components/LiveFeed";
@@ -19,31 +19,78 @@ const TAB_CONFIG = [
 ];
 
 function CountUpValue({ value }: { value: string }) {
-  const [display, setDisplay] = useState(value);
+  // Tracks the last numeric value we animated TO (or were interrupted at).
+  // null = component has never animated (first mount → animate from 0).
+  const prevNumericRef = useRef<number | null>(null);
+  // Initialize to formatted zero so the first render shows "0 SOL" / "0.00" etc.
+  // rather than the full value — which would produce a visible drop to near-zero
+  // when the first interval tick fires at step 1 (≈38 ms into the animation).
+  // Non-numeric values fall back to `value` directly (no animation, no flash).
+  const [display, setDisplay] = useState(() => {
+    const target = Number(value.replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(target)) return value;
+    const suffix = value.replace(/[0-9.,]/g, "");
+    const zero = value.includes(".")
+      ? (0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : (0).toLocaleString();
+    return `${zero}${suffix}`;
+  });
 
   useEffect(() => {
-    setDisplay(value);
-    const numeric = Number(value.replace(/[^0-9.]/g, ""));
-    if (!Number.isFinite(numeric)) return;
-
     const suffix = value.replace(/[0-9.,]/g, "");
+    const target = Number(value.replace(/[^0-9.]/g, ""));
+
+    // Non-numeric value (e.g. loading placeholder) — just display as-is.
+    if (!Number.isFinite(target)) {
+      setDisplay(value);
+      prevNumericRef.current = null;
+      return;
+    }
+
+    const prev = prevNumericRef.current;
+
+    // Value unchanged (guard against float drift with epsilon) — skip animation entirely.
+    if (prev !== null && Math.abs(target - prev) < 1e-9) return;
+
+    // First mount: animate 0 → target. Subsequent: animate prev → target.
+    const from = prev ?? 0;
     const duration = 700;
     const steps = 18;
-    let currentStep = 0;
+
+    // Mutable locals captured by both the interval callback and the cleanup closure.
+    // The cleanup reads `step` and `lastAnimated` at the moment it actually runs,
+    // which gives us the correct mid-animation position if interrupted.
+    let step = 0;
+    let lastAnimated = from;
+
+    const format = (n: number): string =>
+      value.includes(".")
+        ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : Math.round(n).toLocaleString();
+
     const timer = setInterval(() => {
-      currentStep += 1;
-      const next = (numeric * currentStep) / steps;
-      const formatted = value.includes(".")
-        ? next.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : Math.round(next).toLocaleString();
-      setDisplay(`${formatted}${suffix}`);
-      if (currentStep >= steps) {
+      step += 1;
+      const n = from + (target - from) * (step / steps);
+      lastAnimated = n;
+      setDisplay(`${format(n)}${suffix}`);
+      if (step >= steps) {
         clearInterval(timer);
-        setDisplay(value);
+        setDisplay(value);              // snap to exact original string (avoids rounding artefacts)
+        prevNumericRef.current = target; // record completed value
       }
     }, duration / steps);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      // If the animation was interrupted mid-run (new value arrived, or unmount),
+      // record where we stopped so the NEXT animation starts from there — not from
+      // `from` again — giving a smooth continuation rather than a backward jump.
+      if (step > 0 && step < steps) {
+        prevNumericRef.current = lastAnimated;
+      }
+      // step === 0: effect fired but interval never ticked (unmount immediately) — leave prevNumericRef unchanged.
+      // step >= steps: completed naturally; prevNumericRef already set inside the interval.
+    };
   }, [value]);
 
   return <span>{display}</span>;
