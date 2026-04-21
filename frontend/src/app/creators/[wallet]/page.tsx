@@ -31,6 +31,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -166,8 +167,9 @@ export default function CreatorProfilePage({ params }: PageProps) {
             No tokens launched yet
           </div>
         ) : (
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
+          <div className="overflow-x-auto rounded-xl">
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[400px]">
+            <div className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
               <div>Token</div>
               <div className="text-right">Raised</div>
               <div className="text-right">Trades</div>
@@ -178,7 +180,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
               <Link
                 key={token.mint}
                 href={`/token/${token.mint}`}
-                className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
+                className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {resolveImageUrl(token.imageUrl) ? (
@@ -218,6 +220,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
                 </div>
               </Link>
             ))}
+          </div>
           </div>
         )}
       </div>

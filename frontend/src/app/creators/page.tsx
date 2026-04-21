@@ -40,6 +40,7 @@ export default function CreatorsPage() {
   const { data: creators, isLoading } = useQuery({
     queryKey: ["creators", metric],
     queryFn: () => getCreators(metric, 30),
+    staleTime: 15_000,
     refetchInterval: 30_000,
   });
 
@@ -92,109 +93,119 @@ export default function CreatorsPage() {
           </div>
         </div>
 
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[32px_1fr_90px_70px_70px_90px_100px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
-            <div>#</div>
-            <div>Creator</div>
-            <div className="text-right">Reputation</div>
-            <div className="text-right">Tokens</div>
-            <div className="text-right">Grad</div>
-            <div className="text-right">Volume</div>
-            <div className="text-right">Est. Earnings</div>
-          </div>
-
+        {/* Mobile card list */}
+        <div className="sm:hidden space-y-2">
           {isLoading ? (
-            <div>
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-[32px_1fr_90px_70px_70px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 animate-pulse"
-                >
-                  <div className="w-5 h-4 bg-[#1a1a1a] rounded" />
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#1a1a1a]" />
-                    <div className="w-28 h-3 bg-[#1a1a1a] rounded" />
-                  </div>
-                  <div className="w-16 h-4 bg-[#1a1a1a] rounded ml-auto" />
-                  <div className="w-8 h-3 bg-[#1a1a1a] rounded ml-auto" />
-                  <div className="w-8 h-3 bg-[#1a1a1a] rounded ml-auto" />
-                  <div className="w-16 h-3 bg-[#1a1a1a] rounded ml-auto" />
-                  <div className="w-16 h-3 bg-[#1a1a1a] rounded ml-auto" />
-                </div>
-              ))}
-            </div>
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-20 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl animate-pulse" />
+            ))
           ) : !creators || creators.length === 0 ? (
             <div className="py-16 text-center text-[#444] text-sm">No creators yet — be the first to launch!</div>
-          ) : (
-            <div>
-              {creators.map((creator) => (
-                <Link
-                  key={creator.wallet}
-                  href={`/creators/${creator.wallet}`}
-                  className="grid grid-cols-[32px_1fr_90px_70px_70px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
-                >
-                  <div className="flex items-center justify-center">
-                    <RankBadge rank={creator.rank} />
+          ) : creators.map((creator) => (
+            <Link
+              key={creator.wallet}
+              href={`/creators/${creator.wallet}`}
+              className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#2a2a2a] transition-colors"
+            >
+              <div className="flex items-center justify-center w-7 shrink-0">
+                <RankBadge rank={creator.rank} />
+              </div>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {resolveImageUrl(creator.latestToken?.imageUrl) ? (
+                  <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] shrink-0">
+                    {creator.wallet.slice(0, 2)}
                   </div>
+                )}
+                <div className="min-w-0">
+                  <div className="text-white text-xs font-mono truncate">{truncateAddress(creator.wallet, 6)}</div>
+                  <ReputationBadge badge={creator.badge} label={creator.badgeLabel} color={creator.badgeColor} />
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-[#00ff88] text-xs font-mono">{parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL</div>
+                <div className="text-[#555] text-[10px]">{creator.tokensLaunched} tokens · {creator.graduatedTokens} grad</div>
+              </div>
+            </Link>
+          ))}
+        </div>
 
-                  <div className="flex items-center gap-2 min-w-0">
-                    {resolveImageUrl(creator.latestToken?.imageUrl) ? (
-                      <img
-                        src={resolveImageUrl(creator.latestToken?.imageUrl)!}
-                        alt=""
-                        className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
-                        {creator.wallet.slice(0, 2)}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="text-white text-xs font-mono truncate">
-                        {truncateAddress(creator.wallet, 6)}
-                      </div>
-                      {creator.latestToken && (
-                        <div className="text-[#444] text-[10px] truncate">
-                          Latest: {creator.latestToken.symbol}
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto rounded-xl">
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[580px]">
+            {/* Table header */}
+            <div className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
+              <div>#</div>
+              <div>Creator</div>
+              <div className="text-right">Reputation</div>
+              <div className="text-right">Tokens</div>
+              <div className="text-right">Grad</div>
+              <div className="text-right">Volume</div>
+              <div className="text-right">Est. Earnings</div>
+            </div>
+
+            {isLoading ? (
+              <div>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 animate-pulse">
+                    <div className="w-5 h-4 bg-[#1a1a1a] rounded" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[#1a1a1a]" />
+                      <div className="w-28 h-3 bg-[#1a1a1a] rounded" />
+                    </div>
+                    <div className="w-16 h-4 bg-[#1a1a1a] rounded ml-auto" />
+                    <div className="w-8 h-3 bg-[#1a1a1a] rounded ml-auto" />
+                    <div className="w-8 h-3 bg-[#1a1a1a] rounded ml-auto" />
+                    <div className="w-16 h-3 bg-[#1a1a1a] rounded ml-auto" />
+                    <div className="w-16 h-3 bg-[#1a1a1a] rounded ml-auto" />
+                  </div>
+                ))}
+              </div>
+            ) : !creators || creators.length === 0 ? null : (
+              <div>
+                {creators.map((creator) => (
+                  <Link
+                    key={creator.wallet}
+                    href={`/creators/${creator.wallet}`}
+                    className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
+                  >
+                    <div className="flex items-center justify-center">
+                      <RankBadge rank={creator.rank} />
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {resolveImageUrl(creator.latestToken?.imageUrl) ? (
+                        <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
+                          {creator.wallet.slice(0, 2)}
                         </div>
                       )}
+                      <div className="min-w-0">
+                        <div className="text-white text-xs font-mono truncate">{truncateAddress(creator.wallet, 6)}</div>
+                        {creator.latestToken && <div className="text-[#444] text-[10px] truncate">Latest: {creator.latestToken.symbol}</div>}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <ReputationBadge
-                      badge={creator.badge}
-                      label={creator.badgeLabel}
-                      color={creator.badgeColor}
-                    />
-                  </div>
-
-                  <div className="text-right text-white text-xs font-mono">
-                    {creator.tokensLaunched}
-                  </div>
-
-                  <div className="text-right">
-                    <span className={`text-xs font-mono ${creator.graduatedTokens > 0 ? "text-[#00ff88]" : "text-[#555]"}`}>
-                      {creator.graduatedTokens}
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[#888] text-xs">{parseFloat(creator.totalVolumeSol).toFixed(2)}</span>
-                    <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[#00ff88] text-xs font-mono">
-                      {parseFloat(creator.estimatedEarningsSol).toFixed(4)}
-                    </span>
-                    <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+                    <div className="flex justify-end">
+                      <ReputationBadge badge={creator.badge} label={creator.badgeLabel} color={creator.badgeColor} />
+                    </div>
+                    <div className="text-right text-white text-xs font-mono">{creator.tokensLaunched}</div>
+                    <div className="text-right">
+                      <span className={`text-xs font-mono ${creator.graduatedTokens > 0 ? "text-[#00ff88]" : "text-[#555]"}`}>{creator.graduatedTokens}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[#888] text-xs">{parseFloat(creator.totalVolumeSol).toFixed(2)}</span>
+                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[#00ff88] text-xs font-mono">{parseFloat(creator.estimatedEarningsSol).toFixed(4)}</span>
+                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

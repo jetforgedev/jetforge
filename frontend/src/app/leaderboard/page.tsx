@@ -66,12 +66,14 @@ export default function LeaderboardPage() {
   const { data: tokens, isLoading: loadingTokens } = useQuery({
     queryKey: ["leaderboard-tokens", tokenTab],
     queryFn: () => getTopTokens(tokenTab, 20),
+    staleTime: 15_000,
     refetchInterval: 30_000,
   });
 
   const { data: traders, isLoading: loadingTraders } = useQuery({
     queryKey: ["leaderboard-traders", traderTab],
     queryFn: () => getTopTraders(traderTab, 20),
+    staleTime: 15_000,
     refetchInterval: 30_000,
   });
 
@@ -98,14 +100,14 @@ export default function LeaderboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Top Tokens */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <div className="text-white font-semibold text-sm">Top Tokens</div>
-            <div className="flex gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-1">
+            <div className="flex gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-1 overflow-x-auto max-w-full">
               {tokenTabs.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTokenTab(t.key)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                     tokenTab === t.key
                       ? "bg-[#00ff88] text-black"
                       : "text-[#555] hover:text-white"
@@ -157,7 +159,7 @@ export default function LeaderboardPage() {
                       className="grid grid-cols-[28px_1fr_72px_72px_90px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
                     >
                       <div className="flex items-center justify-center">
-                        <TokenRankBadge rank={(token as any).rank} />
+                        <TokenRankBadge rank={(token as any).rank ?? 0} />
                       </div>
                       <div className="flex items-center gap-2 min-w-0">
                         {resolveImageUrl(token.imageUrl) ? (
@@ -190,7 +192,7 @@ export default function LeaderboardPage() {
                         <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
                       </div>
                       <div className="flex justify-end">
-                        <GradProgress pct={(token as any).graduationProgress ?? 0} />
+                        <GradProgress pct={token.graduationProgress ?? 0} />
                       </div>
                     </Link>
                   ))}

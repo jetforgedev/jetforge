@@ -295,7 +295,8 @@ export default function PortfolioPage({ params }: PageProps) {
             No active holdings — all positions closed.
           </div>
         ) : activeHoldings.length === 0 ? null : (
-          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto rounded-xl">
+          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[340px]">
             <div className="grid grid-cols-[1fr_80px_100px_80px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[#444] text-[10px] uppercase tracking-wider">
               <div>Token</div>
               <div className="text-right">Balance</div>
@@ -346,6 +347,7 @@ export default function PortfolioPage({ params }: PageProps) {
                 </Link>
               );
             })}
+          </div>
           </div>
         )}
       </div>}
@@ -407,7 +409,8 @@ export default function PortfolioPage({ params }: PageProps) {
             {[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-[#111] rounded-xl animate-pulse" />)}
           </div>
         ) : trades.length === 0 ? null : (
-          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto rounded-xl">
+          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[360px]">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#1a1a1a]">
@@ -446,6 +449,7 @@ export default function PortfolioPage({ params }: PageProps) {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         )}
       </div>}
