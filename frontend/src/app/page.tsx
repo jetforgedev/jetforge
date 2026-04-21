@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TokenCard } from "@/components/TokenCard";
 import { LiveFeed } from "@/components/LiveFeed";
-import { getTokens, getTopTokens, getPlatformStats, TokenData, resolveImageUrl } from "@/lib/api";
+import { getTokens, getTokensByMints, getTopTokens, getPlatformStats, TokenData, resolveImageUrl } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
 
@@ -388,11 +388,7 @@ export default function HomePage() {
 
   const { data: watchlistData, isLoading: watchlistLoading } = useQuery({
     queryKey: ["tokens-watchlist", watchlist],
-    queryFn: async () => {
-      if (watchlist.length === 0) return { tokens: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } };
-      const res = await getTokens("new", 1, 50);
-      return { ...res, tokens: res.tokens.filter((t) => watchlist.includes(t.mint)) };
-    },
+    queryFn: () => getTokensByMints(watchlist),
     enabled: activeTab === "watchlist",
     staleTime: 15_000,
   });

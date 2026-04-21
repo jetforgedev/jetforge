@@ -159,6 +159,17 @@ export async function getTokens(
   return fetchApi(`/tokens?sort=${sort}&page=${page}&limit=${limit}${qs}`);
 }
 
+// Fetch a specific set of tokens by mint address.
+// Used by the watchlist tab — avoids the old approach of filtering client-side
+// from the newest-50 list, which silently dropped any token older than #50.
+export async function getTokensByMints(mints: string[]): Promise<TokensResponse> {
+  if (mints.length === 0) {
+    return { tokens: [], pagination: { page: 1, limit: 0, total: 0, pages: 0 } };
+  }
+  // Mint addresses are base58 alphanumeric — safe to join without encoding.
+  return fetchApi(`/tokens?mints=${mints.join(",")}`);
+}
+
 // Comments
 export interface CommentData {
   id: string;

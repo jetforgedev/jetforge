@@ -42,9 +42,115 @@ function computePrice(
   return Number(virtualSolReserves) / Number(virtualTokenReserves);
 }
 
-// GET /api/tokens - list tokens with sorting
+// ─── Shared token enrichment ─────────────────────────────────────────────────
+// Fetches per-mint aggregates (holder count, trades in last 15 min, last trade
+// timestamp) and formats bigint fields to strings. Used by both the list
+// endpoint and the ?mints= batch endpoint so the shape is always identical.
+
+async function enrichTokens(tokens: any[]): Promise<any[]> {
+  if (tokens.length === 0) return [];
+  const mints = tokens.map((t: any) => t.mint);
+  const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+  const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
+    prisma.trade.groupBy({ by: ["mint", "trader"], where: { mint: { in: mints } } }),
+    prisma.trade.groupBy({
+      by: ["mint"],
+      where: { mint: { in: mints }, timestamp: { gte: fifteenMinAgo } },
+      _count: { mint: true },
+    }),
+    prisma.trade.findMany({
+      where: { mint: { in: mints } },
+      orderBy: { timestamp: "desc" },
+      distinct: ["mint"],
+      select: { mint: true, timestamp: true },
+    }),
+  ]);
+
+  const holderCountByMint: Record<string, number> = {};
+  for (const row of holderRows) {
+    holderCountByMint[row.mint] = (holderCountByMint[row.mint] ?? 0) + 1;
+  }
+  const trades15mByMint: Record<string, number> = {};
+  for (const row of recentTradeRows) {
+    trades15mByMint[row.mint] = (row as any)._count.mint;
+  }
+  const lastTradeByMint: Record<string, Date> = {};
+  for (const row of lastTradeRows) {
+    lastTradeByMint[row.mint] = row.timestamp;
+  }
+
+  return tokens.map((token: any) => {
+    const { id: _id, _count, ...rest } = token;
+    return {
+      ...rest,
+      virtualSolReserves: token.virtualSolReserves.toString(),
+      virtualTokenReserves: token.virtualTokenReserves.toString(),
+      realSolReserves: token.realSolReserves.toString(),
+      realTokenReserves: token.realTokenReserves.toString(),
+      totalSupply: token.totalSupply.toString(),
+      trades: _count.tradeHistory,
+      holders: holderCountByMint[token.mint] ?? 0,
+      trades15m: trades15mByMint[token.mint] ?? 0,
+      lastTradeAt: lastTradeByMint[token.mint] ?? null,
+      currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
+      graduationProgress:
+        (Number(token.realSolReserves) /
+          Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) *
+        100,
+    };
+  });
+}
+
+// GET /api/tokens - list tokens with sorting, OR batch lookup by ?mints=a,b,c
 tokensRouter.get("/", async (req: Request, res: Response) => {
   try {
+    // ── Batch lookup by explicit mint addresses ────────────────────────────
+    // Used by the watchlist tab so that watched tokens are always returned
+    // regardless of recency — the old approach (filter client-side from the
+    // newest-50 list) silently dropped any watchlisted token older than #50.
+    //
+    // Guard: check !== undefined rather than truthiness so that ?mints= (empty
+    // value, which trims to "") does not fall through to the list path.
+    if (req.query.mints !== undefined) {
+      const mintsParam = (req.query.mints as string).trim();
+
+      // ?mints= or ?mints=   → return empty cleanly.
+      if (!mintsParam) {
+        return res.json({ tokens: [], pagination: { page: 1, limit: 0, total: 0, pages: 1 } });
+      }
+
+      // Validate each segment: base58 public keys are 32–44 chars, alphanumeric.
+      const mintList = mintsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length >= 32 && s.length <= 44)
+        .slice(0, 100); // cap to prevent accidental large queries
+
+      // ?mints=,,, or all segments too short/long → return empty cleanly.
+      if (mintList.length === 0) {
+        return res.json({ tokens: [], pagination: { page: 1, limit: 0, total: 0, pages: 1 } });
+      }
+
+      const rows = await prisma.token.findMany({
+        where: { mint: { in: mintList } },
+        include: { _count: { select: { tradeHistory: true } } },
+      });
+
+      const enriched = await enrichTokens(rows);
+
+      // Restore the caller's mint order — Prisma findMany({ in: [...] }) does not
+      // preserve input order. Mints absent from the DB are silently dropped.
+      const byMint = new Map(enriched.map((t) => [t.mint, t]));
+      const formattedTokens = mintList.map((m) => byMint.get(m)).filter(Boolean);
+
+      return res.json({
+        tokens: formattedTokens,
+        pagination: { page: 1, limit: mintList.length, total: formattedTokens.length, pages: 1 },
+      });
+    }
+
+    // ── Regular paginated list ─────────────────────────────────────────────
     const sort = (req.query.sort as string) || "new";
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || PAGE_SIZE));
@@ -96,72 +202,12 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
         orderBy,
         skip,
         take: limit,
-        include: {
-          _count: {
-            select: { tradeHistory: true },
-          },
-        },
+        include: { _count: { select: { tradeHistory: true } } },
       }),
       prisma.token.count({ where }),
     ]);
 
-    const mints = tokens.map((t) => t.mint);
-    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
-
-    const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
-      mints.length
-        ? prisma.trade.groupBy({ by: ["mint", "trader"], where: { mint: { in: mints } } })
-        : Promise.resolve([]),
-      mints.length
-        ? prisma.trade.groupBy({
-            by: ["mint"],
-            where: { mint: { in: mints }, timestamp: { gte: fifteenMinAgo } },
-            _count: { mint: true },
-          })
-        : Promise.resolve([]),
-      mints.length
-        ? prisma.trade.findMany({
-            where: { mint: { in: mints } },
-            orderBy: { timestamp: "desc" },
-            distinct: ["mint"],
-            select: { mint: true, timestamp: true },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const holderCountByMint: Record<string, number> = {};
-    for (const row of holderRows) {
-      holderCountByMint[row.mint] = (holderCountByMint[row.mint] ?? 0) + 1;
-    }
-    const trades15mByMint: Record<string, number> = {};
-    for (const row of recentTradeRows) {
-      trades15mByMint[row.mint] = (row as any)._count.mint;
-    }
-    const lastTradeByMint: Record<string, Date> = {};
-    for (const row of lastTradeRows) {
-      lastTradeByMint[row.mint] = row.timestamp;
-    }
-
-    const formattedTokens = tokens.map((token) => {
-      const { id: _id, _count, ...rest } = token as any;
-      return {
-        ...rest,
-        virtualSolReserves: token.virtualSolReserves.toString(),
-        virtualTokenReserves: token.virtualTokenReserves.toString(),
-        realSolReserves: token.realSolReserves.toString(),
-        realTokenReserves: token.realTokenReserves.toString(),
-        totalSupply: token.totalSupply.toString(),
-        trades: _count.tradeHistory,
-        holders: holderCountByMint[token.mint] ?? 0,
-        trades15m: trades15mByMint[token.mint] ?? 0,
-        lastTradeAt: lastTradeByMint[token.mint] ?? null,
-        currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
-        graduationProgress:
-          (Number(token.realSolReserves) /
-            Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) *
-          100,
-      };
-    });
+    const formattedTokens = await enrichTokens(tokens);
 
     res.json({
       tokens: formattedTokens,
