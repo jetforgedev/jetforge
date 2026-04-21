@@ -390,7 +390,26 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
 const holdersCache = new Map<string, { data: any; ts: number }>();
 const HOLDERS_TTL = 30_000;
 
-// GET /api/tokens/:mint/holders - top token holders from Solana RPC
+// Compute holders from trade history in DB (fallback when RPC is unavailable)
+async function getHoldersFromDB(mint: string, totalSupplyUi: number) {
+  const rows = await prisma.$queryRaw<{ wallet: string; balance: bigint }[]>`
+    SELECT trader AS wallet,
+           SUM(CASE WHEN type = 'BUY' THEN "tokenAmount" ELSE -"tokenAmount" END) AS balance
+    FROM "Trade"
+    WHERE mint = ${mint}
+    GROUP BY trader
+    HAVING SUM(CASE WHEN type = 'BUY' THEN "tokenAmount" ELSE -"tokenAmount" END) > 0
+    ORDER BY balance DESC
+    LIMIT 20
+  `;
+  return rows.map((r) => {
+    const amount = Number(r.balance) / 1e6;
+    const pct = totalSupplyUi > 0 ? (amount / totalSupplyUi) * 100 : 0;
+    return { wallet: r.wallet, amount, pct };
+  });
+}
+
+// GET /api/tokens/:mint/holders - top token holders (RPC with DB fallback)
 tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
@@ -401,10 +420,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       return res.json(cached.data);
     }
 
-    const mintPubkey = new PublicKey(mint);
-    const connection = new Connection(config.solana.rpcUrl, "confirmed");
-
-    // Get token's totalSupply from DB (raw units with 6 decimals)
+    // Get token's totalSupply from DB
     const tokenRecord = await prisma.token.findUnique({
       where: { mint },
       select: { totalSupply: true },
@@ -413,31 +429,38 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       ? Number(tokenRecord.totalSupply) / 1e6
       : Number(BONDING_CURVE_CONSTANTS.TOTAL_SUPPLY) / 1e6;
 
-    // Fetch top 20 largest token accounts (1 RPC call)
-    const largest = await connection.getTokenLargestAccounts(mintPubkey);
-    const accounts = largest.value.slice(0, 20);
+    // Try RPC first, fall back to DB-computed holders on any error
+    try {
+      const mintPubkey = new PublicKey(mint);
+      const connection = new Connection(config.solana.rpcUrl, "confirmed");
 
-    if (accounts.length === 0) {
-      const result = { holders: [] };
-      holdersCache.set(mint, { data: result, ts: Date.now() });
-      return res.json(result);
+      const largest = await connection.getTokenLargestAccounts(mintPubkey);
+      const accounts = largest.value.slice(0, 20);
+
+      if (accounts.length > 0) {
+        // Batch-resolve all owners in ONE RPC call
+        const accountInfos = await connection.getMultipleParsedAccounts(
+          accounts.map((a) => a.address)
+        );
+        const holdersWithOwners = accounts.map((acct, i) => {
+          const info = accountInfos.value[i];
+          const parsed = (info?.data as any)?.parsed;
+          const owner: string = parsed?.info?.owner ?? acct.address.toBase58();
+          const amount = Number(acct.uiAmount ?? 0);
+          const pct = totalSupplyUi > 0 ? (amount / totalSupplyUi) * 100 : 0;
+          return { wallet: owner, amount, pct };
+        });
+        const result = { holders: holdersWithOwners, source: "rpc" };
+        holdersCache.set(mint, { data: result, ts: Date.now() });
+        return res.json(result);
+      }
+    } catch (rpcErr) {
+      console.warn(`RPC holders failed for ${mint}, falling back to DB:`, (rpcErr as Error).message);
     }
 
-    // Batch-resolve all owners in ONE RPC call instead of N parallel calls
-    const accountInfos = await connection.getMultipleParsedAccounts(
-      accounts.map((a) => a.address)
-    );
-
-    const holdersWithOwners = accounts.map((acct, i) => {
-      const info = accountInfos.value[i];
-      const parsed = (info?.data as any)?.parsed;
-      const owner: string = parsed?.info?.owner ?? acct.address.toBase58();
-      const amount = Number(acct.uiAmount ?? 0);
-      const pct = totalSupplyUi > 0 ? (amount / totalSupplyUi) * 100 : 0;
-      return { wallet: owner, amount, pct };
-    });
-
-    const result = { holders: holdersWithOwners };
+    // DB fallback — computed from trade history
+    const holders = await getHoldersFromDB(mint, totalSupplyUi);
+    const result = { holders, source: "db" };
     holdersCache.set(mint, { data: result, ts: Date.now() });
     res.json(result);
   } catch (error) {
