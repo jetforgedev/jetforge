@@ -80,6 +80,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   // ATH tracking
   const [ath, setAth] = useState<number | null>(null);
 
+  // Tracks whether the chart + all series refs are ready.
+  // Data-loading effects depend on this so they re-run after async chart init.
+  const [chartReady, setChartReady] = useState(false);
+
   const socket = useSocket();
 
   const { data: ohlcv, isLoading } = useQuery({
@@ -119,16 +123,14 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     import("lightweight-charts").then(({ createChart, CrosshairMode }) => {
       if (state.destroyed || !chartContainerRef.current) return;
 
-      // Wait for the browser to finish layout so clientWidth/Height are non-zero.
-      // This prevents the "blank chart on first load" race condition where the
-      // dynamic import resolves before the DOM has been painted.
+      // rAF ensures the browser has painted the container so dimensions are non-zero
       requestAnimationFrame(() => {
         if (state.destroyed || !chartContainerRef.current) return;
 
-        const containerW = chartContainerRef.current.clientWidth || chartContainerRef.current.offsetWidth || 600;
-        const containerH = chartContainerRef.current.clientHeight || chartContainerRef.current.offsetHeight || 560;
+        const containerW = chartContainerRef.current.offsetWidth || 600;
+        const containerH = chartContainerRef.current.offsetHeight || 480;
 
-      const chart = createChart(chartContainerRef.current, {
+        const chart = createChart(chartContainerRef.current, {
         layout: { background: { color: "#0d0d0d" }, textColor: "#555" },
         grid: { vertLines: { color: "#111" }, horzLines: { color: "#111" } },
         crosshair: { mode: CrosshairMode.Normal },
@@ -180,25 +182,30 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         scaleMargins: { top: isMobile ? 0.92 : 0.85, bottom: 0 },
       });
 
-      state.chart = chart;
-      chartRef.current = chart;
-      candleSeriesRef.current = candleSeries;
-      lineSeriesRef.current = lineSeries;
-      areaSeriesRef.current = areaSeries;
-      barSeriesRef.current = barSeries;
-      activeSeriesRef.current = candleSeries;
-      volumeSeriesRef.current = volumeSeries;
+        state.chart = chart;
+        chartRef.current = chart;
+        candleSeriesRef.current = candleSeries;
+        lineSeriesRef.current = lineSeries;
+        areaSeriesRef.current = areaSeries;
+        barSeriesRef.current = barSeries;
+        activeSeriesRef.current = candleSeries;
+        volumeSeriesRef.current = volumeSeries;
 
-      const resizeObserver = new ResizeObserver(() => {
-        if (chartContainerRef.current) {
-          chart.applyOptions({
-            width: chartContainerRef.current.clientWidth || chartContainerRef.current.offsetWidth || containerW,
-            height: chartContainerRef.current.clientHeight || chartContainerRef.current.offsetHeight || containerH,
-          });
-        }
-      });
-      resizeObserver.observe(chartContainerRef.current);
-      state.observer = resizeObserver;
+        const resizeObserver = new ResizeObserver(() => {
+          if (chartContainerRef.current) {
+            chart.applyOptions({
+              width: chartContainerRef.current.offsetWidth || containerW,
+              height: chartContainerRef.current.offsetHeight || containerH,
+            });
+          }
+        });
+        resizeObserver.observe(chartContainerRef.current);
+        state.observer = resizeObserver;
+
+        // Signal data-loading effects that chart is ready.
+        // Without this, ohlcv effects that ran before rAF completed would have
+        // found null series refs and bailed — data would never appear.
+        setChartReady(true);
 
       }); // end requestAnimationFrame
     }); // end import()
@@ -215,6 +222,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       activeSeriesRef.current = null;
       volumeSeriesRef.current = null;
       liveCandle.current = null;
+      setChartReady(false);
     };
   }, []);
 
@@ -243,9 +251,9 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     else activeSeriesRef.current = candleSeriesRef.current;
   }, [chartType]);
 
-  // Load OHLCV data
+  // Load OHLCV data — depends on chartReady so it re-fires after async chart init
   useEffect(() => {
-    if (!candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
+    if (!chartReady || !candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
     const mult = getMultiplier(solPrice);
 
@@ -284,7 +292,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         open: last.open, high: last.high, low: last.low, close: last.close,
       };
     }
-  }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier, chartType]);
+  }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier, chartType, chartReady]);
 
   // Trade markers
   useEffect(() => {
