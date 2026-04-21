@@ -65,7 +65,9 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
 
     switch (sort) {
       case "trending":
-        orderBy = { volume24h: "desc" };
+        // Non-graduated (isGraduated=false) sorts before graduated (true asc),
+        // then most trades first, then volume as tiebreaker
+        orderBy = [{ isGraduated: "asc" }, { trades: "desc" }, { volume24h: "desc" }];
         break;
       case "marketcap":
         orderBy = { marketCapSol: "desc" };
