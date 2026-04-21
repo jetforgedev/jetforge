@@ -7,7 +7,6 @@ import { LiveFeed } from "@/components/LiveFeed";
 import { getTokens, getTopTokens, getPlatformStats, TokenData, resolveImageUrl } from "@/lib/api";
 import { clsx } from "clsx";
 import Link from "next/link";
-import Image from "next/image";
 
 type SortTab = "trending" | "new" | "graduating" | "graduated" | "watchlist";
 
@@ -109,7 +108,29 @@ function SkeletonCard() {
   );
 }
 
+const KOTH_INTERVAL = 60; // seconds between rotations
+
+function useKothCountdown() {
+  const [secs, setSecs] = useState<number>(() => {
+    const now = Date.now();
+    return KOTH_INTERVAL - Math.floor((now / 1000) % KOTH_INTERVAL);
+  });
+  useEffect(() => {
+    const tick = () => {
+      const now = Date.now();
+      setSecs(KOTH_INTERVAL - Math.floor((now / 1000) % KOTH_INTERVAL));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const m = Math.floor(secs / 60).toString().padStart(2, "0");
+  const s = (secs % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 function KingOfTheHill() {
+  const countdown = useKothCountdown();
   const { data } = useQuery({
     queryKey: ["king-of-hill"],
     queryFn: () => getTopTokens("volume", 1),
@@ -146,7 +167,7 @@ function KingOfTheHill() {
       <div className="group relative overflow-hidden rounded-[16px] p-[1px] sm:rounded-[28px]">
         <div className="absolute inset-0 animate-gradient-shift rounded-[16px] bg-[linear-gradient(115deg,rgba(255,207,90,0.9),rgba(255,255,255,0.2),rgba(255,207,90,0.95))] sm:rounded-[28px]" />
         <div className="glass-panel-dark relative overflow-hidden rounded-[15px] border border-transparent px-3 py-3 transition-transform duration-200 group-hover:scale-[1.01] sm:rounded-[27px] sm:px-6 sm:py-5 lg:px-7">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,207,90,0.18),transparent_70%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,207,90,0.12),transparent_70%)]" />
 
           {/* ── Mobile layout ── */}
           <div className="flex items-center gap-3 sm:hidden">
@@ -154,10 +175,17 @@ function KingOfTheHill() {
               👑
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a]">King of the Hill</div>
-              <div className="mt-0.5 flex items-baseline gap-1.5">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a]">King of the Hill</span>
+                <span className="rounded-full bg-[#00ff88]/15 px-1.5 py-0.5 text-[8px] font-bold text-[#00ff88]">🔥 Top Gainer</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
                 <span className="truncate text-[15px] font-extrabold leading-tight tracking-tight text-white">{king.name}</span>
                 <span className="shrink-0 text-[11px] font-mono text-white/50">${king.symbol}</span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-[8px] text-white/35">
+                <span>⏱</span>
+                <span>Next rotation in <span className="font-mono text-[#ffcf5a]/80">{countdown}</span></span>
               </div>
             </div>
             <div className="shrink-0 text-right">
@@ -176,18 +204,24 @@ function KingOfTheHill() {
                   👑
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#ffcf5a]">King of the Hill</div>
-                  <div className="mt-1 line-clamp-1 text-2xl font-extrabold leading-5 tracking-tight text-white">{king.name}</div>
-                  <div className="mt-1 flex items-center gap-2 text-sm text-white/55">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#ffcf5a]">King of the Hill</span>
+                    <span className="rounded-full bg-[#00ff88]/15 border border-[#00ff88]/25 px-2 py-0.5 text-[9px] font-bold text-[#00ff88]">🔥 Top Gainer Now</span>
+                  </div>
+                  <div className="mt-0.5 line-clamp-1 text-2xl font-extrabold leading-5 tracking-tight text-white">{king.name}</div>
+                  <div className="mt-1.5 flex items-center gap-3 text-sm text-white/55">
                     <span className="font-mono text-white/70">${king.symbol}</span>
-                    <span>rotates every hour</span>
+                    <span className="flex items-center gap-1 text-[11px] text-white/35">
+                      <span>⏱</span>
+                      <span>Next rotation in <span className="font-mono font-semibold text-[#ffcf5a]/90">{countdown}</span></span>
+                    </span>
                   </div>
                 </div>
               </div>
               <div className="mt-4 flex min-w-0 items-start gap-4">
                 {resolveImageUrl(king.imageUrl) ? (
-                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10">
-                    <Image src={resolveImageUrl(king.imageUrl)!} alt={king.name} fill className="object-cover" unoptimized />
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10">
+                    <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#ffcf5a]/15 text-lg font-bold text-[#ffcf5a]">
@@ -393,7 +427,7 @@ export default function HomePage() {
             <div className="relative min-w-0 xl:w-[260px] xl:flex-none">
               <input
                 type="text"
-                placeholder="Search tokens, symbols, creators..."
+                placeholder="Search tokens or creators..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-11 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-4 focus:ring-[#00ff88]/10"
