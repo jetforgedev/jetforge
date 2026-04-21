@@ -12,7 +12,7 @@ const CREATE_TOKEN_MIN_SOL = 0.015;
 
 function friendlyLaunchError(raw: string): string {
   if (raw.includes("0x1") || raw.includes("custom program error: 0x1") || raw.includes("insufficient funds") || raw.includes("Insufficient"))
-    return `Insufficient SOL balance — you need at least ${CREATE_TOKEN_MIN_SOL} SOL to create a token. Get free devnet SOL at faucet.solana.com`;
+    return `Insufficient SOL balance — you need at least ${CREATE_TOKEN_MIN_SOL} SOL to create a token.${process.env.NEXT_PUBLIC_NETWORK === "devnet" ? " Get free devnet SOL at faucet.solana.com" : ""}`;
   if (raw.includes("User rejected") || raw.includes("rejected the request"))
     return "Transaction cancelled.";
   if (raw.includes("NetworkError") || raw.includes("Failed to fetch") || raw.includes("fetch"))
@@ -240,7 +240,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         <div className="text-5xl">🎉</div>
         <div>
           <div className="text-white text-xl font-bold mb-2">Token Launched!</div>
-          <div className="text-[#555] text-sm">Your token is live on Solana devnet</div>
+          <div className="text-[#555] text-sm">Your token is live on Solana {process.env.NEXT_PUBLIC_NETWORK || "devnet"}</div>
         </div>
         <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 text-left">
           <div className="text-[#555] text-xs mb-1">MINT ADDRESS</div>

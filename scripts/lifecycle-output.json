@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-04-09T10:09:16.896Z",
-  "mint": "2XRJe9ZsWRkAT1myRhekD9EX1JcEs98fUkuoSUs5AH3C",
-  "bondingCurvePDA": "6khsNecACrGpvTS3tkRnfDTygwG6FDt66izJwQCyE6Ec",
+  "timestamp": "2026-04-10T18:44:27.007Z",
+  "mint": "HHAzW7BkGSyrbneVrA2bijorP3cQcrsNbgbZ5owmuqBR",
+  "bondingCurvePDA": "2tjdZoWBSUcKUvjfAzXNGb2UMcr4uDNz93E7CRLBAzpB",
   "thresholds": {
     "GRADUATION_THRESHOLD_LAMPORTS": 500000000,
     "BUYBACK_THRESHOLD_LAMPORTS": 100000000
@@ -9,8 +9,8 @@
   "steps": [
     {
       "step": "1. create_token",
-      "tx": "3yTVqVcGG1NEvJA9K1Gwa1QKaXsskVj9ppRr67mm4ZXhC7kbb6MCcPVmH8fi45hJorHeJvXrXqB7h3Ax5i1mQ45N",
-      "note": "mint=2XRJe9ZsWRkAT1myRhekD9EX1JcEs98fUkuoSUs5AH3C",
+      "tx": "4LZvwUyAxFzBLwvzaqfYmLdfrsMr2VgvVyn1XXkR8S7yNFajycvmG7Y22eQPAbTHThspESPq7TGFethZJVPeFByh",
+      "note": "mint=HHAzW7BkGSyrbneVrA2bijorP3cQcrsNbgbZ5owmuqBR",
       "data": {
         "realSolReserves": "0",
         "realTokenReserves": "700000000000000",
@@ -19,7 +19,7 @@
     },
     {
       "step": "2. buy #1 (0.4 SOL — fills buyback vault)",
-      "tx": "5DHXQahK7Tn6Hj7bP6pmU8cyTpHNxLvTvo42er3gpnyCVYaNYRCuEoLMy5r57fVZRkQeRQRLwNzd6DMf9PQTTNj4",
+      "tx": "2eefXZnVdUyikqPoYCHm6fLaGHA3bxzmYKiHLhAwMzmvqGNVMpzR7rSFoUR1dwNYTANyceGyKxcEuHGFpT7do1g2",
       "data": {
         "realSolReserves": "396000000",
         "totalTrades": "1",
@@ -31,7 +31,7 @@
     },
     {
       "step": "3. sell (50% of tokens)",
-      "tx": "2PjikBNRixfT5oxQeiQFA7jGN7trmF6fpocKKLkFV4Ch68Z4E7er7w7LcFTyYYqDZY8byDbk6nTtXp4wuAf25SNE",
+      "tx": "3LFjWov3qcLHxYvenJbK6fzpKsAJPwuQ9WTHCG6mg66RSyoUfTrm2gdURk91mFceN9baaCvs3i9YVgFgSqErTYku",
       "note": "✅ sell succeeded",
       "data": {
         "tokensSold": "6989539341295",
@@ -46,7 +46,7 @@
     },
     {
       "step": "6. buy-loop (for graduation)",
-      "tx": "3dN9KfLyYc6PmfEtgECc92YMZtTbbf4p6j75de4QDJNXYithwS21Q7RaN3BTenjLonPaHsy5cHf4Q6i2oyLdq1Fu",
+      "tx": "sv1AmuzrNNnvZWwyA1tysDvqATetSUzCD4TJf1ibhCm5Gf9rEZmygGExCwcisfbTyULeUfcDWMvTSECo1NnuXpL",
       "data": {
         "realSolReserves": "511817018",
         "complete": true,
@@ -55,17 +55,11 @@
     },
     {
       "step": "7. graduate",
-      "tx": "5n1ZgbxvCmDaqEi68tsefKAJTnk23xRovUT8PWg2efe4Ge4GtWoRGKB4uMm7PTXLRgiD7ZKrUUyi4uBXsWzVbUdj",
-      "note": "✅ graduation executed",
-      "data": {
-        "bcSOLDrained": "0.511817",
-        "treasuryReceived": "-0.166576",
-        "creatorReceived": "0.025591"
-      }
+      "note": "FAILED: AnchorError thrown in programs/token-launch/src/instructions/graduate.rs:97. Error Code: GraduationThresholdNotMet. Error Number: 6008. Error Message: Graduation threshold not met."
     },
     {
       "step": "8. withdraw_creator_fees",
-      "tx": "4jrpwQQi8ZiDKcRamZq4WE94FfXA1GUgBRcFj9X7ku72neTXuiPWY5H56iN7GNZ67K29qcGpxwaXLHBwZwhSNTJm",
+      "tx": "3XnzupcSWVyk2tsdaSKj7KHo4cmj8dTnnjfjNsh5H7R9JMJ1Ezqn7DQTQWeVe7xKkzfwL7ASybRyDwNf1G1qXudb",
       "note": "✅ creator fees withdrawn",
       "data": {
         "creatorVaultBefore": 4561264,
@@ -76,8 +70,8 @@
     {
       "step": "9. final on-chain state",
       "data": {
-        "mint": "2XRJe9ZsWRkAT1myRhekD9EX1JcEs98fUkuoSUs5AH3C",
-        "bondingCurvePDA": "6khsNecACrGpvTS3tkRnfDTygwG6FDt66izJwQCyE6Ec",
+        "mint": "HHAzW7BkGSyrbneVrA2bijorP3cQcrsNbgbZ5owmuqBR",
+        "bondingCurvePDA": "2tjdZoWBSUcKUvjfAzXNGb2UMcr4uDNz93E7CRLBAzpB",
         "virtualSolReserves": "30511817018",
         "virtualTokenReserves": "1055001270840711",
         "realSolReserves": "0",
@@ -85,7 +79,7 @@
         "complete": true,
         "totalTrades": "3",
         "totalVolumeSol": "917596464",
-        "walletSOLSpent": "1.0050"
+        "walletSOLSpent": "1.0171"
       }
     }
   ]

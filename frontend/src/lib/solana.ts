@@ -20,6 +20,8 @@ const MPL_TOKEN_METADATA_PROGRAM_ID = new PublicKey(
 );
 
 export function getConnection(): Connection {
+  // DEVNET-TEST: falls back to public devnet RPC when NEXT_PUBLIC_SOLANA_RPC is unset.
+  // BEFORE MAINNET: set NEXT_PUBLIC_SOLANA_RPC to a paid mainnet RPC endpoint.
   return new Connection(
     process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.devnet.solana.com",
     { commitment: "confirmed" }

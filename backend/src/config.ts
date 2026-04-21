@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// ─── DEVNET-TEST MODE ─────────────────────────────────────────────────────────
+// RPC defaults intentionally point to Solana devnet for local testing.
+// Before mainnet: set SOLANA_RPC_URL and SOLANA_WS_URL to a paid mainnet RPC.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const config = {
   port: parseInt(process.env.PORT || "4000"),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -8,6 +13,7 @@ export const config = {
     url: process.env.DATABASE_URL || "",
   },
   solana: {
+    // DEVNET-TEST: defaults to public devnet RPC. Override via .env for mainnet.
     rpcUrl: process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com",
     wsUrl: process.env.SOLANA_WS_URL || "wss://api.devnet.solana.com",
     programId: process.env.PROGRAM_ID || "TokenLaunchXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -15,6 +21,13 @@ export const config = {
   },
   coingeckoApiKey: process.env.COINGECKO_API_KEY || "",
 };
+
+// Fail fast if DATABASE_URL is missing — Prisma silently fails at query time otherwise.
+if (!config.database.url) {
+  throw new Error(
+    "DATABASE_URL is not set in .env — refusing to start without a database connection."
+  );
+}
 
 // Fail fast if critical env vars are still set to placeholder values
 if (config.solana.programId.includes("XXX")) {
@@ -35,7 +48,9 @@ export const BONDING_CURVE_CONSTANTS = {
   REAL_TOKEN_RESERVES_INIT: BigInt("700000000000000"),
   RESERVE_TOKEN_AMOUNT: BigInt("300000000000000"),
   TOTAL_SUPPLY: BigInt("1000000000000000"),
-  GRADUATION_THRESHOLD: BigInt("500000000"), // 0.5 SOL devnet (85 SOL mainnet)
+  // DEVNET-TEST: 0.5 SOL threshold for fast flow testing.
+  // BEFORE MAINNET: recompile program with 85_000_000_000 (85 SOL) and update this value.
+  GRADUATION_THRESHOLD: BigInt("500000000"),
   FEE_BPS: BigInt(100),
   BPS_DENOMINATOR: BigInt(10000),
 };

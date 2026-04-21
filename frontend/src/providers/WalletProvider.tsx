@@ -23,6 +23,8 @@ interface AppWalletProviderProps {
 }
 
 export const AppWalletProvider: FC<AppWalletProviderProps> = ({ children }) => {
+  // DEVNET-TEST: defaults to Devnet when NEXT_PUBLIC_NETWORK is not set.
+  // BEFORE MAINNET: set NEXT_PUBLIC_NETWORK=mainnet-beta in frontend/.env.local
   const network =
     (process.env.NEXT_PUBLIC_NETWORK as WalletAdapterNetwork) ||
     WalletAdapterNetwork.Devnet;

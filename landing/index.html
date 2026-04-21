@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JetForge — Fair-Launch Token Platform on Solana</title>
+  <meta name="description" content="Create tokens in seconds. Trade instantly. No friction. Built on Solana." />
+  <meta property="og:title" content="JetForge — Fair-Launch Token Platform" />
+  <meta property="og:description" content="Create tokens in seconds. Trade instantly. No friction." />
+  <meta property="og:image" content="https://jetforge.io/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@jetforgeDev" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #00ff88;
+      --cyan: #00e5ff;
+      --bg: #07110f;
+      --bg2: #0a1513;
+      --text: #f5fffb;
+      --muted: #b9c8c3;
+      --dim: #6c7a76;
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.05);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background radial glows */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 15% 0%, rgba(0,255,136,0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 85% 10%, rgba(0,229,255,0.09) 0%, transparent 65%),
+        radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,255,136,0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Grid overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .brand svg { width: 36px; height: 36px; flex-shrink: 0; }
+
+    .brand-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--green) 0%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.35);
+      background: rgba(0,255,136,0.07);
+      border-radius: 20px;
+      padding: 4px 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 96px 0 64px;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.25);
+      background: rgba(0,255,136,0.06);
+      border-radius: 20px;
+      padding: 6px 16px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero-tag .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    h1 .grad {
+      background: linear-gradient(90deg, var(--green) 0%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 520px;
+      margin: 0 auto 48px;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    /* ── PILLS ── */
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 64px;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 20px;
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .pill:hover {
+      border-color: rgba(0,255,136,0.3);
+      background: rgba(0,255,136,0.06);
+    }
+
+    .pill .icon {
+      font-size: 1rem;
+    }
+
+    /* ── CTA ── */
+    .cta-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 80px;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #07110f;
+      background: linear-gradient(90deg, var(--green) 0%, var(--cyan) 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+      box-shadow: 0 0 24px rgba(0,255,136,0.35);
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 28px;
+      cursor: pointer;
+      text-decoration: none;
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(0,229,255,0.35);
+      transform: translateY(-1px);
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0 0 64px;
+    }
+
+    /* ── COMMUNITY ── */
+    .section-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .community-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 64px;
+      animation: fadeUp 0.6s 0.5s ease both;
+    }
+
+    .comm-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: var(--text);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    }
+
+    .comm-card:hover {
+      border-color: rgba(0,255,136,0.3);
+      background: rgba(0,255,136,0.05);
+      transform: translateY(-2px);
+    }
+
+    .comm-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .comm-icon.tg { background: rgba(0,136,204,0.15); border: 1px solid rgba(0,136,204,0.25); }
+    .comm-icon.tw { background: rgba(29,161,242,0.1); border: 1px solid rgba(29,161,242,0.2); }
+
+    .comm-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .comm-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--dim);
+      font-size: 0.8rem;
+    }
+
+    footer span {
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 600;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+      50%       { opacity: 0.5; box-shadow: 0 0 3px var(--green); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      nav { padding: 18px 20px; }
+      .hero { padding: 64px 0 48px; }
+      .cta-group { flex-direction: column; align-items: center; }
+      .btn-primary, .btn-secondary { width: 100%; max-width: 320px; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="brand" href="#">
+    <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ring" x1="14" y1="84" x2="83" y2="12" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#35FF86"/>
+          <stop offset="1" stop-color="#00E5FF"/>
+        </linearGradient>
+        <linearGradient id="leaf" x1="24" y1="70" x2="69" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#1DD7D0"/>
+          <stop offset="0.55" stop-color="#35FF86"/>
+          <stop offset="1" stop-color="#19FF43"/>
+        </linearGradient>
+      </defs>
+      <circle cx="48" cy="48" r="42" stroke="url(#ring)" stroke-width="2.4"/>
+      <path d="M28 57.5C28.8 40.5 40 30.3 55.1 24.8C64.3 21.4 70.1 17.8 74.1 12.8C73.7 26.4 71.2 35.4 63.7 41.8C57.9 46.8 50.6 48.7 43.7 51.8C36.3 55.1 31.2 59.4 28 67.6V57.5Z" fill="url(#leaf)"/>
+      <path d="M28 80.5C28.8 63.5 40 53.3 55.1 47.8C64.3 44.4 70.1 40.8 74.1 35.8C73.7 49.4 71.2 58.4 63.7 64.8C57.9 69.8 50.6 71.7 43.7 74.8C36.3 78.1 31.2 82.4 28 90.6V80.5Z" fill="url(#leaf)"/>
+    </svg>
+    <span class="brand-name">JetForge</span>
+  </a>
+  <span class="nav-badge">Early Access</span>
+</nav>
+
+<!-- HERO -->
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-tag">
+      <span class="dot"></span>
+      Built on Solana
+    </div>
+
+    <h1>
+      Create tokens<br/>
+      in <span class="grad">seconds.</span><br/>
+      Trade instantly.
+    </h1>
+
+    <p class="hero-sub">
+      No friction. No coding. No setup.<br/>
+      Fair-launch token platform — from idea to on-chain in one click.
+    </p>
+
+    <div class="pills">
+      <div class="pill"><span class="icon">⚡</span> No coding</div>
+      <div class="pill"><span class="icon">⚡</span> No setup</div>
+      <div class="pill"><span class="icon">⚡</span> Built for speed</div>
+    </div>
+
+    <div class="cta-group">
+      <a href="https://t.me/jetforgechat" target="_blank" rel="noopener" class="btn-primary">
+        Join Community
+      </a>
+      <a href="https://t.me/jetforgeapp" target="_blank" rel="noopener" class="btn-secondary">
+        Get Early Access
+      </a>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- COMMUNITY -->
+  <p class="section-label">Join the community</p>
+
+  <div class="community-cards">
+    <a href="https://t.me/jetforgechat" target="_blank" rel="noopener" class="comm-card">
+      <div class="comm-icon tg">💬</div>
+      <div>
+        <div class="comm-label">Community Chat</div>
+        <div class="comm-name">t.me/jetforgechat</div>
+      </div>
+    </a>
+
+    <a href="https://t.me/jetforgeapp" target="_blank" rel="noopener" class="comm-card">
+      <div class="comm-icon tg">📢</div>
+      <div>
+        <div class="comm-label">Announcements</div>
+        <div class="comm-name">t.me/jetforgeapp</div>
+      </div>
+    </a>
+
+    <a href="https://x.com/jetforgeDev" target="_blank" rel="noopener" class="comm-card">
+      <div class="comm-icon tw">𝕏</div>
+      <div>
+        <div class="comm-label">Follow on X</div>
+        <div class="comm-name">@jetforgeDev</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Early access note -->
+  <p style="text-align:center; color: var(--muted); font-size:0.9rem; line-height:1.7; margin-bottom:80px; animation: fadeUp 0.6s 0.6s ease both;">
+    We're opening to early users for <strong style="color:var(--text)">testing &amp; feedback</strong>.<br/>
+    Join the chat and be first in line.
+  </p>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  © 2026 <span>JetForge</span> &nbsp;·&nbsp; Fair-launch token platform on Solana
+</footer>
+
+</body>
+</html>
