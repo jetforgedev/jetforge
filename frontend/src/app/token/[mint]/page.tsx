@@ -544,10 +544,12 @@ export default function TokenPage({ params }: PageProps) {
                 {!isCreator && (
                   <button
                     onClick={toggleFollow}
-                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-                      following
-                        ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
-                        : "border-[#2a2a2a] text-[#555] hover:text-white"
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+                      !publicKey
+                        ? "border-[#2a2a2a] text-[#444] cursor-not-allowed"
+                        : following
+                          ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
+                          : "bg-[#00ff88] border-[#00ff88] text-black"
                     }`}
                   >
                     {following ? "✓" : "+Follow"}
@@ -633,16 +635,17 @@ export default function TokenPage({ params }: PageProps) {
               {!isCreator && (
                 <button
                   onClick={toggleFollow}
-                  disabled={!publicKey}
-                  className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    following
-                      ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
-                      : "border-[#2a2a2a] text-[#555] hover:text-white hover:border-[#444]"
-                  }`}
                   title={!publicKey ? "Connect wallet to follow" : undefined}
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                    !publicKey
+                      ? "border-[#2a2a2a] text-[#444] cursor-not-allowed"
+                      : following
+                        ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
+                        : "bg-[#00ff88] border-[#00ff88] text-black hover:bg-[#00dd77]"
+                  }`}
                 >
                   {following ? `✓ Following` : `+ Follow`}
-                  {followerCount > 0 && <span className="ml-1 opacity-60">{followerCount}</span>}
+                  {followerCount > 0 && <span className="ml-1 opacity-70">{followerCount}</span>}
                 </button>
               )}
             </div>

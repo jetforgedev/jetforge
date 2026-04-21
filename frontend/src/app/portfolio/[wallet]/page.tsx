@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { getUserTrades, getTokensByCreator, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -33,6 +33,7 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
 
 export default function PortfolioPage({ params }: PageProps) {
   const { wallet } = React.use(params);
+  const [activeList, setActiveList] = React.useState<"followers" | "following" | null>(null);
   const { data: tradesData, isLoading: tradesLoading } = useQuery({
     queryKey: ["portfolio-trades", wallet],
     queryFn: () => getUserTrades(wallet),
@@ -41,6 +42,24 @@ export default function PortfolioPage({ params }: PageProps) {
   const { data: tokensData, isLoading: tokensLoading } = useQuery({
     queryKey: ["portfolio-tokens", wallet],
     queryFn: () => getTokensByCreator(wallet),
+  });
+
+  const { data: followStats } = useQuery({
+    queryKey: ["follow-stats", wallet],
+    queryFn: () => getFollowStats(wallet),
+    staleTime: 30_000,
+  });
+
+  const { data: followersData, isLoading: followersLoading } = useQuery({
+    queryKey: ["followers-list", wallet],
+    queryFn: () => getFollowers(wallet),
+    enabled: activeList === "followers",
+  });
+
+  const { data: followingData, isLoading: followingLoading } = useQuery({
+    queryKey: ["following-list", wallet],
+    queryFn: () => getFollowing(wallet),
+    enabled: activeList === "following",
   });
 
   const summary = tradesData?.summary;
@@ -99,6 +118,20 @@ export default function PortfolioPage({ params }: PageProps) {
 
   const activeHoldings = holdings.filter((h) => h.netTokens > 0.001);
 
+  const totalTrades = (parseInt(summary?.totalBuys ?? "0") + parseInt(summary?.totalSells ?? "0"));
+  const hasWhaleTrade = trades.some((t: any) => Number(t.solAmount) / 1e9 >= 1);
+  const hasProfitableTrade = holdings.some((h) => h.realizedPnl > 0);
+
+  const badges: { icon: string; label: string; description: string; color: string }[] = [];
+  if (totalTrades >= 1) badges.push({ icon: "🌟", label: "Rising Star", description: "Made first trade", color: "#f59e0b" });
+  if (totalTrades >= 10) badges.push({ icon: "⚡", label: "Active Trader", description: "10+ trades completed", color: "#60a5fa" });
+  if (totalTrades >= 50) badges.push({ icon: "🔥", label: "Grinder", description: "50+ trades completed", color: "#f97316" });
+  if (totalTrades >= 100) badges.push({ icon: "🎰", label: "Degen", description: "100+ trades completed", color: "#a78bfa" });
+  if (hasWhaleTrade) badges.push({ icon: "🐋", label: "Whale", description: "Single trade ≥ 1 SOL", color: "#38bdf8" });
+  if (hasProfitableTrade) badges.push({ icon: "💎", label: "Diamond Hands", description: "Closed a profitable position", color: "#67e8f9" });
+  if (createdTokens.length >= 1) badges.push({ icon: "🚀", label: "Creator", description: "Launched at least 1 token", color: "#00ff88" });
+  if (createdTokens.some((t: any) => t.isGraduated)) badges.push({ icon: "🎓", label: "Graduated", description: "A created token graduated", color: "#c084fc" });
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Breadcrumb */}
@@ -109,9 +142,101 @@ export default function PortfolioPage({ params }: PageProps) {
       </div>
 
       <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-5">
-        <div className="text-[#555] text-xs mb-1">WALLET</div>
-        <div className="text-white font-mono text-sm break-all">{wallet}</div>
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-[#555] text-xs mb-1">WALLET</div>
+            <div className="text-white font-mono text-sm break-all">{wallet}</div>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <button
+              onClick={() => setActiveList(activeList === "followers" ? null : "followers")}
+              className="flex flex-col items-center group"
+            >
+              <span className={`font-semibold text-base transition-colors ${activeList === "followers" ? "text-[#00ff88]" : "text-white group-hover:text-[#00ff88]"}`}>
+                {followStats?.followerCount ?? 0}
+              </span>
+              <span className="text-[#555]">followers</span>
+            </button>
+            <div className="w-px h-6 bg-[#1a1a1a]" />
+            <button
+              onClick={() => setActiveList(activeList === "following" ? null : "following")}
+              className="flex flex-col items-center group"
+            >
+              <span className={`font-semibold text-base transition-colors ${activeList === "following" ? "text-[#00ff88]" : "text-white group-hover:text-[#00ff88]"}`}>
+                {followStats?.followingCount ?? 0}
+              </span>
+              <span className="text-[#555]">following</span>
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Followers / Following list */}
+      {activeList && (
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <div className="text-white text-sm font-semibold capitalize">{activeList}</div>
+            <button onClick={() => setActiveList(null)} className="text-[#555] hover:text-white text-xs transition-colors">✕ close</button>
+          </div>
+          {(activeList === "followers" ? followersLoading : followingLoading) ? (
+            <div className="p-6 text-center text-[#555] text-sm">Loading…</div>
+          ) : activeList === "followers" ? (
+            (followersData?.followers ?? []).length === 0 ? (
+              <div className="p-6 text-center text-[#555] text-sm">No followers yet.</div>
+            ) : (
+              <div>
+                {(followersData?.followers ?? []).map((f) => (
+                  <Link
+                    key={f.follower}
+                    href={`/portfolio/${f.follower}`}
+                    className="flex items-center justify-between px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors"
+                  >
+                    <span className="text-[#888] font-mono text-xs hover:text-white transition-colors">{truncateAddress(f.follower, 8)}</span>
+                    <span className="text-[#444] text-[10px]">{timeAgo(f.createdAt)}</span>
+                  </Link>
+                ))}
+              </div>
+            )
+          ) : (
+            (followingData?.following ?? []).length === 0 ? (
+              <div className="p-6 text-center text-[#555] text-sm">Not following anyone yet.</div>
+            ) : (
+              <div>
+                {(followingData?.following ?? []).map((f) => (
+                  <Link
+                    key={f.following}
+                    href={`/portfolio/${f.following}`}
+                    className="flex items-center justify-between px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors"
+                  >
+                    <span className="text-[#888] font-mono text-xs hover:text-white transition-colors">{truncateAddress(f.following, 8)}</span>
+                    <span className="text-[#444] text-[10px]">{timeAgo(f.createdAt)}</span>
+                  </Link>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* Badges */}
+      {!tradesLoading && !tokensLoading && badges.length > 0 && (
+        <div>
+          <div className="text-white font-semibold mb-3 text-sm">Badges</div>
+          <div className="flex flex-wrap gap-2">
+            {badges.map((b) => (
+              <div
+                key={b.label}
+                title={b.description}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold"
+                style={{ borderColor: b.color + "40", backgroundColor: b.color + "15", color: b.color }}
+              >
+                <span>{b.icon}</span>
+                <span>{b.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Summary stats */}
       {tradesLoading ? (

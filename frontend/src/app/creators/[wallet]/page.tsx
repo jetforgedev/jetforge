@@ -99,13 +99,15 @@ export default function CreatorProfilePage({ params }: PageProps) {
                 onClick={toggleFollow}
                 disabled={!viewer}
                 title={!viewer ? "Connect wallet to follow" : undefined}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  followStats?.isFollowing
-                    ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88]"
-                    : "bg-white/[0.05] border-[#2a2a2a] text-white hover:bg-white/[0.08]"
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                  !viewer
+                    ? "border-[#2a2a2a] text-[#444] cursor-not-allowed bg-transparent"
+                    : followStats?.isFollowing
+                      ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88] hover:bg-[#00ff8825]"
+                      : "bg-[#00ff88] border-[#00ff88] text-black font-bold hover:bg-[#00dd77]"
                 }`}
               >
-                {followStats?.isFollowing ? "✓ Following" : "+ Follow"}
+                {!viewer ? "Connect to Follow" : followStats?.isFollowing ? "✓ Following" : "+ Follow"}
               </button>
             )}
             <Link
