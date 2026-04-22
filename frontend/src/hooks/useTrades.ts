@@ -72,5 +72,6 @@ export function useTrades(mint: string) {
   return {
     ...query,
     trades: allTrades,
+    liveTradeCount: liveTrades.length, // socket-only count since mount — not inflated by fetch
   };
 }

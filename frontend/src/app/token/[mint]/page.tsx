@@ -311,8 +311,8 @@ function PriceAlertWidget({ mint, currentMcapSol }: { mint: string; currentMcapS
 }
 
 function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: number; holders: number }) {
-  const { trades: liveTrades } = useLiveTrades(mint);
-  const recentCount = liveTrades.length;
+  // liveTradeCount = socket-only trades since page mount; never inflated by the initial fetch
+  const { liveTradeCount: recentCount } = useLiveTrades(mint);
 
   return (
     <div className="flex items-center gap-4 px-4 py-2.5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl text-xs overflow-x-auto">
