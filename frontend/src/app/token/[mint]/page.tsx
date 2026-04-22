@@ -783,7 +783,7 @@ export default function TokenPage({ params }: PageProps) {
         </div>
 
         {/* Trading panel — mobile: order 2, desktop: sticky right sidebar */}
-        <div className="space-y-4 order-2 lg:sticky lg:top-4">
+        <div className="space-y-4 order-2 lg:sticky lg:top-24">
           <TradingPanel token={token} />
 
           {/* Token details */}

@@ -163,7 +163,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         rightPriceScale: {
           borderColor: "#1a1a1a",
           textColor: "#555",
-          scaleMargins: { top: 0.15, bottom: 0.2 },
+          scaleMargins: { top: 0.1, bottom: 0.15 },
         },
         timeScale: {
           borderColor: "#1a1a1a",
@@ -758,6 +758,57 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           <button title="Reset zoom" onClick={() => chartRef.current?.timeScale().fitContent()} className="w-7 h-7 flex items-center justify-center rounded text-white/25 hover:text-[#ff4444]/70 hover:bg-white/5 transition-colors">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
               <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          <div className="w-5 h-px bg-white/10 my-0.5" />
+
+          {/* ── Drawing tools — coming soon ─────────────────────────── */}
+          {/* Trend line */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="13" x2="13" y2="1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <circle cx="1" cy="13" r="1.5" fill="currentColor" />
+              <circle cx="13" cy="1" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Horizontal line */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <circle cx="1" cy="7" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Ray */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <line x1="1" y1="13" x2="13" y2="1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="2 2" />
+              <circle cx="1" cy="13" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
+
+          {/* Pen / freehand */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 12 C4 8 6 6 8 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" fill="none" />
+              <path d="M8 4 L10 2 L12 4 L10 6 Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {/* Text annotation */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40 text-[11px] font-bold font-mono">
+            T
+          </button>
+
+          {/* Ruler / measure */}
+          <button title="Coming soon" disabled className="w-7 h-7 flex items-center justify-center rounded opacity-30 cursor-not-allowed text-white/40">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="5" width="12" height="4" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <line x1="4" y1="5" x2="4" y2="7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+              <line x1="7" y1="5" x2="7" y2="8" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+              <line x1="10" y1="5" x2="10" y2="7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
             </svg>
           </button>
         </div>
