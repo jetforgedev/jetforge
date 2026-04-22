@@ -600,6 +600,33 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     };
   }, [isFullscreen]);
 
+  // When entering fullscreen via portal, the browser clears the <canvas>
+  // (DOM move wipes canvas pixels). Force lightweight-charts to resize +
+  // redraw by calling applyOptions after the portal's layout settles.
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    let raf1: number, raf2: number, raf3: number;
+
+    raf1 = requestAnimationFrame(() => {         // portal attaches to body
+      raf2 = requestAnimationFrame(() => {       // layout resolves h-full
+        raf3 = requestAnimationFrame(() => {     // paint — chart now has correct dims
+          if (!chartRef.current || !chartContainerRef.current) return;
+          const w = chartContainerRef.current.offsetWidth  || 800;
+          const h = chartContainerRef.current.offsetHeight || 600;
+          // applyOptions forces lightweight-charts internal redraw of all series
+          chartRef.current.applyOptions({ width: w, height: h });
+        });
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      cancelAnimationFrame(raf3);
+    };
+  }, [isFullscreen]);
+
   const intervals: { label: string; value: Interval }[] = [
     { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
     { label: "5m", value: "5m" }, { label: "15m", value: "15m" },
