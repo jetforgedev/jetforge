@@ -441,6 +441,10 @@ export default function TokenPage({ params }: PageProps) {
   const { connection } = useConnection();
   const [withdrawing, setWithdrawing] = React.useState(false);
   const [withdrawMsg, setWithdrawMsg] = React.useState<string | null>(null);
+  // Tracks whether PriceChart is in fullscreen so we can keep the trading-panel
+  // column visible (it stays in the grid but is invisible — prevents the 2-column
+  // layout from collapsing while the chart covers the viewport).
+  const [isChartFullscreen, setIsChartFullscreen] = React.useState(false);
 
   // All hooks must be called before any early returns
   const { data: devHoldings } = useDevHoldings(mint, token?.creator ?? "");
@@ -785,11 +789,16 @@ export default function TokenPage({ params }: PageProps) {
             solPrice={solPrice ?? null}
             creator={token.creator}
             floatingPanel={<TradingPanel token={token} />}
+            onFullscreenChange={setIsChartFullscreen}
           />
         </div>
 
-        {/* Trading panel — mobile: order 2, desktop: sticky right sidebar */}
-        <div className="space-y-4 order-2 lg:sticky lg:top-24">
+        {/* Trading panel — mobile: order 2, desktop: sticky right sidebar.
+            During chart fullscreen we keep this div in the grid (so the
+            two-column layout never collapses) but hide it visually.
+            visibility:hidden keeps the 340 px column alive; the chart's
+            fixed inset-0 overlay sits on top of it anyway. */}
+        <div className={`space-y-4 order-2 lg:sticky lg:top-24${isChartFullscreen ? " invisible pointer-events-none" : ""}`}>
           <TradingPanel token={token} />
 
           {/* Token details */}

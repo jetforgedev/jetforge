@@ -18,6 +18,9 @@ interface PriceChartProps {
   solPrice: number | null;
   creator?: string;
   floatingPanel?: React.ReactNode;
+  /** Called with true on enter, false on exit — lets the parent page manage
+   *  its own layout (e.g. hide the trading-panel column while chart is fullscreen). */
+  onFullscreenChange?: (isFs: boolean) => void;
 }
 
 
@@ -68,7 +71,7 @@ function toHeikinAshi(candles: OHLC[]): OHLC[] {
   return ha;
 }
 
-export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: PriceChartProps) {
+export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onFullscreenChange }: PriceChartProps) {
   const { publicKey } = useWallet();
   const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -96,10 +99,13 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   const [fsChartH, setFsChartH] = useState<number | null>(null); // explicit px height in fullscreen
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const chartWrapperRef = useRef<HTMLDivElement>(null);   // native fullscreen target
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
   const chartOverlayRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  /** true during the ~200 ms window after exit while layout re-settles.
+   *  Prevents the ResizeObserver from locking in fullscreen-sized dimensions. */
+  const fsExitRef = useRef(false);
   type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
   const [chartType, setChartType] = useState<ChartType>("heikinashi");
   const [showChartDropdown, setShowChartDropdown] = useState(false);
@@ -237,6 +243,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         volumeSeriesRef.current = volumeSeries;
 
         const resizeObserver = new ResizeObserver(() => {
+          // Skip during the post-exit settling window — we apply correct
+          // dimensions ourselves via setTimeout after layout has stabilised.
+          if (fsExitRef.current) return;
           if (chartContainerRef.current) {
             chart.applyOptions({
               width: chartContainerRef.current.offsetWidth || containerW,
@@ -516,26 +525,50 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
-  // CSS-based fullscreen: toggle via state → className (no browser Fullscreen API,
-  // no direct DOM style writes). The element stays in the DOM tree at all times so
-  // the CSS Grid never collapses and the canvas bitmap is never cleared.
+  // ── CSS-based fullscreen ─────────────────────────────────────────────────────
+  // Uses className toggle (fixed inset-0 z-[9999]) instead of the browser's
+  // Fullscreen API so the DOM tree is never moved and the canvas bitmap survives.
   //
-  // Enter: className gets "fixed inset-0 z-[9999] …", fsChartH drives chartContainerRef height.
-  // Exit : className reverts to "glass-panel …", fsChartH → null restores CSS class height,
-  //        wasFullscreen effect fires a double-rAF to remeasure and fitContent.
+  // Exit sequence:
+  //  1. fsExitRef=true  → ResizeObserver silenced (can't lock in fullscreen dims)
+  //  2. React state cleared → className reverts, fsChartH→null, inline height gone
+  //  3. setTimeout(200ms) → layout has fully settled → remeasure → chart.applyOptions
+  //  4. fsExitRef=false → ResizeObserver re-enabled for future resizes
+  //  5. onFullscreenChange(false) → parent page restores its own layout (trading panel)
   const wasFullscreen = useRef(false);
 
   const handleFullscreenToggle = useCallback(() => {
     if (isFullscreen) {
       // ── EXIT ──────────────────────────────────────────────────────────────
+      // Silence ResizeObserver FIRST so it can't snapshot fullscreen dimensions
+      fsExitRef.current = true;
+
       setFsChartH(null);
       setIsFullscreen(false);
       setPanelPos(null);
       isDragging.current = false;
+      onFullscreenChange?.(false);
+
+      // 200 ms: enough for React render + CSS grid re-layout + browser paint.
+      // Then remeasure the restored container and resize the chart correctly.
+      const tid = setTimeout(() => {
+        fsExitRef.current = false;
+        if (chartContainerRef.current && chartRef.current) {
+          const w = chartContainerRef.current.clientWidth;
+          const h = chartContainerRef.current.clientHeight;
+          if (w > 0 && h > 0) {
+            chartRef.current.applyOptions({ width: w, height: h });
+            chartRef.current.timeScale().fitContent();
+          }
+        }
+      }, 200);
+      // Clean up timer if component unmounts before it fires
+      return () => clearTimeout(tid);
     } else {
       // ── ENTER ─────────────────────────────────────────────────────────────
       setFsChartH(window.innerHeight - 86); // 86 ≈ Row1 (44px) + Row2 (42px)
       setIsFullscreen(true);
+      onFullscreenChange?.(true);
 
       // Position trade panel bottom-right once layout settles
       requestAnimationFrame(() => {
@@ -551,7 +584,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         });
       });
     }
-  }, [isFullscreen]);
+  }, [isFullscreen, onFullscreenChange]);
 
   // ESC key exits our CSS fullscreen (browser never owns it, so no native handler)
   useEffect(() => {
@@ -561,17 +594,17 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     return () => document.removeEventListener("keydown", onKey);
   }, [isFullscreen, handleFullscreenToggle]);
 
-  // After exit: remeasure the restored container and resize + refit the chart.
-  // Double-rAF: 1st lets React flush new className + browser lay out the grid,
-  // 2nd lets the ResizeObserver fire first, then we do a final authoritative resize.
+  // Belt-and-suspenders: also fires the resize via wasFullscreen+double-rAF path
+  // so the chart is corrected both immediately (rAF) and after settling (setTimeout).
   useEffect(() => {
     if (isFullscreen) { wasFullscreen.current = true; return; }
-    if (!wasFullscreen.current) return; // skip initial mount
+    if (!wasFullscreen.current) return;
     wasFullscreen.current = false;
 
     let id1: number, id2: number;
     id1 = requestAnimationFrame(() => {
       id2 = requestAnimationFrame(() => {
+        if (fsExitRef.current) return; // still settling — defer to setTimeout path
         if (chartContainerRef.current && chartRef.current) {
           const w = chartContainerRef.current.clientWidth;
           const h = chartContainerRef.current.clientHeight;
@@ -1030,7 +1063,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
 
         <div
           ref={chartContainerRef}
-          className="w-full h-[420px] md:h-[500px] lg:h-[580px]"
+          className="w-full h-[420px] md:h-[500px] lg:h-[580px] overflow-hidden"
           style={fsChartH !== null ? { height: fsChartH } : {}}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
