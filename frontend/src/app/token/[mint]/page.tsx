@@ -282,7 +282,7 @@ function PriceAlertWidget({ mint, currentMcapSol }: { mint: string; currentMcapS
         className={`flex items-center gap-1.5 text-xs border px-2.5 py-1 rounded-md font-medium transition-colors ${
           triggered ? "border-[#00ff8840] bg-[#00ff8815] text-[#00ff88]"
           : target ? "border-[#ffaa0040] bg-[#ffaa0015] text-[#ffaa00]"
-          : "border-[#2a2a2a] text-[#555] hover:text-[#888]"
+          : "border-[#383838] bg-[#181818] text-[#666] hover:text-[#aaa] hover:border-[#484848]"
         }`}
       >
         🔔 {triggered ? "Triggered!" : target ? `Alert: ${target} SOL` : "Set Alert"}
