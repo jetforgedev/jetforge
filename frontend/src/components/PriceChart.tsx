@@ -20,7 +20,6 @@ interface PriceChartProps {
   floatingPanel?: React.ReactNode;
 }
 
-type FsCorner = "br" | "tr" | "bl" | "tl";
 
 const INTERVAL_MS: Record<Interval, number> = {
   "1s": 1_000, "1m": 60_000, "5m": 300_000,
@@ -92,16 +91,13 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   const [showBubbles, setShowBubbles] = useState(true);
   const [crosshairMode, setCrosshairMode] = useState<"normal" | "magnet">("normal");
 
-  // Fullscreen state
+  // Fullscreen + draggable panel state
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fsCorner, setFsCorner] = useState<FsCorner>("br");
-  const NEXT_CORNER: Record<FsCorner, FsCorner> = { br: "bl", bl: "tl", tl: "tr", tr: "br" };
-  const CORNER_CLASS: Record<FsCorner, string> = {
-    br: "bottom-4 right-4",
-    bl: "bottom-4 left-11",
-    tr: "top-4 right-4",
-    tl: "top-4 left-11",
-  };
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const chartOverlayRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
   type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
   const [chartType, setChartType] = useState<ChartType>("heikinashi");
   const [showChartDropdown, setShowChartDropdown] = useState(false);
@@ -518,18 +514,81 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
-  // ESC to exit fullscreen
+  // ESC to exit fullscreen + body scroll lock + panel initial position
   useEffect(() => {
-    if (!isFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    if (isFullscreen) {
+      window.addEventListener("keydown", onKey);
+      document.body.style.overflow = "hidden";
+      // Position panel bottom-right after layout paint
+      requestAnimationFrame(() => {
+        if (panelRef.current && chartOverlayRef.current) {
+          const ctr = chartOverlayRef.current.getBoundingClientRect();
+          const pw = panelRef.current.offsetWidth || 300;
+          const ph = panelRef.current.offsetHeight || 480;
+          setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
+        } else {
+          // fallback: position relative to window
+          setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
+        }
+      });
+    } else {
+      document.body.style.overflow = "";
+      setPanelPos(null);
+      isDragging.current = false;
+    }
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [isFullscreen]);
 
-  // Lock body scroll when fullscreen
+  // Mouse drag — active only in fullscreen
   useEffect(() => {
-    document.body.style.overflow = isFullscreen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (!isFullscreen) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !panelRef.current || !chartOverlayRef.current) return;
+      const ctr = chartOverlayRef.current.getBoundingClientRect();
+      const pw = panelRef.current.offsetWidth;
+      const ph = panelRef.current.offsetHeight;
+      const x = Math.max(0, Math.min(e.clientX - ctr.left - dragOffset.current.x, ctr.width  - pw));
+      const y = Math.max(0, Math.min(e.clientY - ctr.top  - dragOffset.current.y, ctr.height - ph));
+      setPanelPos({ x, y });
+    };
+    const onMouseUp = () => { isDragging.current = false; };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup",   onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup",   onMouseUp);
+    };
+  }, [isFullscreen]);
+
+  // Touch drag
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current || !panelRef.current || !chartOverlayRef.current) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const ctr = chartOverlayRef.current.getBoundingClientRect();
+      const pw = panelRef.current.offsetWidth;
+      const ph = panelRef.current.offsetHeight;
+      const x = Math.max(0, Math.min(touch.clientX - ctr.left - dragOffset.current.x, ctr.width  - pw));
+      const y = Math.max(0, Math.min(touch.clientY - ctr.top  - dragOffset.current.y, ctr.height - ph));
+      setPanelPos({ x, y });
+    };
+    const onTouchEnd = () => { isDragging.current = false; };
+
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend",  onTouchEnd);
+    return () => {
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend",  onTouchEnd);
+    };
   }, [isFullscreen]);
 
   const intervals: { label: string; value: Interval }[] = [
@@ -558,7 +617,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   return (
     <div className={clsx(
       isFullscreen
-        ? "fixed inset-0 z-[100] bg-[#0d0d0d] flex flex-col overflow-hidden"
+        ? "fixed inset-0 z-[9999] bg-[#0d0d0d] flex flex-col overflow-hidden"
         : "glass-panel rounded-[28px] overflow-hidden"
     )}>
       {/* Row 1: Value + ATH + fullscreen toggle */}
@@ -864,7 +923,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         </div>
 
         {/* Chart + overlay layer */}
-        <div className={clsx("relative flex-1 min-w-0", isFullscreen && "h-full")}>
+        <div ref={chartOverlayRef} className={clsx("relative flex-1 min-w-0", isFullscreen && "h-full")}>
         {/* Live trade bubbles */}
         {showBubbles && flashTrades.length > 0 && (
           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
@@ -933,42 +992,68 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
 
-        {/* ── Floating trade panel — fullscreen only ─────────────────────── */}
+        {/* ── Floating trade panel — fullscreen only, draggable ──────────── */}
         {isFullscreen && floatingPanel && (
           <div
-            className={clsx(
-              "absolute z-30 w-[300px] max-h-[82vh] overflow-y-auto rounded-[24px]",
-              "shadow-[0_8px_40px_rgba(0,0,0,0.6)] border border-white/10",
-              "scrollbar-thin",
-              CORNER_CLASS[fsCorner]
-            )}
-            style={{ backdropFilter: "blur(16px)", background: "rgba(13,13,13,0.92)" }}
+            ref={panelRef}
+            className="absolute z-30 w-[300px] max-h-[82vh] overflow-y-auto rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.7)] border border-white/10 select-none"
+            style={{
+              backdropFilter: "blur(20px)",
+              background: "rgba(11,11,11,0.94)",
+              left:  panelPos ? panelPos.x : undefined,
+              top:   panelPos ? panelPos.y : undefined,
+              // Before first position calc: hide in bottom-right so no flash
+              right:  panelPos ? undefined : 16,
+              bottom: panelPos ? undefined : 16,
+            }}
           >
-            {/* Panel header: corner-snap + close */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b border-white/8"
-                 style={{ background: "rgba(13,13,13,0.96)" }}>
-              <span className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">Trade</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setFsCorner((c) => NEXT_CORNER[c])}
-                  title="Snap to next corner"
-                  className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                    <rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                    <rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                    <rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setIsFullscreen(false)}
-                  title="Exit fullscreen"
-                  className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-[#ff4444]/70 hover:bg-white/8 transition-colors text-sm"
-                >
-                  ✕
-                </button>
+            {/* Drag handle header */}
+            <div
+              className="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b border-white/8 cursor-grab active:cursor-grabbing"
+              style={{ background: "rgba(11,11,11,0.98)" }}
+              onMouseDown={(e) => {
+                if (!panelRef.current || !chartOverlayRef.current) return;
+                isDragging.current = true;
+                const ctr = chartOverlayRef.current.getBoundingClientRect();
+                const panel = panelRef.current.getBoundingClientRect();
+                dragOffset.current = {
+                  x: e.clientX - (panel.left - ctr.left),
+                  y: e.clientY - (panel.top  - ctr.top),
+                };
+                e.preventDefault();
+              }}
+              onTouchStart={(e) => {
+                if (!panelRef.current || !chartOverlayRef.current) return;
+                isDragging.current = true;
+                const touch = e.touches[0];
+                const ctr = chartOverlayRef.current.getBoundingClientRect();
+                const panel = panelRef.current.getBoundingClientRect();
+                dragOffset.current = {
+                  x: touch.clientX - (panel.left - ctr.left),
+                  y: touch.clientY - (panel.top  - ctr.top),
+                };
+              }}
+            >
+              {/* Drag indicator dots */}
+              <div className="flex items-center gap-1.5">
+                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="text-white/20">
+                  <circle cx="2" cy="3"  r="1.3" fill="currentColor"/>
+                  <circle cx="8" cy="3"  r="1.3" fill="currentColor"/>
+                  <circle cx="2" cy="7"  r="1.3" fill="currentColor"/>
+                  <circle cx="8" cy="7"  r="1.3" fill="currentColor"/>
+                  <circle cx="2" cy="11" r="1.3" fill="currentColor"/>
+                  <circle cx="8" cy="11" r="1.3" fill="currentColor"/>
+                </svg>
+                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">Trade</span>
               </div>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                title="Exit fullscreen (Esc)"
+                className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-[#ff4444]/70 hover:bg-white/8 transition-colors text-sm"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                ✕
+              </button>
             </div>
             {floatingPanel}
           </div>
