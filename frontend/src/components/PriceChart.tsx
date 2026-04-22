@@ -533,11 +533,25 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     const onFsChange = () => {
       const active = !!document.fullscreenElement;
       setIsFullscreen(active);
+
       if (!active) {
+        // Exiting fullscreen: reset panel, then force grid + chart reflow
         setPanelPos(null);
         isDragging.current = false;
+        // Dispatch resize so the page grid recalculates column widths
+        // (native fullscreen can leave the layout in a stale state)
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event("resize"));
+          // Also explicitly resize the chart back to its container dimensions
+          if (chartRef.current && chartContainerRef.current) {
+            chartRef.current.applyOptions({
+              width:  chartContainerRef.current.offsetWidth  || 600,
+              height: chartContainerRef.current.offsetHeight || 480,
+            });
+          }
+        });
       } else {
-        // Position panel bottom-right once element is fullscreen
+        // Entering fullscreen: position panel bottom-right
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (panelRef.current && chartOverlayRef.current) {
