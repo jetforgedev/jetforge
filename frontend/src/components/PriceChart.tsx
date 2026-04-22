@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
@@ -96,6 +95,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);   // native fullscreen target
   const chartOverlayRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -515,41 +515,45 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
-  // ESC to exit fullscreen + body scroll lock + panel initial position
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
-    if (isFullscreen) {
-      window.addEventListener("keydown", onKey);
-      document.body.style.overflow = "hidden";
-      // Position panel bottom-right after portal attaches to DOM
-      const rafId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {  // double-rAF: portal DOM settles after first frame
-          if (panelRef.current && chartOverlayRef.current) {
-            const ctr = chartOverlayRef.current.getBoundingClientRect();
-            const pw  = panelRef.current.offsetWidth  || 300;
-            const ph  = panelRef.current.offsetHeight || 480;
-            setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
-          } else {
-            setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
-          }
-        });
-      });
-      return () => {
-        cancelAnimationFrame(rafId);
-        window.removeEventListener("keydown", onKey);
-        document.body.style.overflow = "";
-      };
+  // Native fullscreen: enter/exit via browser API (no DOM move, no canvas clear)
+  const handleFullscreenToggle = useCallback(async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await chartWrapperRef.current?.requestFullscreen();
+      } catch {
+        // requestFullscreen unsupported (old iOS) — ignore, button still shows intent
+      }
     } else {
-      document.body.style.overflow = "";
-      setPanelPos(null);
-      isDragging.current = false;
-      return () => {};
+      document.exitFullscreen().catch(() => {});
     }
-  }, [isFullscreen]);
+  }, []);
 
-  // Safety: always restore scroll on unmount
+  // Sync React state with native fullscreen changes (including ESC key)
   useEffect(() => {
-    return () => { document.body.style.overflow = ""; };
+    const onFsChange = () => {
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      if (!active) {
+        setPanelPos(null);
+        isDragging.current = false;
+      } else {
+        // Position panel bottom-right once element is fullscreen
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (panelRef.current && chartOverlayRef.current) {
+              const ctr = chartOverlayRef.current.getBoundingClientRect();
+              const pw  = panelRef.current.offsetWidth  || 300;
+              const ph  = panelRef.current.offsetHeight || 480;
+              setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
+            } else {
+              setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
+            }
+          });
+        });
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
   // Mouse drag — active only in fullscreen
@@ -600,33 +604,6 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     };
   }, [isFullscreen]);
 
-  // When entering fullscreen via portal, the browser clears the <canvas>
-  // (DOM move wipes canvas pixels). Force lightweight-charts to resize +
-  // redraw by calling applyOptions after the portal's layout settles.
-  useEffect(() => {
-    if (!isFullscreen) return;
-
-    let raf1: number, raf2: number, raf3: number;
-
-    raf1 = requestAnimationFrame(() => {         // portal attaches to body
-      raf2 = requestAnimationFrame(() => {       // layout resolves h-full
-        raf3 = requestAnimationFrame(() => {     // paint — chart now has correct dims
-          if (!chartRef.current || !chartContainerRef.current) return;
-          const w = chartContainerRef.current.offsetWidth  || 800;
-          const h = chartContainerRef.current.offsetHeight || 600;
-          // applyOptions forces lightweight-charts internal redraw of all series
-          chartRef.current.applyOptions({ width: w, height: h });
-        });
-      });
-    });
-
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-      cancelAnimationFrame(raf3);
-    };
-  }, [isFullscreen]);
-
   const intervals: { label: string; value: Interval }[] = [
     { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
     { label: "5m", value: "5m" }, { label: "15m", value: "15m" },
@@ -651,11 +628,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   );
 
   const chartEl = (
-    <div className={clsx(
-      isFullscreen
-        ? "fixed inset-0 z-[9999] bg-[#0d0d0d] flex flex-col overflow-hidden"
-        : "glass-panel rounded-[28px] overflow-hidden"
-    )}>
+    <div
+      ref={chartWrapperRef}
+      className={clsx(
+        isFullscreen
+          ? "flex flex-col w-full h-full bg-[#0d0d0d] overflow-hidden"
+          : "glass-panel rounded-[28px] overflow-hidden"
+      )}
+    >
       {/* Row 1: Value + ATH + fullscreen toggle */}
       <div className="border-b border-white/8 px-3 pt-2.5 pb-2 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -685,7 +665,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
           )}
           {/* Fullscreen toggle */}
           <button
-            onClick={() => setIsFullscreen((v) => !v)}
+            onClick={handleFullscreenToggle}
             title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen chart"}
             className="w-7 h-7 flex items-center justify-center rounded text-white/35 hover:text-white hover:bg-white/8 transition-colors"
           >
@@ -1083,7 +1063,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
                 <span className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">Trade</span>
               </div>
               <button
-                onClick={() => setIsFullscreen(false)}
+                onClick={handleFullscreenToggle}
                 title="Exit fullscreen (Esc)"
                 className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-[#ff4444]/70 hover:bg-white/8 transition-colors text-sm"
                 onMouseDown={(e) => e.stopPropagation()}
@@ -1097,7 +1077,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         {/* Permanent exit button — top-right of chart area, always visible in fullscreen */}
         {isFullscreen && (
           <button
-            onClick={() => setIsFullscreen(false)}
+            onClick={handleFullscreenToggle}
             title="Exit fullscreen (Esc)"
             className="absolute top-3 right-3 z-40 flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#111]/80 px-2.5 py-1.5 text-[11px] font-semibold text-white/50 hover:text-white hover:border-white/30 hover:bg-[#1a1a1a]/90 transition-colors backdrop-blur-sm"
           >
@@ -1112,10 +1092,5 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     </div>
   );
 
-  // Portal to document.body in fullscreen so position:fixed escapes any
-  // ancestor stacking context (backdrop-filter, transform, etc.)
-  if (isFullscreen && typeof document !== "undefined") {
-    return createPortal(chartEl, document.body);
-  }
   return chartEl;
 }
