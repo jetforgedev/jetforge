@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
@@ -532,26 +533,26 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   useEffect(() => {
     const onFsChange = () => {
       const active = !!document.fullscreenElement;
-      setIsFullscreen(active);
 
       if (!active) {
-        // Exiting fullscreen: reset panel, then force grid + chart reflow
-        setPanelPos(null);
-        isDragging.current = false;
-        // Dispatch resize so the page grid recalculates column widths
-        // (native fullscreen can leave the layout in a stale state)
-        requestAnimationFrame(() => {
-          window.dispatchEvent(new Event("resize"));
-          // Also explicitly resize the chart back to its container dimensions
-          if (chartRef.current && chartContainerRef.current) {
-            chartRef.current.applyOptions({
-              width:  chartContainerRef.current.offsetWidth  || 600,
-              height: chartContainerRef.current.offsetHeight || 480,
-            });
-          }
+        // EXIT fullscreen — use flushSync so React updates the wrapper class
+        // synchronously, before the browser paints. This avoids a window where
+        // the wrapper still has `h-full` in non-fullscreen context, which can
+        // resolve to 0 and corrupt the chart layout.
+        flushSync(() => {
+          setIsFullscreen(false);
+          setPanelPos(null);
         });
+        isDragging.current = false;
+
+        // Clear any residual browser inline styles on the wrapper element
+        if (chartWrapperRef.current) {
+          chartWrapperRef.current.removeAttribute("style");
+        }
       } else {
-        // Entering fullscreen: position panel bottom-right
+        // ENTER fullscreen — normal async state update is fine
+        setIsFullscreen(true);
+        // Position panel bottom-right once layout settles
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (panelRef.current && chartOverlayRef.current) {
