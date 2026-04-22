@@ -516,6 +516,36 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
+  // After fullscreen exit: re-fit the time scale to the now-narrower container.
+  // The ResizeObserver resizes the canvas but the visible range stays calibrated
+  // for the wide fullscreen viewport → candles bunch on the right.
+  // Double-rAF: first frame lets React flush new classes + browser lay out,
+  // second frame lets the ResizeObserver fire & chart resize, then we fitContent.
+  const wasFullscreen = useRef(false);
+  useEffect(() => {
+    if (isFullscreen) {
+      wasFullscreen.current = true;
+      return;
+    }
+    if (!wasFullscreen.current) return; // skip initial mount
+    wasFullscreen.current = false;
+
+    let id1: number, id2: number;
+    id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => {
+        if (chartContainerRef.current && chartRef.current) {
+          const w = chartContainerRef.current.offsetWidth;
+          const h = chartContainerRef.current.offsetHeight;
+          if (w > 0 && h > 0) {
+            chartRef.current.applyOptions({ width: w, height: h });
+            chartRef.current.timeScale().fitContent();
+          }
+        }
+      });
+    });
+    return () => { cancelAnimationFrame(id1); cancelAnimationFrame(id2); };
+  }, [isFullscreen]);
+
   // Native fullscreen: enter/exit via browser API (no DOM move, no canvas clear)
   const handleFullscreenToggle = useCallback(async () => {
     if (!document.fullscreenElement) {
