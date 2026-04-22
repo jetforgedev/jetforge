@@ -516,17 +516,63 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
-  // After fullscreen exit: re-fit the time scale to the now-narrower container.
-  // The ResizeObserver resizes the canvas but the visible range stays calibrated
-  // for the wide fullscreen viewport → candles bunch on the right.
-  // Double-rAF: first frame lets React flush new classes + browser lay out,
-  // second frame lets the ResizeObserver fire & chart resize, then we fitContent.
+  // CSS-based "fullscreen": position:fixed instead of browser Fullscreen API.
+  // Avoids the browser top-layer mechanism that disrupts CSS Grid on exit,
+  // keeps the element in the DOM tree (no canvas clear), and cleans up
+  // instantly without race conditions between browser CSS and React state.
   const wasFullscreen = useRef(false);
-  useEffect(() => {
+
+  const handleFullscreenToggle = useCallback(() => {
+    if (!chartWrapperRef.current) return;
+
     if (isFullscreen) {
-      wasFullscreen.current = true;
-      return;
+      // ── EXIT ────────────────────────────────────────────────────────────────
+      // 1. Remove inline styles first so layout restores synchronously
+      chartWrapperRef.current.style.cssText = "";
+      // 2. Update state — React will re-render on next tick
+      setFsChartH(null);
+      setIsFullscreen(false);
+      setPanelPos(null);
+      isDragging.current = false;
+    } else {
+      // ── ENTER ───────────────────────────────────────────────────────────────
+      // Apply fixed-position "fullscreen" — element stays in grid, canvas stays
+      // in place, no top-layer disruption
+      chartWrapperRef.current.style.cssText =
+        "position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;border-radius:0;";
+      const availH = window.innerHeight - 86; // subtract Row1+Row2 headers
+      setFsChartH(availH);
+      setIsFullscreen(true);
+
+      // Position trade panel bottom-right once layout settles
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (panelRef.current && chartOverlayRef.current) {
+            const ctr = chartOverlayRef.current.getBoundingClientRect();
+            const pw  = panelRef.current.offsetWidth  || 300;
+            const ph  = panelRef.current.offsetHeight || 480;
+            setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
+          } else {
+            setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
+          }
+        });
+      });
     }
+  }, [isFullscreen]);
+
+  // ESC key exits our CSS fullscreen (replaces native fullscreenchange listener)
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") handleFullscreenToggle(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isFullscreen, handleFullscreenToggle]);
+
+  // After CSS fullscreen exit: re-fit the chart to the restored container.
+  // Double-rAF: lets React flush new classes + ResizeObserver resize the canvas,
+  // then we call fitContent() to snap the time scale to the narrower width.
+  useEffect(() => {
+    if (isFullscreen) { wasFullscreen.current = true; return; }
     if (!wasFullscreen.current) return; // skip initial mount
     wasFullscreen.current = false;
 
@@ -545,63 +591,6 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     });
     return () => { cancelAnimationFrame(id1); cancelAnimationFrame(id2); };
   }, [isFullscreen]);
-
-  // Native fullscreen: enter/exit via browser API (no DOM move, no canvas clear)
-  const handleFullscreenToggle = useCallback(async () => {
-    if (!document.fullscreenElement) {
-      try {
-        await chartWrapperRef.current?.requestFullscreen();
-      } catch {
-        // requestFullscreen unsupported (old iOS) — ignore, button still shows intent
-      }
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
-  }, []);
-
-  // Sync React state with native fullscreen changes (including ESC key)
-  useEffect(() => {
-    const onFsChange = () => {
-      const active = !!document.fullscreenElement;
-
-      if (!active) {
-        // EXIT — clear fsChartH first so chartContainerRef immediately
-        // switches back to its fixed CSS height class (h-[580px] etc.)
-        // with no h-full in the chain → no 0-height corruption window.
-        setFsChartH(null);
-        setIsFullscreen(false);
-        setPanelPos(null);
-        isDragging.current = false;
-        // Remove any browser-injected inline styles
-        if (chartWrapperRef.current) {
-          chartWrapperRef.current.removeAttribute("style");
-        }
-      } else {
-        // ENTER — compute available chart height now while we're still in
-        // fullscreen context. Subtract approx Row1 (~44px) + Row2 (~42px).
-        const ROWS_H = 86;
-        const availH = window.innerHeight - ROWS_H;
-        setFsChartH(availH);
-        setIsFullscreen(true);
-
-        // Position trade panel bottom-right once layout settles
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (panelRef.current && chartOverlayRef.current) {
-              const ctr = chartOverlayRef.current.getBoundingClientRect();
-              const pw  = panelRef.current.offsetWidth  || 300;
-              const ph  = panelRef.current.offsetHeight || 480;
-              setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
-            } else {
-              setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
-            }
-          });
-        });
-      }
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
 
   // Mouse drag — active only in fullscreen
   useEffect(() => {
