@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
@@ -520,28 +521,36 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     if (isFullscreen) {
       window.addEventListener("keydown", onKey);
       document.body.style.overflow = "hidden";
-      // Position panel bottom-right after layout paint
-      requestAnimationFrame(() => {
-        if (panelRef.current && chartOverlayRef.current) {
-          const ctr = chartOverlayRef.current.getBoundingClientRect();
-          const pw = panelRef.current.offsetWidth || 300;
-          const ph = panelRef.current.offsetHeight || 480;
-          setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
-        } else {
-          // fallback: position relative to window
-          setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
-        }
+      // Position panel bottom-right after portal attaches to DOM
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {  // double-rAF: portal DOM settles after first frame
+          if (panelRef.current && chartOverlayRef.current) {
+            const ctr = chartOverlayRef.current.getBoundingClientRect();
+            const pw  = panelRef.current.offsetWidth  || 300;
+            const ph  = panelRef.current.offsetHeight || 480;
+            setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
+          } else {
+            setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
+          }
+        });
       });
+      return () => {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener("keydown", onKey);
+        document.body.style.overflow = "";
+      };
     } else {
       document.body.style.overflow = "";
       setPanelPos(null);
       isDragging.current = false;
+      return () => {};
     }
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
   }, [isFullscreen]);
+
+  // Safety: always restore scroll on unmount
+  useEffect(() => {
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   // Mouse drag — active only in fullscreen
   useEffect(() => {
@@ -614,7 +623,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     </button>
   );
 
-  return (
+  const chartEl = (
     <div className={clsx(
       isFullscreen
         ? "fixed inset-0 z-[9999] bg-[#0d0d0d] flex flex-col overflow-hidden"
@@ -1058,8 +1067,28 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
             {floatingPanel}
           </div>
         )}
+        {/* Permanent exit button — top-right of chart area, always visible in fullscreen */}
+        {isFullscreen && (
+          <button
+            onClick={() => setIsFullscreen(false)}
+            title="Exit fullscreen (Esc)"
+            className="absolute top-3 right-3 z-40 flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#111]/80 px-2.5 py-1.5 text-[11px] font-semibold text-white/50 hover:text-white hover:border-white/30 hover:bg-[#1a1a1a]/90 transition-colors backdrop-blur-sm"
+          >
+            <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+              <path d="M5 1v4H1M9 1v4h4M13 9v4H9M5 13v-4H1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Exit
+          </button>
+        )}
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
     </div>
   );
+
+  // Portal to document.body in fullscreen so position:fixed escapes any
+  // ancestor stacking context (backdrop-filter, transform, etc.)
+  if (isFullscreen && typeof document !== "undefined") {
+    return createPortal(chartEl, document.body);
+  }
+  return chartEl;
 }
