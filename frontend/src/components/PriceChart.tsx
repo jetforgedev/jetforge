@@ -281,13 +281,19 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     areaSeriesRef.current?.setData(lineData);
     barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
-    // With few candles fitContent() stretches them to fill the full width and
-    // makes them look like giant blocks. Use scrollToRealTime() instead so the
-    // bars keep their natural barSpacing size and the chart scrolls to the right.
-    if (displayCandles.length >= 20) {
-      chartRef.current?.timeScale().fitContent();
-    } else {
-      chartRef.current?.timeScale().scrollToRealTime();
+    // For sparse data: show the last N candles + a small right margin instead of
+    // fitContent (which stretches few candles to fill the full width) or
+    // scrollToRealTime (which shows 200+ empty bars on the left).
+    const ts = chartRef.current?.timeScale();
+    if (ts) {
+      if (displayCandles.length >= 20) {
+        ts.fitContent();
+      } else {
+        // Show at most 60 bars total, candles at the right with 8 bars padding
+        const to = displayCandles.length - 1 + 8;
+        const from = Math.max(0, to - 60);
+        ts.setVisibleLogicalRange({ from, to });
+      }
     }
 
     // Compute ATH from raw candles (not HA)
@@ -793,7 +799,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[420px] md:h-[500px] lg:h-[560px] items-center justify-center text-white/25">
+          <div className="flex h-[400px] md:h-[460px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -802,7 +808,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[560px]" />
+        <div ref={chartContainerRef} className="w-full h-[400px] md:h-[460px]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
