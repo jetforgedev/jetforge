@@ -160,7 +160,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         layout: { background: { color: "#0d0d0d" }, textColor: "#555" },
         grid: { vertLines: { color: "#111" }, horzLines: { color: "#111" } },
         crosshair: { mode: CrosshairMode.Normal },
-        rightPriceScale: { borderColor: "#1a1a1a", textColor: "#555" },
+        rightPriceScale: {
+          borderColor: "#1a1a1a",
+          textColor: "#555",
+          scaleMargins: { top: 0.15, bottom: 0.2 },
+        },
         timeScale: {
           borderColor: "#1a1a1a",
           timeVisible: true,
