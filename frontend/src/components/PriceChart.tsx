@@ -382,9 +382,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           ? (t.type === "BUY" ? "#ffaa00" : "#ff6600")   // dev = orange
           : (t.type === "BUY" ? "#00ff88" : "#ff4444"),  // mine = green/red
         shape: "circle" as const,
-        text: t.trader === creator
-          ? (t.type === "BUY" ? "Dev Buy" : "Dev Sell")
-          : "",
+        text: "",   // no text labels — dots only, info available via crosshair
         size: t.trader === creator ? 0.8 : 0.6,
       }))
       .sort((a, b) => a.time - b.time);
