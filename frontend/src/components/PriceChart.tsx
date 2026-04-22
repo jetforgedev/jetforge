@@ -140,6 +140,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           timeVisible: true,
           secondsVisible: false,
           rightOffset: 5,
+          barSpacing: 6,
+          minBarSpacing: 2,
         },
         width: containerW,
         height: containerH,
@@ -784,7 +786,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[460px] items-center justify-center text-white/25">
+          <div className="flex h-[420px] md:h-[500px] lg:h-[560px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -793,7 +795,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full h-[460px]" />
+        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[560px]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
