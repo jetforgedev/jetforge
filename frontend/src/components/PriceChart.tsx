@@ -17,7 +17,10 @@ interface PriceChartProps {
   symbol: string;
   solPrice: number | null;
   creator?: string;
+  floatingPanel?: React.ReactNode;
 }
+
+type FsCorner = "br" | "tr" | "bl" | "tl";
 
 const INTERVAL_MS: Record<Interval, number> = {
   "1s": 1_000, "1m": 60_000, "5m": 300_000,
@@ -66,7 +69,7 @@ function toHeikinAshi(candles: OHLC[]): OHLC[] {
   return ha;
 }
 
-export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps) {
+export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: PriceChartProps) {
   const { publicKey } = useWallet();
   const queryClient = useQueryClient();
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +91,17 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const [showTrades, setShowTrades] = useState(true);
   const [showBubbles, setShowBubbles] = useState(true);
   const [crosshairMode, setCrosshairMode] = useState<"normal" | "magnet">("normal");
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fsCorner, setFsCorner] = useState<FsCorner>("br");
+  const NEXT_CORNER: Record<FsCorner, FsCorner> = { br: "bl", bl: "tl", tl: "tr", tr: "br" };
+  const CORNER_CLASS: Record<FsCorner, string> = {
+    br: "bottom-4 right-4",
+    bl: "bottom-4 left-11",
+    tr: "top-4 right-4",
+    tl: "top-4 left-11",
+  };
   type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
   const [chartType, setChartType] = useState<ChartType>("heikinashi");
   const [showChartDropdown, setShowChartDropdown] = useState(false);
@@ -504,6 +518,20 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
+  // ESC to exit fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen]);
+
+  // Lock body scroll when fullscreen
+  useEffect(() => {
+    document.body.style.overflow = isFullscreen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [isFullscreen]);
+
   const intervals: { label: string; value: Interval }[] = [
     { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
     { label: "5m", value: "5m" }, { label: "15m", value: "15m" },
@@ -528,9 +556,13 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   );
 
   return (
-    <div className="glass-panel rounded-[28px] overflow-hidden">
-      {/* Row 1: Value + ATH */}
-      <div className="border-b border-white/8 px-3 pt-2.5 pb-2 flex items-center justify-between gap-2">
+    <div className={clsx(
+      isFullscreen
+        ? "fixed inset-0 z-[100] bg-[#0d0d0d] flex flex-col overflow-hidden"
+        : "glass-panel rounded-[28px] overflow-hidden"
+    )}>
+      {/* Row 1: Value + ATH + fullscreen toggle */}
+      <div className="border-b border-white/8 px-3 pt-2.5 pb-2 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-white/40 text-xs shrink-0">
             {priceMode === "mcap" ? "Market Cap" : "Price"}
@@ -545,20 +577,38 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             </span>
           )}
         </div>
-        {athDisplay !== null && (
-          <span className="text-[#555] text-[10px] font-mono shrink-0">
-            ATH{" "}
-            <span className="text-[#888]">
-              {priceMode === "mcap"
-                ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
-                : (currencyMode === "usd" ? `$${athDisplay.toFixed(8)}` : `${athDisplay.toFixed(8)} SOL`)}
+        <div className="flex items-center gap-2 shrink-0">
+          {athDisplay !== null && (
+            <span className="text-[#555] text-[10px] font-mono">
+              ATH{" "}
+              <span className="text-[#888]">
+                {priceMode === "mcap"
+                  ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
+                  : (currencyMode === "usd" ? `$${athDisplay.toFixed(8)}` : `${athDisplay.toFixed(8)} SOL`)}
+              </span>
             </span>
-          </span>
-        )}
+          )}
+          {/* Fullscreen toggle */}
+          <button
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen chart"}
+            className="w-7 h-7 flex items-center justify-center rounded text-white/35 hover:text-white hover:bg-white/8 transition-colors"
+          >
+            {isFullscreen ? (
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path d="M5 1v4H1M9 1v4h4M5 13v-4H1M9 13v-4h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Row 2: Timeframes + feature toggles — horizontally scrollable on mobile */}
-      <div className="border-b border-white/8 px-3 py-1.5 overflow-x-auto">
+      <div className="border-b border-white/8 px-3 py-1.5 overflow-x-auto shrink-0">
         <div className="flex items-center gap-1 min-w-max">
           {/* Timeframes */}
           {intervals.map((i) => (
@@ -680,7 +730,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       </div>
 
       {/* Chart area */}
-      <div className="relative flex">
+      <div className={clsx("relative flex", isFullscreen && "flex-1 min-h-0")}>
         {/* Left toolbar — desktop only */}
         {/* Fix #4: removed non-functional drawing tool buttons (trend line, horizontal line, ray, pen, text, measure) */}
         {/* Fix #5: removed duplicate magnet button at bottom */}
@@ -814,7 +864,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         </div>
 
         {/* Chart + overlay layer */}
-        <div className="relative flex-1 min-w-0">
+        <div className={clsx("relative flex-1 min-w-0", isFullscreen && "h-full")}>
         {/* Live trade bubbles */}
         {showBubbles && flashTrades.length > 0 && (
           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
@@ -862,7 +912,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[420px] md:h-[500px] lg:h-[580px] items-center justify-center text-white/25">
+          <div className={clsx(
+            "flex items-center justify-center text-white/25",
+            isFullscreen ? "h-full" : "h-[420px] md:h-[500px] lg:h-[580px]"
+          )}>
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -871,8 +924,55 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[580px]" />
+        <div
+          ref={chartContainerRef}
+          className={clsx(
+            "w-full",
+            isFullscreen ? "h-full" : "h-[420px] md:h-[500px] lg:h-[580px]"
+          )}
+        />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
+
+        {/* ── Floating trade panel — fullscreen only ─────────────────────── */}
+        {isFullscreen && floatingPanel && (
+          <div
+            className={clsx(
+              "absolute z-30 w-[300px] max-h-[82vh] overflow-y-auto rounded-[24px]",
+              "shadow-[0_8px_40px_rgba(0,0,0,0.6)] border border-white/10",
+              "scrollbar-thin",
+              CORNER_CLASS[fsCorner]
+            )}
+            style={{ backdropFilter: "blur(16px)", background: "rgba(13,13,13,0.92)" }}
+          >
+            {/* Panel header: corner-snap + close */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-3 py-2 border-b border-white/8"
+                 style={{ background: "rgba(13,13,13,0.96)" }}>
+              <span className="text-[10px] text-white/30 font-semibold uppercase tracking-widest">Trade</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setFsCorner((c) => NEXT_CORNER[c])}
+                  title="Snap to next corner"
+                  className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                    <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                    <rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                    <rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                    <rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setIsFullscreen(false)}
+                  title="Exit fullscreen"
+                  className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-[#ff4444]/70 hover:bg-white/8 transition-colors text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {floatingPanel}
+          </div>
+        )}
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
     </div>
