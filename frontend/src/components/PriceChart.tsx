@@ -328,9 +328,9 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       if (displayCandles.length >= 20) {
         ts.fitContent();
       } else {
-        // Show at most 60 bars total, candles at the right with 8 bars padding
-        const to = displayCandles.length - 1 + 8;
-        const from = Math.max(0, to - 60);
+        // Show at most 40 bars total, candles at the right with 4 bars padding
+        const to = displayCandles.length - 1 + 4;
+        const from = Math.max(0, to - 40);
         ts.setVisibleLogicalRange({ from, to });
       }
     }
