@@ -10,13 +10,15 @@ interface TradesListProps {
   symbol: string;
 }
 
-// ── Trade size thresholds (future-proof config) ─────────────────────────────
-const WHALE_THRESHOLD_SOL = 0.3;   // ≥ this → Whale tag
-const SMALL_THRESHOLD_SOL = 0.05;  // <  this → Small tag
+// ── Trade size thresholds ─────────────────────────────────────────────────────
+const WHALE_THRESHOLD_SOL = 0.2;   // ≥ this → Whale tag (was 0.3 — too high for devnet)
+const BIG_THRESHOLD_SOL   = 0.08;  // ≥ this → Big tag
+const SMALL_THRESHOLD_SOL = 0.04;  // <  this → Small tag
 
-function getTradeTag(solAmountRaw: string | number): { label: string; color: string } | null {
+export function getTradeTag(solAmountRaw: string | number): { label: string; color: string } | null {
   const sol = Number(solAmountRaw) / 1e9;
   if (sol >= WHALE_THRESHOLD_SOL) return { label: "🐋 Whale", color: "#7c3aed" };
+  if (sol >= BIG_THRESHOLD_SOL)   return { label: "🔥 Big",   color: "#ff8c00" };
   if (sol <  SMALL_THRESHOLD_SOL) return { label: "🐣 Small", color: "#555" };
   return null;
 }

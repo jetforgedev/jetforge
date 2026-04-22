@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
+import { getTradeTag } from "@/components/TradesList";
 import { useSocket } from "@/hooks/useLiveFeed";
 import { useWallet } from "@solana/wallet-adapter-react";
 
@@ -764,26 +765,34 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         {/* Live trade bubbles */}
         {showBubbles && flashTrades.length > 0 && (
           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
-            {flashTrades.map((ft) => (
-              <div
-                key={ft.id}
-                className={clsx(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-lg animate-slide-in",
-                  ft.type === "BUY"
-                    ? "bg-[#00ff88]/12 border-[#00ff88]/35 text-[#00ff88]"
-                    : "bg-[#ff4444]/12 border-[#ff4444]/35 text-[#ff4444]"
-                )}
-              >
-                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
-                  style={{ background: ft.type === "BUY" ? "rgba(0,255,136,0.2)" : "rgba(255,68,68,0.2)" }}>
-                  {ft.type === "BUY" ? "▲" : "▼"}
-                </span>
-                <span className="font-mono">{ft.trader.slice(0, 4)}…{ft.trader.slice(-4)}</span>
-                <span className="text-white font-mono">
-                  {(Number(ft.solAmount) / 1e9).toFixed(3)} SOL
-                </span>
-              </div>
-            ))}
+            {flashTrades.map((ft) => {
+              const tag = getTradeTag(ft.solAmount);
+              return (
+                <div
+                  key={ft.id}
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-lg animate-slide-in",
+                    ft.type === "BUY"
+                      ? "bg-[#00ff88]/12 border-[#00ff88]/35 text-[#00ff88]"
+                      : "bg-[#ff4444]/12 border-[#ff4444]/35 text-[#ff4444]"
+                  )}
+                >
+                  <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                    style={{ background: ft.type === "BUY" ? "rgba(0,255,136,0.2)" : "rgba(255,68,68,0.2)" }}>
+                    {ft.type === "BUY" ? "▲" : "▼"}
+                  </span>
+                  <span className="font-mono">{ft.trader.slice(0, 4)}…{ft.trader.slice(-4)}</span>
+                  <span className="text-white font-mono">
+                    {(Number(ft.solAmount) / 1e9).toFixed(3)} SOL
+                  </span>
+                  {tag && (
+                    <span className="text-[10px] font-bold" style={{ color: tag.color }}>
+                      {tag.label}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -800,7 +809,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[420px] md:h-[500px] lg:h-[540px] items-center justify-center text-white/25">
+          <div className="flex h-[420px] md:h-[500px] lg:h-[580px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -809,7 +818,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[540px]" />
+        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[580px]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
