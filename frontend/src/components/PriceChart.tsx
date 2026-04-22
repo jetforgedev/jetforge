@@ -36,6 +36,18 @@ function fmtMcapSol(val: number): string {
   return `${val.toFixed(2)} SOL`;
 }
 
+// Fix #2: dynamic price format precision based on value magnitude
+function computePriceFormat(maxVal: number): { type: "price"; precision: number; minMove: number } {
+  if (maxVal <= 0 || !isFinite(maxVal)) return { type: "price", precision: 8, minMove: 0.00000001 };
+  if (maxVal < 0.0001)  return { type: "price", precision: 8, minMove: 0.00000001 };
+  if (maxVal < 0.001)   return { type: "price", precision: 7, minMove: 0.0000001 };
+  if (maxVal < 0.01)    return { type: "price", precision: 6, minMove: 0.000001 };
+  if (maxVal < 0.1)     return { type: "price", precision: 5, minMove: 0.00001 };
+  if (maxVal < 1)       return { type: "price", precision: 4, minMove: 0.0001 };
+  if (maxVal < 1_000)   return { type: "price", precision: 2, minMove: 0.01 };
+  return { type: "price", precision: 0, minMove: 1 };
+}
+
 interface OHLC { time: number; open: number; high: number; low: number; close: number; }
 
 function toHeikinAshi(candles: OHLC[]): OHLC[] {
@@ -65,8 +77,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const activeSeriesRef = useRef<any>(null);  // always points to visible series
   const volumeSeriesRef = useRef<any>(null);
   const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
+  // Last HA candle in display units — needed to compute live HA updates correctly (P1-1)
+  const lastHaCandle = useRef<OHLC | null>(null);
 
-  const [interval, setInterval] = useState<Interval>("1m");
+  // Fix #8: rename setter to avoid shadowing window.setInterval
+  const [interval, setChartInterval] = useState<Interval>("1m");
   const [priceMode, setPriceMode] = useState<PriceMode>("mcap");
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("usd");
   const [showTrades, setShowTrades] = useState(true);
@@ -77,8 +92,11 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   const [showChartDropdown, setShowChartDropdown] = useState(false);
   const chartTypeRef = useRef<ChartType>("heikinashi");
 
-  // ATH tracking
-  const [ath, setAth] = useState<number | null>(null);
+  // ATH stored in raw backend units (pre-multiplier) so it survives USD↔SOL / MCap↔Price toggles (P1-2)
+  const [athRaw, setAthRaw] = useState<number | null>(null);
+
+  // Fix #7: live close price state for fresh header display
+  const [liveClose, setLiveClose] = useState<number | null>(null);
 
   // Tracks whether the chart + all series refs are ready.
   // Data-loading effects depend on this so they re-run after async chart init.
@@ -111,6 +129,13 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       return currencyMode === "usd" ? solUsd * 1_000 : 1_000;
     }
   }, [priceMode, currencyMode]);
+
+  // Reset live state when any display mode changes so stale units don't bleed in (P1-3)
+  useEffect(() => {
+    liveCandle.current = null;
+    lastHaCandle.current = null;
+    setLiveClose(null);
+  }, [interval, priceMode, currencyMode]);
 
   // Initialize chart
   useEffect(() => {
@@ -147,6 +172,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         height: containerH,
       });
 
+      // Fix #2: use computePriceFormat(0) for initial series creation
       const candleSeries = chart.addCandlestickSeries({
         upColor: "#00ff88",
         downColor: "#ff4444",
@@ -154,23 +180,23 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         borderDownColor: "#ff4444",
         wickUpColor: "#00ff8880",
         wickDownColor: "#ff444480",
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        priceFormat: computePriceFormat(0),
       });
 
       const lineSeries = chart.addLineSeries({
         color: "#00ff88", lineWidth: 2, visible: false,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        priceFormat: computePriceFormat(0),
       });
 
       const areaSeries = chart.addAreaSeries({
         lineColor: "#00ff88", topColor: "#00ff8820", bottomColor: "#00ff8800",
         lineWidth: 2, visible: false,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        priceFormat: computePriceFormat(0),
       });
 
       const barSeries = chart.addBarSeries({
         upColor: "#00ff88", downColor: "#ff4444", visible: false,
-        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        priceFormat: computePriceFormat(0),
       });
 
       const volumeSeries = chart.addHistogramSeries({
@@ -276,6 +302,14 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     }));
     const lineData = candles.map((c) => ({ time: c.time as any, value: c.close }));
 
+    // Dynamic price format based on display-unit magnitude
+    const maxHigh = Math.max(...candles.map((c) => c.high));
+    const fmt = computePriceFormat(maxHigh);
+    candleSeriesRef.current?.applyOptions({ priceFormat: fmt });
+    lineSeriesRef.current?.applyOptions({ priceFormat: fmt });
+    areaSeriesRef.current?.applyOptions({ priceFormat: fmt });
+    barSeriesRef.current?.applyOptions({ priceFormat: fmt });
+
     candleSeriesRef.current.setData(displayCandles);
     lineSeriesRef.current?.setData(lineData);
     areaSeriesRef.current?.setData(lineData);
@@ -296,9 +330,9 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       }
     }
 
-    // Compute ATH from raw candles (not HA)
-    const maxHigh = Math.max(...candles.map((c) => c.high));
-    setAth(maxHigh);
+    // ATH: store raw backend value (pre-multiplier) so toggles don't corrupt it (P1-2)
+    const maxHighRaw = Math.max(...ohlcv.map((d) => d.high));
+    setAthRaw(maxHighRaw);
 
     if (displayCandles.length > 0) {
       const last = displayCandles[displayCandles.length - 1];
@@ -306,6 +340,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         time: last.time as number,
         open: last.open, high: last.high, low: last.low, close: last.close,
       };
+      // Seed lastHaCandle so live HA updates have a valid previous candle (P1-1)
+      if (chartType === "heikinashi") {
+        lastHaCandle.current = last as OHLC;
+      }
     }
   }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier, chartType, chartReady]);
 
@@ -362,18 +400,19 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   useEffect(() => {
     if (!socket || !mint) return;
 
-    socket.on("new_trade", (trade: any) => {
+    // Named handler so .off() removes only this component's listener (P1-4)
+    const onNewTrade = (trade: any) => {
       if (trade.mint !== mint) return;
       const id = ++flashIdRef.current;
       setFlashTrades((prev) => [...prev.slice(-4), { id, type: trade.type, trader: trade.trader, solAmount: trade.solAmount }]);
       setTimeout(() => {
         setFlashTrades((prev) => prev.filter((f) => f.id !== id));
       }, 5000);
-      // Refresh trade markers so the new trade appears on the chart immediately
       queryClient.invalidateQueries({ queryKey: ["trades-markers", mint] });
-    });
+    };
 
-    return () => { socket.off("new_trade"); };
+    socket.on("new_trade", onNewTrade);
+    return () => { socket.off("new_trade", onNewTrade); };
   }, [socket, mint, queryClient]);
 
   const intervalRef = useRef(interval);
@@ -387,7 +426,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
   useEffect(() => {
     if (!socket || !mint) return;
 
-    socket.on("price_update", (data: any) => {
+    // Named handler so .off() removes only this component's listener (P1-4)
+    const onPriceUpdate = (data: any) => {
       if (data.mint !== mint) return;
       if (!candleSeriesRef.current) return;
 
@@ -396,30 +436,37 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
       const val = data.price * mult;
 
+      // Live close for header display
+      setLiveClose(val);
+
+      // ATH: raw price (pre-multiplier) survives mode toggles (P1-2)
+      setAthRaw((prev) => prev === null ? data.price : Math.max(prev, data.price));
+
+      // Build / extend the raw live candle (P1-3: liveCandle is in display units,
+      // reset on mode change so units always match)
       const prev = liveCandle.current;
       let updated: typeof prev;
-
       if (prev && prev.time === candleTime) {
-        updated = {
-          time: candleTime,
-          open: prev.open,
-          high: Math.max(prev.high, val),
-          low: Math.min(prev.low, val),
-          close: val,
-        };
+        updated = { time: candleTime, open: prev.open, high: Math.max(prev.high, val), low: Math.min(prev.low, val), close: val };
       } else {
         updated = { time: candleTime, open: val, high: val, low: val, close: val };
       }
-
       liveCandle.current = updated;
-
-      // Update ATH
-      setAth((prev) => prev === null ? val : Math.max(prev, val));
 
       const ct = chartTypeRef.current;
       try {
-        if (ct === "candles" || ct === "heikinashi") {
+        if (ct === "candles") {
           candleSeriesRef.current?.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
+        } else if (ct === "heikinashi") {
+          // Transform live raw candle to HA using previous HA candle (P1-1)
+          const prevHa = lastHaCandle.current;
+          const haClose = (updated.open + updated.high + updated.low + updated.close) / 4;
+          const haOpen  = prevHa ? (prevHa.open + prevHa.close) / 2 : (updated.open + updated.close) / 2;
+          const haHigh  = Math.max(updated.high, haOpen, haClose);
+          const haLow   = Math.min(updated.low,  haOpen, haClose);
+          const haUpdated: OHLC = { time: updated.time, open: haOpen, high: haHigh, low: haLow, close: haClose };
+          lastHaCandle.current = haUpdated;
+          candleSeriesRef.current?.update({ time: haUpdated.time as any, open: haUpdated.open, high: haUpdated.high, low: haUpdated.low, close: haUpdated.close });
         } else if (ct === "line") {
           lineSeriesRef.current?.update({ time: updated.time as any, value: updated.close });
         } else if (ct === "area") {
@@ -427,18 +474,32 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         } else if (ct === "bars") {
           barSeriesRef.current?.update({ time: updated.time as any, open: updated.open, high: updated.high, low: updated.low, close: updated.close });
         }
-        // Auto-scroll to keep latest candle visible
-        chartRef.current?.timeScale().scrollToRealTime();
-      } catch { /* time went backwards */ }
-    });
+        // No scrollToRealTime() — lightweight-charts extends the right edge automatically
+        // when the latest bar is visible; forcing it every tick breaks scrolling to history
+      } catch { /* time went backwards — ignore */ }
+    };
 
-    return () => { socket.off("price_update"); };
+    socket.on("price_update", onPriceUpdate);
+    return () => { socket.off("price_update", onPriceUpdate); };
   }, [socket, mint]);
 
-  // Compute current display price from last ohlcv candle
-  const currentVal = ohlcv && ohlcv.length > 0
-    ? ohlcv[ohlcv.length - 1].close * getMultiplier(solPrice)
-    : null;
+  // Fix #3: close chart type dropdown on outside click
+  useEffect(() => {
+    if (!showChartDropdown) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest('[data-dropdown="charttype"]')) setShowChartDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showChartDropdown]);
+
+  // Current display price — prefer live close, fall back to last OHLCV candle
+  const currentVal = liveClose
+    ?? (ohlcv && ohlcv.length > 0 ? ohlcv[ohlcv.length - 1].close * getMultiplier(solPrice) : null);
+
+  // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
+  const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
   const intervals: { label: string; value: Interval }[] = [
     { label: "1s", value: "1s" }, { label: "1m", value: "1m" },
@@ -481,13 +542,13 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             </span>
           )}
         </div>
-        {ath !== null && (
+        {athDisplay !== null && (
           <span className="text-[#555] text-[10px] font-mono shrink-0">
             ATH{" "}
             <span className="text-[#888]">
               {priceMode === "mcap"
-                ? (currencyMode === "usd" ? fmtMcap(ath) : fmtMcapSol(ath))
-                : (currencyMode === "usd" ? `$${ath.toFixed(8)}` : `${ath.toFixed(8)} SOL`)}
+                ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
+                : (currencyMode === "usd" ? `$${athDisplay.toFixed(8)}` : `${athDisplay.toFixed(8)} SOL`)}
             </span>
           </span>
         )}
@@ -500,7 +561,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           {intervals.map((i) => (
             <button
               key={i.value}
-              onClick={() => setInterval(i.value)}
+              onClick={() => setChartInterval(i.value)}
               className={clsx(
                 "px-2.5 py-1 text-xs rounded font-medium transition-colors whitespace-nowrap",
                 interval === i.value
@@ -522,8 +583,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
           </ToolbarBtn>
 
-          {/* Chart type dropdown */}
-          <div className="relative shrink-0">
+          {/* Fix #3: chart type dropdown with data-dropdown attribute for outside-click detection */}
+          <div className="relative shrink-0" data-dropdown="charttype">
             <button
               onClick={() => setShowChartDropdown((v) => !v)}
               className={clsx(
@@ -618,8 +679,10 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
       {/* Chart area */}
       <div className="relative flex">
         {/* Left toolbar — desktop only */}
+        {/* Fix #4: removed non-functional drawing tool buttons (trend line, horizontal line, ray, pen, text, measure) */}
+        {/* Fix #5: removed duplicate magnet button at bottom */}
         <div className="hidden sm:flex flex-col items-center gap-0.5 py-2 px-1 border-r border-white/8 bg-[#090909] shrink-0 z-10 w-9">
-          {/* Crosshair — functional */}
+          {/* Crosshair toggle — functional */}
           <button
             title={crosshairMode === "normal" ? "Normal crosshair" : "Magnet crosshair (active)"}
             onClick={() => {
@@ -655,62 +718,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             </svg>
           </button>
 
-          <div className="w-5 h-px bg-white/10 my-0.5" />
-
-          {/* Trend line */}
-          <button title="Trend line" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <line x1="1" y1="13" x2="13" y2="1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              <circle cx="1" cy="13" r="1.5" fill="currentColor" />
-              <circle cx="13" cy="1" r="1.5" fill="currentColor" />
-            </svg>
-          </button>
-
-          {/* Horizontal line */}
-          <button title="Horizontal line" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <line x1="0" y1="7" x2="14" y2="7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              <circle cx="2" cy="7" r="1.5" fill="currentColor" />
-            </svg>
-          </button>
-
-          {/* Ray */}
-          <button title="Ray" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <line x1="1" y1="11" x2="13" y2="3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeDasharray="1 0 8 100" />
-              <circle cx="1" cy="11" r="1.5" fill="currentColor" />
-            </svg>
-          </button>
-
-          <div className="w-5 h-px bg-white/10 my-0.5" />
-
-          {/* Pen/draw */}
-          <button title="Draw" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path d="M2 10L9 3l2 2-7 7-3 1 1-3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          {/* Text */}
-          <button title="Text annotation" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path d="M2 3h10M7 3v8M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <div className="w-5 h-px bg-white/10 my-0.5" />
-
-          {/* Ruler / measure */}
-          <button title="Measure" className="w-7 h-7 flex items-center justify-center rounded text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="5" width="12" height="4" rx="1" stroke="currentColor" strokeWidth="1.2" />
-              <line x1="4" y1="5" x2="4" y2="9" stroke="currentColor" strokeWidth="1" />
-              <line x1="7" y1="5" x2="7" y2="9" stroke="currentColor" strokeWidth="1" />
-              <line x1="10" y1="5" x2="10" y2="9" stroke="currentColor" strokeWidth="1" />
-            </svg>
-          </button>
-
-          {/* Zoom in */}
+          {/* Zoom in — functional */}
           <button title="Zoom in" onClick={() => {
             const ts = chartRef.current?.timeScale();
             if (ts) {
@@ -726,31 +734,24 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
             </svg>
           </button>
 
-          {/* Magnet mode */}
-          <button title="Magnet mode" onClick={() => {
-              if (!chartRef.current) return;
-              const next = crosshairMode === "normal" ? "magnet" : "normal";
-              setCrosshairMode(next);
-              import("lightweight-charts").then(({ CrosshairMode }) => {
-                chartRef.current?.applyOptions({
-                  crosshair: { mode: next === "magnet" ? CrosshairMode.Magnet : CrosshairMode.Normal },
-                });
-              });
-            }}
-            className={clsx(
-              "w-7 h-7 flex items-center justify-center rounded transition-colors",
-              crosshairMode === "magnet" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/30 hover:text-white/60 hover:bg-white/5"
-            )}>
+          {/* Fix #6: Zoom out button */}
+          <button title="Zoom out" onClick={() => {
+            const ts = chartRef.current?.timeScale();
+            if (ts) {
+              const range = ts.getVisibleLogicalRange();
+              if (range) ts.setVisibleLogicalRange({ from: range.from - 10, to: range.to + 10 });
+            }
+          }} className="w-7 h-7 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/8 transition-colors">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path d="M3 2a4 4 0 0 1 8 0v4h-2V2a2 2 0 0 0-4 0v4H3V2z" stroke="currentColor" strokeWidth="1.1" fill="none" />
-              <path d="M1 6h4M9 6h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              <path d="M3 10v2M11 10v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+              <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <line x1="4" y1="6" x2="8" y2="6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </button>
 
           <div className="w-5 h-px bg-white/10 my-0.5" />
 
-          {/* Trash / clear */}
+          {/* Reset zoom */}
           <button title="Reset zoom" onClick={() => chartRef.current?.timeScale().fitContent()} className="w-7 h-7 flex items-center justify-center rounded text-white/25 hover:text-[#ff4444]/70 hover:bg-white/5 transition-colors">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
               <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -799,7 +800,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className="flex h-[400px] md:h-[460px] items-center justify-center text-white/25">
+          <div className="flex h-[420px] md:h-[500px] lg:h-[540px] items-center justify-center text-white/25">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -808,7 +809,7 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           </div>
         )}
 
-        <div ref={chartContainerRef} className="w-full h-[400px] md:h-[460px]" />
+        <div ref={chartContainerRef} className="w-full h-[420px] md:h-[500px] lg:h-[540px]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
         </div>{/* end chart+overlay layer */}
       </div>{/* end chart area flex */}
