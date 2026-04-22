@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { flushSync } from "react-dom";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOHLCV, getTrades } from "@/lib/api";
@@ -94,6 +93,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
 
   // Fullscreen + draggable panel state
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fsChartH, setFsChartH] = useState<number | null>(null); // explicit px height in fullscreen
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);   // native fullscreen target
@@ -535,24 +535,26 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
       const active = !!document.fullscreenElement;
 
       if (!active) {
-        // EXIT fullscreen — use flushSync so React updates the wrapper class
-        // synchronously, before the browser paints. This avoids a window where
-        // the wrapper still has `h-full` in non-fullscreen context, which can
-        // resolve to 0 and corrupt the chart layout.
-        flushSync(() => {
-          setIsFullscreen(false);
-          setPanelPos(null);
-        });
+        // EXIT — clear fsChartH first so chartContainerRef immediately
+        // switches back to its fixed CSS height class (h-[580px] etc.)
+        // with no h-full in the chain → no 0-height corruption window.
+        setFsChartH(null);
+        setIsFullscreen(false);
+        setPanelPos(null);
         isDragging.current = false;
-
-        // Clear any residual browser inline styles on the wrapper element
+        // Remove any browser-injected inline styles
         if (chartWrapperRef.current) {
           chartWrapperRef.current.removeAttribute("style");
         }
       } else {
-        // ENTER fullscreen — normal async state update is fine
+        // ENTER — compute available chart height now while we're still in
+        // fullscreen context. Subtract approx Row1 (~44px) + Row2 (~42px).
+        const ROWS_H = 86;
+        const availH = window.innerHeight - ROWS_H;
+        setFsChartH(availH);
         setIsFullscreen(true);
-        // Position panel bottom-right once layout settles
+
+        // Position trade panel bottom-right once layout settles
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (panelRef.current && chartOverlayRef.current) {
@@ -647,7 +649,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
       ref={chartWrapperRef}
       className={clsx(
         isFullscreen
-          ? "flex flex-col w-full h-full bg-[#0d0d0d] overflow-hidden"
+          ? "flex flex-col bg-[#0d0d0d] overflow-hidden"
           : "glass-panel rounded-[28px] overflow-hidden"
       )}
     >
@@ -820,7 +822,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
       </div>
 
       {/* Chart area */}
-      <div className={clsx("relative flex", isFullscreen && "flex-1 min-h-0")}>
+      <div className="relative flex">
         {/* Left toolbar — desktop only */}
         {/* Fix #4: removed non-functional drawing tool buttons (trend line, horizontal line, ray, pen, text, measure) */}
         {/* Fix #5: removed duplicate magnet button at bottom */}
@@ -954,7 +956,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         </div>
 
         {/* Chart + overlay layer */}
-        <div ref={chartOverlayRef} className={clsx("relative flex-1 min-w-0", isFullscreen && "h-full")}>
+        <div ref={chartOverlayRef} className="relative flex-1 min-w-0">
         {/* Live trade bubbles */}
         {showBubbles && flashTrades.length > 0 && (
           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
@@ -1002,10 +1004,10 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div className={clsx(
-            "flex items-center justify-center text-white/25",
-            isFullscreen ? "h-full" : "h-[420px] md:h-[500px] lg:h-[580px]"
-          )}>
+          <div
+            className="flex items-center justify-center text-white/25 h-[420px] md:h-[500px] lg:h-[580px]"
+            style={fsChartH !== null ? { height: fsChartH } : {}}
+          >
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>
@@ -1016,10 +1018,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
 
         <div
           ref={chartContainerRef}
-          className={clsx(
-            "w-full",
-            isFullscreen ? "h-full" : "h-[420px] md:h-[500px] lg:h-[580px]"
-          )}
+          className="w-full h-[420px] md:h-[500px] lg:h-[580px]"
+          style={fsChartH !== null ? { height: fsChartH } : {}}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
 
