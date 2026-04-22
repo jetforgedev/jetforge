@@ -140,8 +140,8 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
           timeVisible: true,
           secondsVisible: false,
           rightOffset: 5,
-          barSpacing: 6,
-          minBarSpacing: 2,
+          barSpacing: 4,
+          minBarSpacing: 1,
         },
         width: containerW,
         height: containerH,
@@ -281,7 +281,14 @@ export function PriceChart({ mint, symbol, solPrice, creator }: PriceChartProps)
     areaSeriesRef.current?.setData(lineData);
     barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
-    chartRef.current?.timeScale().fitContent();
+    // With few candles fitContent() stretches them to fill the full width and
+    // makes them look like giant blocks. Use scrollToRealTime() instead so the
+    // bars keep their natural barSpacing size and the chart scrolls to the right.
+    if (displayCandles.length >= 20) {
+      chartRef.current?.timeScale().fitContent();
+    } else {
+      chartRef.current?.timeScale().scrollToRealTime();
+    }
 
     // Compute ATH from raw candles (not HA)
     const maxHigh = Math.max(...candles.map((c) => c.high));
