@@ -185,7 +185,8 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
           />
         </div>
         {nextMilestone && (
-          <div className="mt-2 text-[10px] font-mono" style={{ color: phase.color + "99" }}>
+          <div className="mt-2 inline-block text-[10px] font-mono px-1.5 py-0.5 rounded"
+               style={{ color: phase.color, background: phase.color + "18" }}>
             {nextMilestone}
           </div>
         )}
