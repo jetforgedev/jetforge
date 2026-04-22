@@ -516,32 +516,25 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
   // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
   const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
 
-  // CSS-based "fullscreen": position:fixed instead of browser Fullscreen API.
-  // Avoids the browser top-layer mechanism that disrupts CSS Grid on exit,
-  // keeps the element in the DOM tree (no canvas clear), and cleans up
-  // instantly without race conditions between browser CSS and React state.
+  // CSS-based fullscreen: toggle via state → className (no browser Fullscreen API,
+  // no direct DOM style writes). The element stays in the DOM tree at all times so
+  // the CSS Grid never collapses and the canvas bitmap is never cleared.
+  //
+  // Enter: className gets "fixed inset-0 z-[9999] …", fsChartH drives chartContainerRef height.
+  // Exit : className reverts to "glass-panel …", fsChartH → null restores CSS class height,
+  //        wasFullscreen effect fires a double-rAF to remeasure and fitContent.
   const wasFullscreen = useRef(false);
 
   const handleFullscreenToggle = useCallback(() => {
-    if (!chartWrapperRef.current) return;
-
     if (isFullscreen) {
-      // ── EXIT ────────────────────────────────────────────────────────────────
-      // 1. Remove inline styles first so layout restores synchronously
-      chartWrapperRef.current.style.cssText = "";
-      // 2. Update state — React will re-render on next tick
+      // ── EXIT ──────────────────────────────────────────────────────────────
       setFsChartH(null);
       setIsFullscreen(false);
       setPanelPos(null);
       isDragging.current = false;
     } else {
-      // ── ENTER ───────────────────────────────────────────────────────────────
-      // Apply fixed-position "fullscreen" — element stays in grid, canvas stays
-      // in place, no top-layer disruption
-      chartWrapperRef.current.style.cssText =
-        "position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;border-radius:0;";
-      const availH = window.innerHeight - 86; // subtract Row1+Row2 headers
-      setFsChartH(availH);
+      // ── ENTER ─────────────────────────────────────────────────────────────
+      setFsChartH(window.innerHeight - 86); // 86 ≈ Row1 (44px) + Row2 (42px)
       setIsFullscreen(true);
 
       // Position trade panel bottom-right once layout settles
@@ -560,7 +553,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     }
   }, [isFullscreen]);
 
-  // ESC key exits our CSS fullscreen (replaces native fullscreenchange listener)
+  // ESC key exits our CSS fullscreen (browser never owns it, so no native handler)
   useEffect(() => {
     if (!isFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") handleFullscreenToggle(); };
@@ -568,9 +561,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     return () => document.removeEventListener("keydown", onKey);
   }, [isFullscreen, handleFullscreenToggle]);
 
-  // After CSS fullscreen exit: re-fit the chart to the restored container.
-  // Double-rAF: lets React flush new classes + ResizeObserver resize the canvas,
-  // then we call fitContent() to snap the time scale to the narrower width.
+  // After exit: remeasure the restored container and resize + refit the chart.
+  // Double-rAF: 1st lets React flush new className + browser lay out the grid,
+  // 2nd lets the ResizeObserver fire first, then we do a final authoritative resize.
   useEffect(() => {
     if (isFullscreen) { wasFullscreen.current = true; return; }
     if (!wasFullscreen.current) return; // skip initial mount
@@ -580,8 +573,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
     id1 = requestAnimationFrame(() => {
       id2 = requestAnimationFrame(() => {
         if (chartContainerRef.current && chartRef.current) {
-          const w = chartContainerRef.current.offsetWidth;
-          const h = chartContainerRef.current.offsetHeight;
+          const w = chartContainerRef.current.clientWidth;
+          const h = chartContainerRef.current.clientHeight;
           if (w > 0 && h > 0) {
             chartRef.current.applyOptions({ width: w, height: h });
             chartRef.current.timeScale().fitContent();
@@ -668,7 +661,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel }: P
       ref={chartWrapperRef}
       className={clsx(
         isFullscreen
-          ? "flex flex-col bg-[#0d0d0d] overflow-hidden"
+          ? "fixed inset-0 z-[9999] flex flex-col bg-[#0d0d0d] overflow-hidden"
           : "glass-panel rounded-[28px] overflow-hidden"
       )}
     >
