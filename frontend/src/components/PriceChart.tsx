@@ -107,9 +107,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
    *  Prevents the ResizeObserver from locking in fullscreen-sized dimensions. */
   const fsExitRef = useRef(false);
   type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
-  const [chartType, setChartType] = useState<ChartType>("heikinashi");
+  const [chartType, setChartType] = useState<ChartType>("candles");
   const [showChartDropdown, setShowChartDropdown] = useState(false);
-  const chartTypeRef = useRef<ChartType>("heikinashi");
+  const chartTypeRef = useRef<ChartType>("candles");
 
   // ATH stored in raw backend units (pre-multiplier) so it survives USD↔SOL / MCap↔Price toggles (P1-2)
   const [athRaw, setAthRaw] = useState<number | null>(null);
