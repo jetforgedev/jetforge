@@ -153,7 +153,16 @@ export async function computeWalletPortfolio(wallet: string) {
   let globalSpent = 0n;
   let globalReceived = 0n;
 
-  const holdings = [];
+  type HoldingEntry = {
+    mint: string; name: string; symbol: string; imageUrl: string | null;
+    isGraduated: boolean; priceSource: string;
+    tokenBalance: number; costBasisSol: number; avgBuyPriceSol: number;
+    currentValueSol: number; unrealizedPnlSol: number; unrealizedPnlPct: number;
+    realizedPnlSol: number;
+    totalBuys: number; totalSells: number;
+    totalSpentSol: number; totalReceivedSol: number;
+  };
+  const holdings: HoldingEntry[] = [];
 
   for (const [mint, pos] of positions) {
     globalRealizedPnl += pos.realizedPnlLamports;
@@ -189,7 +198,7 @@ export async function computeWalletPortfolio(wallet: string) {
       const unrealized = currentValueLamports - pos.costBasisLamports;
       globalUnrealizedPnl += unrealized;
 
-      const tok = tokenMap.get(mint);
+      // tok already declared above — reuse it here
       const tokenBalanceUi = Number(pos.tokenBalance) / 1e6;
       const costBasisSol = Number(pos.costBasisLamports) / 1e9;
       const currentValueSol = Number(currentValueLamports) / 1e9;
