@@ -87,18 +87,20 @@ export async function getRaydiumPrice(
     const raydium = await getRaydiumInstance();
     // getPoolInfoFromRpc fetches and decodes the CPMM pool state from on-chain.
     // Returns { poolInfo, poolKeys, rpcData }.
-    const { poolInfo } = await raydium.cpmm.getPoolInfoFromRpc(poolId);
+    // NOTE: vault balances and decimals live on `rpcData`, NOT on `poolInfo`.
+    //   rpcData.mintA / mintB   — mint address strings
+    //   rpcData.vaultAAmount / vaultBAmount — vault balances as plain numbers (lamports/base)
+    //   rpcData.mintDecimalA / mintDecimalB — token decimals
+    const { rpcData } = await raydium.cpmm.getPoolInfoFromRpc(poolId);
 
-    // mintA / mintB are TokenInfo objects: { address: string, decimals: number }
-    const mintAAddr: string =
-      typeof poolInfo.mintA === "string" ? poolInfo.mintA : poolInfo.mintA?.address;
-    const mintBAddr: string =
-      typeof poolInfo.mintB === "string" ? poolInfo.mintB : poolInfo.mintB?.address;
+    // Mint addresses (strings or PublicKey — coerce to string)
+    const mintAAddr: string = String(rpcData.mintA?.toBase58?.() ?? rpcData.mintA);
+    const mintBAddr: string = String(rpcData.mintB?.toBase58?.() ?? rpcData.mintB);
 
-    const decimalsA: number = poolInfo.mintA?.decimals ?? 9;
-    const decimalsB: number = poolInfo.mintB?.decimals ?? 6;
+    const decimalsA: number = rpcData.mintDecimalA ?? 9;
+    const decimalsB: number = rpcData.mintDecimalB ?? 6;
 
-    // mintAAmount / mintBAmount — may be BN (has .toNumber()), bigint, or number
+    // Vault amounts are plain JS numbers in this SDK version
     function toNumber(v: any): number {
       if (typeof v === "number") return v;
       if (typeof v === "bigint") return Number(v);
@@ -107,8 +109,8 @@ export async function getRaydiumPrice(
       return 0;
     }
 
-    const amountA = toNumber(poolInfo.mintAAmount ?? poolInfo.baseReserve);
-    const amountB = toNumber(poolInfo.mintBAmount ?? poolInfo.quoteReserve);
+    const amountA = toNumber(rpcData.vaultAAmount);
+    const amountB = toNumber(rpcData.vaultBAmount);
 
     // Identify which side is WSOL
     let solBaseUnits: number, tokenBaseUnits: number;
