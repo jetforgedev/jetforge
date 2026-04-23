@@ -9,6 +9,7 @@ import { GraduationBar } from "@/components/GraduationBar";
 import { TradesList } from "@/components/TradesList";
 import { truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
 import { formatSol, GRADUATION_THRESHOLD } from "@/lib/bondingCurve";
+import { useSolPrice } from "@/hooks/useSolPrice";
 import BN from "bn.js";
 import { useConnection, useWallet, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -450,18 +451,7 @@ export default function TokenPage({ params }: PageProps) {
   const { data: devHoldings } = useDevHoldings(mint, token?.creator ?? "");
   const { data: buybackSol = 0 } = useBuybackVault(mint);
   const { data: creatorVaultSol = 0, refetch: refetchCreatorVault } = useCreatorVault(mint);
-  const { data: solPrice } = useQuery<number>({
-    queryKey: ["sol-price"],
-    queryFn: async () => {
-      const res = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
-      );
-      const data = await res.json();
-      return data?.solana?.usd ?? null;
-    },
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-  });
+  const solPrice = useSolPrice();
 
   const whale = useWhaleAlert(mint);
 

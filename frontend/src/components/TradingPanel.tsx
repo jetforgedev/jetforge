@@ -552,6 +552,9 @@ export function TradingPanel({ token }: TradingPanelProps) {
               {sessionSolBal < 0.01 && (
                 <div className="text-[#ffcc44] text-[10px]">⚠ Fund this address with SOL to trade without wallet popups</div>
               )}
+              <div className="text-[#ffcc44]/70 text-[10px] leading-relaxed">
+                ⚠ Security: this key is stored unencrypted in your browser session. Keep the balance small (under 0.5 SOL). Any script running on this page could read it.
+              </div>
               <div className="text-[#555] text-[10px]">Session key is stored locally in this browser tab only. Tokens go to this address — send back to your main wallet when done.</div>
               <button
                 onClick={revokeSessionKey}

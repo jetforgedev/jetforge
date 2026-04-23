@@ -2,6 +2,29 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS } from "../config";
 
+// ─── Leaderboard caches ───────────────────────────────────────────────────────
+// Leaderboard aggregates the full Trade table on every request — expensive at scale.
+// Cache each (endpoint × metric) result for 60 s. Frontend refetches every 30 s,
+// so at worst users see data that is 90 s old — acceptable for a leaderboard.
+const LEADERBOARD_CACHE_TTL_MS = 60_000;
+interface LBCacheEntry { data: any; ts: number }
+const tokenLBCache  = new Map<string, LBCacheEntry>(); // key = metric
+const traderLBCache = new Map<string, LBCacheEntry>(); // key = metric
+
+function getLBCache(map: Map<string, LBCacheEntry>, key: string): any | null {
+  const entry = map.get(key);
+  if (entry && Date.now() - entry.ts < LEADERBOARD_CACHE_TTL_MS) return entry.data;
+  map.delete(key);
+  return null;
+}
+function setLBCache(map: Map<string, LBCacheEntry>, key: string, data: any): void {
+  map.set(key, { data, ts: Date.now() });
+}
+
+// Cap trades fetched for PnL computation. Top traders on mainnet may have
+// 10k+ trades; fetching all of them for 20 wallets simultaneously is unsafe.
+const MAX_TRADES_FOR_PNL = 50_000; // across all top-N wallets combined
+
 export const leaderboardRouter = Router();
 
 // GET /api/leaderboard/tokens - top tokens
@@ -9,6 +32,11 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
   try {
     const metric = (req.query.metric as string) || "volume";
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+    const excludeGraduated = req.query.excludeGraduated === "true";
+    const cacheKey = `${metric}:${limit}:${excludeGraduated}`;
+
+    const cached = getLBCache(tokenLBCache, cacheKey);
+    if (cached) return res.json(cached);
 
     let orderBy: any;
     switch (metric) {
@@ -28,7 +56,6 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
     }
 
     // KotH uses excludeGraduated=true so only tradeable tokens appear
-    const excludeGraduated = req.query.excludeGraduated === "true";
     const whereClause = excludeGraduated ? { isGraduated: false } : {};
 
     const tokens = await prisma.token.findMany({
@@ -72,6 +99,7 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         (Number(token.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
     }));
 
+    setLBCache(tokenLBCache, cacheKey, formatted);
     res.json(formatted);
   } catch (error) {
     console.error("GET /leaderboard/tokens error:", error);
@@ -84,6 +112,10 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
   try {
     const metric = (req.query.metric as string) || "volume";
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+    const cacheKey = `${metric}:${limit}`;
+
+    const cached = getLBCache(traderLBCache, cacheKey);
+    if (cached) return res.json(cached);
 
     // Aggregate by trader
     const traderStats = await prisma.trade.groupBy({
@@ -103,13 +135,16 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
     });
 
     // Compute proper cost-basis realized PnL for each trader.
-    // Fetch ALL trades for the top-N wallets in ONE query (ordered oldest→newest
+    // Fetch trades for the top-N wallets in ONE query (ordered oldest→newest
     // so cost-basis accounting is chronologically correct), then compute
     // per-trader realized PnL in memory. This avoids N+1 DB round-trips.
+    // Capped at MAX_TRADES_FOR_PNL total rows to prevent memory exhaustion
+    // when top traders have very large trade histories.
     const walletList = traderStats.map((t) => t.trader);
     const allTrades = await prisma.trade.findMany({
       where: { trader: { in: walletList } },
       orderBy: { timestamp: "asc" },
+      take: MAX_TRADES_FOR_PNL,
       select: { trader: true, mint: true, type: true, solAmount: true, tokenAmount: true },
     });
 
@@ -168,6 +203,7 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
       };
     });
 
+    setLBCache(traderLBCache, cacheKey, tradersWithPnl);
     res.json(tradersWithPnl);
   } catch (error) {
     console.error("GET /leaderboard/traders error:", error);

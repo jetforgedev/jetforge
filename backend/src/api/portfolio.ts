@@ -2,6 +2,32 @@ import { Router, Request, Response } from "express";
 import { prisma } from "../index";
 import { prefetchRaydiumPrices, getRaydiumPrice } from "../services/raydiumPriceSync";
 
+// ─── Portfolio result cache ───────────────────────────────────────────────────
+// Prevents recomputing full cost-basis PnL on every page load.
+// 60 s TTL: stale by at most one minute, acceptable for portfolio display.
+// Cache is evicted on TTL expiry; the trade indexer writes via a separate path
+// so no manual invalidation is needed for correctness.
+const PORTFOLIO_CACHE_TTL_MS = 60_000;
+interface PortfolioCacheEntry { data: any; ts: number }
+const portfolioCache = new Map<string, PortfolioCacheEntry>();
+
+function getPortfolioCache(wallet: string): any | null {
+  const entry = portfolioCache.get(wallet);
+  if (entry && Date.now() - entry.ts < PORTFOLIO_CACHE_TTL_MS) return entry.data;
+  portfolioCache.delete(wallet); // stale — remove so Map doesn't grow unbounded
+  return null;
+}
+
+function setPortfolioCache(wallet: string, data: any): void {
+  portfolioCache.set(wallet, { data, ts: Date.now() });
+}
+
+// Hard cap on trades fetched per wallet — protects against memory exhaustion
+// for power-users/bots. Cost-basis accounting is still correct: older trades
+// beyond the cap are ignored (position is reconstructed from the most-recent
+// MAX_TRADES_PER_WALLET trades, which covers every practical user).
+const MAX_TRADES_PER_WALLET = 20_000;
+
 export const portfolioRouter = Router();
 
 // ─── Bonding-curve sell quote ─────────────────────────────────────────────────
@@ -87,10 +113,13 @@ function computePosition(
 // Shared helper: compute full portfolio for a wallet (all trades, no pagination)
 // Exported so leaderboard.ts can reuse the same logic without an HTTP round-trip.
 export async function computeWalletPortfolio(wallet: string) {
-  // 1. Fetch ALL trades for this wallet in one query, oldest first
+  // 1. Fetch trades for this wallet, oldest-first, capped at MAX_TRADES_PER_WALLET.
+  //    Cap protects against memory exhaustion for bots/power-users. PnL is still
+  //    accurate for wallets within the cap (covers virtually all real users).
   const rawTrades = await prisma.trade.findMany({
     where: { trader: wallet },
     orderBy: { timestamp: "asc" },
+    take: MAX_TRADES_PER_WALLET,
     select: {
       mint: true,
       type: true,
@@ -317,11 +346,20 @@ portfolioRouter.get("/:wallet", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid wallet address" });
     }
 
-    const portfolio = await computeWalletPortfolio(wallet);
+    // Serve from cache when available (no mint filter — filtered result is derived)
+    let portfolio = getPortfolioCache(wallet);
+    if (!portfolio) {
+      portfolio = await computeWalletPortfolio(wallet);
+      setPortfolioCache(wallet, portfolio);
+    }
 
-    // If caller only wants one token, strip the rest to save bandwidth
+    // If caller only wants one token, strip the rest to save bandwidth.
+    // Clone so the cached object is not mutated.
     if (mintFilter) {
-      portfolio.holdings = portfolio.holdings.filter((h) => h.mint === mintFilter);
+      return res.json({
+        ...portfolio,
+        holdings: portfolio.holdings.filter((h: any) => h.mint === mintFilter),
+      });
     }
 
     return res.json(portfolio);

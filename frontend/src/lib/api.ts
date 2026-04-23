@@ -280,10 +280,22 @@ export async function getTopTokens(
   return fetchApi(`/leaderboard/tokens?${params}`);
 }
 
+export interface TraderData {
+  rank: number;
+  wallet: string;
+  /** Total SOL traded (buys + sells combined), formatted to 4 decimal places */
+  totalVolumeSol: string;
+  totalTrades: number;
+  /** Realized PnL in SOL using average-cost-basis accounting, formatted to 4 dp */
+  realizedPnlSol: string;
+  /** Realized PnL as a percentage of total buy volume */
+  pnlPercent: string;
+}
+
 export async function getTopTraders(
   metric: "volume" | "trades" = "volume",
   limit = 20
-): Promise<any[]> {
+): Promise<TraderData[]> {
   return fetchApi(`/leaderboard/traders?metric=${metric}&limit=${limit}`);
 }
 

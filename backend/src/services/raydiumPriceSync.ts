@@ -34,6 +34,11 @@ let _connection: Connection | null = null;
 let _raydium: any = null;
 let _raydiumInitPromise: Promise<any> | null = null;
 
+// Reset the singleton after this many consecutive fetch failures.
+// Handles the case where the RPC connection degrades silently without a restart.
+const RAYDIUM_RESET_AFTER_FAILURES = 5;
+let _consecutiveFailures = 0;
+
 function getConnection(): Connection {
   if (!_connection) {
     _connection = new Connection(config.solana.rpcUrl, "confirmed");
@@ -139,6 +144,7 @@ export async function getRaydiumPrice(
       (solBaseUnits / 1e9) / (tokenBaseUnits / Math.pow(10, tokenDecimals));
 
     priceCache.set(poolId, { priceSolPerToken, ts: Date.now() });
+    _consecutiveFailures = 0; // reset on any success
     console.log(
       `[RAYDIUM_PRICE] Pool ${poolId.slice(0, 8)}: ` +
       `${priceSolPerToken.toExponential(4)} SOL/token`,
@@ -149,6 +155,18 @@ export async function getRaydiumPrice(
       `[RAYDIUM_PRICE] Failed to fetch pool ${poolId.slice(0, 8)}: ` +
       (err?.message ?? err)?.toString?.()?.slice(0, 150),
     );
+
+    _consecutiveFailures++;
+    if (_consecutiveFailures >= RAYDIUM_RESET_AFTER_FAILURES) {
+      console.warn(
+        `[RAYDIUM_PRICE] ${_consecutiveFailures} consecutive failures — ` +
+        `resetting Raydium SDK instance for re-initialization on next request.`,
+      );
+      _raydium = null;
+      _raydiumInitPromise = null;
+      _consecutiveFailures = 0;
+    }
+
     return null;
   }
 }

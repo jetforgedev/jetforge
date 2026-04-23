@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   getTopTokens,
   getTopTraders,
+  TraderData,
   truncateAddress,
   timeAgo,
   resolveImageUrl,
