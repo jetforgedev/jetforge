@@ -69,7 +69,10 @@ tradesRouter.get("/user/:wallet", async (req: Request, res: Response) => {
         totalSells: sellTrades._count,
         totalSpentSol: (Number(totalSpent) / 1e9).toFixed(4),
         totalReceivedSol: (Number(totalReceived) / 1e9).toFixed(4),
-        realizedPnl: (
+        // Net cash flow (received minus spent) — NOT the same as realized PnL.
+        // A wallet with only buys correctly shows negative cash flow here.
+        // For true cost-basis realized PnL use GET /api/portfolio/:wallet.
+        netCashflowSol: (
           (Number(totalReceived) - Number(totalSpent)) /
           1e9
         ).toFixed(4),

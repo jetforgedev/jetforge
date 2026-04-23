@@ -20,7 +20,7 @@ import {
   INITIAL_VIRTUAL_SOL,
   INITIAL_VIRTUAL_TOKENS,
 } from "@/lib/bondingCurve";
-import { TokenData, getUserTrades } from "@/lib/api";
+import { TokenData, getPortfolio } from "@/lib/api";
 import { buildBuyTransaction, buildSellTransaction } from "@/lib/program";
 
 interface TradingPanelProps {
@@ -161,29 +161,20 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const realTokenReserves = new BN(token.realTokenReserves);
   const realSolReserves = new BN(token.realSolReserves);
 
-  // Fetch user's trade history for this token to compute avg buy price
-  const { data: tradeHistory } = useQuery({
-    queryKey: ["user-trades-for-token", token.mint, publicKey?.toString()],
-    queryFn: () => getUserTrades(publicKey!.toString()),
+  // Fetch per-token portfolio holding (all trades server-side, no pagination gap)
+  const { data: tokenPortfolio } = useQuery({
+    queryKey: ["portfolio-token", token.mint, publicKey?.toString()],
+    queryFn: () => getPortfolio(publicKey!.toString(), token.mint),
     enabled: !!publicKey && tab === "sell" && !fastTradeEnabled,
     staleTime: 30_000,
   });
 
-  // Compute avg buy price (SOL per token, display units) for this specific token
+  // Average buy price in SOL per token — from cost-basis accounting over ALL trades
   const avgBuyPriceSol = useMemo(() => {
-    if (!tradeHistory?.trades) return null;
-    const mintTrades = tradeHistory.trades.filter((t) => t.mint === token.mint);
-    let totalSolSpent = 0;
-    let totalTokensBought = 0;
-    for (const t of mintTrades) {
-      if (t.type === "BUY") {
-        totalSolSpent += Number(t.solAmount) / 1e9;
-        totalTokensBought += Number(t.tokenAmount) / 1_000_000;
-      }
-    }
-    if (totalTokensBought === 0) return null;
-    return totalSolSpent / totalTokensBought; // SOL per 1 token
-  }, [tradeHistory, token.mint]);
+    const holding = tokenPortfolio?.holdings?.find((h) => h.mint === token.mint);
+    if (!holding || holding.avgBuyPriceSol === 0) return null;
+    return holding.avgBuyPriceSol;
+  }, [tokenPortfolio, token.mint]);
 
   // Fetch main wallet balances (only when not in fast trade mode)
   useEffect(() => {
@@ -677,7 +668,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
               </div>
               {tab === "sell" && pnlSol !== null && (
                 <div className="flex justify-between border-t border-white/8 pt-1 text-xs">
-                  <span className="text-white/42">Est. PnL</span>
+                  <span className="text-white/42">Est. Realized PnL</span>
                   <span className={clsx("font-mono font-semibold", pnlSol >= 0 ? "text-[#00ff88]" : "text-[#ff4444]")}>
                     {pnlSol >= 0 ? "+" : ""}{pnlSol.toFixed(4)} SOL
                     {pnlPct !== null && ` (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%)`}

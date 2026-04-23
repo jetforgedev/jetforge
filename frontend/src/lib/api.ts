@@ -342,6 +342,61 @@ export async function getFollowing(wallet: string, page = 1): Promise<{ followin
   return fetchApi(`/follows/${wallet}/following?page=${page}`);
 }
 
+// ─── Portfolio / PnL ─────────────────────────────────────────────────────────
+
+export interface PortfolioHolding {
+  mint: string;
+  name: string;
+  symbol: string;
+  imageUrl?: string | null;
+  isGraduated: boolean;
+  /** "bonding_curve" | "raydium_stale" | "none" */
+  priceSource: string;
+  // Open position
+  tokenBalance: number;      // display units (6 decimals divided out)
+  costBasisSol: number;      // remaining SOL cost of open tokens
+  avgBuyPriceSol: number;    // SOL per 1 token
+  // Valuation
+  currentValueSol: number;
+  unrealizedPnlSol: number;
+  unrealizedPnlPct: number;
+  // Closed portion
+  realizedPnlSol: number;
+  // Trade counts
+  totalBuys: number;
+  totalSells: number;
+  totalSpentSol: number;
+  totalReceivedSol: number;
+}
+
+export interface PortfolioData {
+  wallet: string;
+  totalSpentSol: number;
+  totalReceivedSol: number;
+  /** totalReceived - totalSpent (cash-flow only, NOT realized PnL) */
+  netCashflowSol: number;
+  /** Closed/sold profit only — 0 if no sells yet */
+  realizedPnlSol: number;
+  unrealizedPnlSol: number;
+  unrealizedValueSol: number;
+  /** realizedPnl + unrealizedPnl */
+  totalPnlSol: number;
+  holdings: PortfolioHolding[];
+}
+
+/**
+ * Full wallet portfolio with cost-basis PnL.
+ * Uses ALL trades (server-side, no pagination limit).
+ * Pass `mint` to filter holdings to a single token (cheaper for TradingPanel).
+ */
+export async function getPortfolio(
+  wallet: string,
+  mint?: string
+): Promise<PortfolioData> {
+  const qs = mint ? `?mint=${encodeURIComponent(mint)}` : "";
+  return fetchApi(`/portfolio/${wallet}${qs}`);
+}
+
 // Utility: format wallet address
 export function truncateAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;

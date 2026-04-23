@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS } from "../config";
+import { computeWalletPortfolio } from "./portfolio";
 
 export const leaderboardRouter = Router();
 
@@ -102,31 +103,71 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
       take: limit,
     });
 
-    // Get PnL for each trader
-    const tradersWithPnl = await Promise.all(
-      traderStats.map(async (trader, index) => {
-        const buyTotal = await prisma.trade.aggregate({
-          where: { trader: trader.trader, type: "BUY" },
-          _sum: { solAmount: true },
-        });
-        const sellTotal = await prisma.trade.aggregate({
-          where: { trader: trader.trader, type: "SELL" },
-          _sum: { solAmount: true },
-        });
+    // Compute proper cost-basis realized PnL for each trader.
+    // Fetch ALL trades for the top-N wallets in ONE query (ordered oldest→newest
+    // so cost-basis accounting is chronologically correct), then compute
+    // per-trader realized PnL in memory. This avoids N+1 DB round-trips.
+    const walletList = traderStats.map((t) => t.trader);
+    const allTrades = await prisma.trade.findMany({
+      where: { trader: { in: walletList } },
+      orderBy: { timestamp: "asc" },
+      select: { trader: true, mint: true, type: true, solAmount: true, tokenAmount: true },
+    });
 
-        const spent = Number(buyTotal._sum.solAmount || 0n) / 1e9;
-        const received = Number(sellTotal._sum.solAmount || 0n) / 1e9;
+    // Group trades by (wallet → mint → [trades])
+    const tradesByWallet = new Map<string, Map<string, typeof allTrades>>();
+    for (const t of allTrades) {
+      if (!tradesByWallet.has(t.trader)) tradesByWallet.set(t.trader, new Map());
+      const byMint = tradesByWallet.get(t.trader)!;
+      if (!byMint.has(t.mint)) byMint.set(t.mint, []);
+      byMint.get(t.mint)!.push(t);
+    }
 
-        return {
-          rank: index + 1,
-          wallet: trader.trader,
-          totalVolumeSol: (Number(trader._sum.solAmount || 0n) / 1e9).toFixed(4),
-          totalTrades: trader._count.id,
-          realizedPnl: (received - spent).toFixed(4),
-          pnlPercent: spent > 0 ? (((received - spent) / spent) * 100).toFixed(2) : "0.00",
-        };
-      })
-    );
+    // Inline average-cost PnL (same logic as portfolio.ts computePosition)
+    function realizedPnlForWallet(wallet: string): number {
+      const byMint = tradesByWallet.get(wallet);
+      if (!byMint) return 0;
+      let total = 0n;
+      for (const trades of byMint.values()) {
+        let tokenBal = 0n, costBasis = 0n;
+        for (const t of trades) {
+          if (t.type === "BUY") {
+            tokenBal += t.tokenAmount;
+            costBasis += t.solAmount;
+          } else if (t.type === "SELL") {
+            if (tokenBal > 0n) {
+              const costOfSold = t.tokenAmount >= tokenBal
+                ? costBasis
+                : (costBasis * t.tokenAmount) / tokenBal;
+              total += t.solAmount - costOfSold;
+              costBasis = t.tokenAmount >= tokenBal ? 0n : costBasis - costOfSold;
+              tokenBal = t.tokenAmount >= tokenBal ? 0n : tokenBal - t.tokenAmount;
+            } else {
+              total += t.solAmount; // no open position — treat as pure gain
+            }
+          }
+        }
+      }
+      return Number(total) / 1e9;
+    }
+
+    const tradersWithPnl = traderStats.map((trader, index) => {
+      const totalVolumeSol = Number(trader._sum.solAmount || 0n) / 1e9;
+      const realizedPnl = realizedPnlForWallet(trader.trader);
+      // pnlPercent relative to total buy volume for this wallet
+      const buyVol = allTrades
+        .filter((t) => t.trader === trader.trader && t.type === "BUY")
+        .reduce((s, t) => s + Number(t.solAmount), 0) / 1e9;
+
+      return {
+        rank: index + 1,
+        wallet: trader.trader,
+        totalVolumeSol: totalVolumeSol.toFixed(4),
+        totalTrades: trader._count.id,
+        realizedPnlSol: realizedPnl.toFixed(4),
+        pnlPercent: buyVol > 0 ? ((realizedPnl / buyVol) * 100).toFixed(2) : "0.00",
+      };
+    });
 
     res.json(tradersWithPnl);
   } catch (error) {

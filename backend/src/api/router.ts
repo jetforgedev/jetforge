@@ -8,6 +8,7 @@ import { statsRouter } from "./stats";
 import { metadataRouter } from "./metadata";
 import { uploadRouter } from "./upload";
 import { followsRouter } from "./follows";
+import { portfolioRouter } from "./portfolio";
 
 export function createRouter(): Router {
   const router = Router();
@@ -21,6 +22,7 @@ export function createRouter(): Router {
   router.use("/metadata", metadataRouter);
   router.use("/upload", uploadRouter);
   router.use("/follows", followsRouter);
+  router.use("/portfolio", portfolioRouter);
 
   return router;
 }
