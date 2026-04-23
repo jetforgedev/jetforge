@@ -100,6 +100,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);   // flex-1 div that fills remaining height
   const chartOverlayRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -555,6 +556,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   const wasFullscreen = useRef(false);
 
   const handleFullscreenToggle = useCallback(() => {
+    // Fullscreen is desktop-only — skip on narrow viewports
+    if (!isFullscreen && window.innerWidth < 640) return;
+
     if (isFullscreen) {
       // ── EXIT ──────────────────────────────────────────────────────────────
       // Silence ResizeObserver FIRST so it can't snapshot fullscreen dimensions
@@ -586,13 +590,17 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       setIsFullscreen(true);
       onFullscreenChange?.(true);
 
-      // Measure actual chart-overlay height after flexbox layout settles so
-      // the canvas exactly fills the space below the toolbars — no guessing.
+      // Measure chartAreaRef (the flex-1 div) after layout settles — this gives
+      // the exact remaining height below the two toolbar rows, regardless of
+      // how tall those rows happen to be.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (chartOverlayRef.current) {
-            const h = chartOverlayRef.current.clientHeight;
-            const w = chartOverlayRef.current.clientWidth;
+          const area = chartAreaRef.current;
+          const overlay = chartOverlayRef.current;
+          if (area) {
+            const h = area.clientHeight;
+            // Width = overlay width (area minus left toolbar); fall back to area width
+            const w = overlay ? overlay.clientWidth : area.clientWidth;
             setFsChartH(h);
             if (chartRef.current) {
               chartRef.current.applyOptions({ width: w, height: h });
@@ -600,12 +608,11 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             }
           }
 
-          // Position trade panel bottom-right
-          if (panelRef.current && chartOverlayRef.current) {
-            const ctr = chartOverlayRef.current.getBoundingClientRect();
+          // Position trade panel bottom-right of the overlay
+          if (panelRef.current && overlay) {
             const pw  = panelRef.current.offsetWidth  || 300;
             const ph  = panelRef.current.offsetHeight || 480;
-            setPanelPos({ x: ctr.width - pw - 16, y: ctr.height - ph - 16 });
+            setPanelPos({ x: overlay.clientWidth - pw - 16, y: overlay.clientHeight - ph - 16 });
           } else {
             setPanelPos({ x: window.innerWidth - 316, y: window.innerHeight - 500 });
           }
@@ -753,11 +760,11 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
               </span>
             </span>
           )}
-          {/* Fullscreen toggle */}
+          {/* Fullscreen toggle — desktop only (hidden on mobile) */}
           <button
             onClick={handleFullscreenToggle}
             title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen chart"}
-            className="w-7 h-7 flex items-center justify-center rounded text-white/35 hover:text-white hover:bg-white/8 transition-colors"
+            className="hidden sm:flex w-7 h-7 items-center justify-center rounded text-white/35 hover:text-white hover:bg-white/8 transition-colors"
           >
             {isFullscreen ? (
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -875,8 +882,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         </div>
       </div>
 
-      {/* Chart area */}
-      <div className="relative flex">
+      {/* Chart area — flex-1 so it fills the remaining height inside the fullscreen flex-col wrapper */}
+      <div ref={chartAreaRef} className="relative flex flex-1 min-h-0">
         {/* Left toolbar — desktop only */}
         {/* Fix #4: removed non-functional drawing tool buttons (trend line, horizontal line, ray, pen, text, measure) */}
         {/* Fix #5: removed duplicate magnet button at bottom */}
