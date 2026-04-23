@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS } from "../config";
-import { computeWalletPortfolio } from "./portfolio";
 
 export const leaderboardRouter = Router();
 
