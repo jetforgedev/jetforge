@@ -341,27 +341,23 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     areaSeriesRef.current?.setData(lineData);
     barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
-    // Time-axis positioning strategy:
-    // - ≤10 candles  → fitContent with a fixed barSpacing so new tokens look good
-    // - 11-59 candles → computed range targeting ~8 px/bar with a small right margin
-    // - ≥60 candles  → normal fitContent
+    // Time-axis positioning:
+    // setVisibleLogicalRange counts EVERY empty time slot between sparse candles
+    // as a logical position, so a token with an 8-hour overnight gap between its
+    // first candle and the next cluster has ~480 virtual empty slots — making all
+    // but the very first candle invisible in a small logical range.
+    //
+    // fitContent() always fits the full data range correctly regardless of gaps.
+    // For ≤10 candles we lock in a readable barSpacing first so 1-5 candles
+    // don't stretch to 200px wide; for anything larger fitContent handles it.
     const ts = chartRef.current?.timeScale();
     if (ts) {
       if (displayCandles.length <= 10) {
-        // Very sparse: use a comfortable bar size and let fitContent handle positioning
         chartRef.current?.applyOptions({
           timeScale: { rightOffset: 8, barSpacing: 12 },
         });
-        ts.fitContent();
-      } else if (displayCandles.length >= 60) {
-        ts.fitContent();
-      } else {
-        const containerW = chartContainerRef.current?.clientWidth ?? 900;
-        const barsOnScreen = Math.max(30, Math.floor(containerW / 8));
-        const to   = displayCandles.length - 1 + 6;
-        const from = Math.max(-10, to - barsOnScreen);
-        ts.setVisibleLogicalRange({ from, to });
       }
+      ts.fitContent();
     }
 
     // ATH: store raw backend value (pre-multiplier) so toggles don't corrupt it (P1-2)
