@@ -1,23 +1,29 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
 // Base URL of the backend (strips trailing /api).
-// Used to rewrite image URLs that might have been stored with a stale host.
+// Used to rewrite image URLs that were stored with a localhost host.
 const BACKEND_BASE = API_URL.replace(/\/api\/?$/, "");
 
 /**
  * Rewrites a stored imageUrl so it always points to the currently-configured
- * backend host. Fixes stale `http://localhost:4000/uploads/...` URLs when the
- * site is accessed from production or a different machine.
+ * backend host.
+ *
+ * Only rewrites when the stored URL has a localhost/127.0.0.1 host — this
+ * means the VPS backend was started with SITE_URL=http://localhost:4000 (a
+ * common dev-config mistake). Production-domain URLs are returned unchanged
+ * so a correct SITE_URL setting is never corrupted by a wrong NEXT_PUBLIC_API_URL.
  */
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
   try {
     const parsed = new URL(url);
-    if (parsed.pathname.startsWith("/uploads/")) {
+    const isLocalhost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    if (parsed.pathname.startsWith("/uploads/") && isLocalhost) {
       return `${BACKEND_BASE}${parsed.pathname}`;
     }
   } catch {
-    // Not a valid URL — return as-is
+    // Not a valid absolute URL — return as-is (relative path)
   }
   return url;
 }

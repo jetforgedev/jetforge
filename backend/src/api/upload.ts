@@ -68,9 +68,16 @@ uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: R
     return res.status(400).json({ error: "File content does not match declared image type" });
   }
 
-  const baseUrl =
-    process.env.SITE_URL ||
-    `${req.protocol}://${req.get("host")}`;
+  // Prefer SITE_URL env var, but ONLY when it points to a real host.
+  // If it is localhost/127.0.0.1 (e.g. left over from dev config on the VPS)
+  // fall back to the forwarded request host so the stored URL is always
+  // the public production URL (requires nginx to set X-Forwarded-Proto + Host).
+  const siteUrl = process.env.SITE_URL ?? "";
+  const isLocalhost =
+    siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
+  const baseUrl = siteUrl && !isLocalhost
+    ? siteUrl
+    : `${req.protocol}://${req.get("host")}`;
 
   const url = `${baseUrl}/uploads/${req.file.filename}`;
   return res.json({ url });
