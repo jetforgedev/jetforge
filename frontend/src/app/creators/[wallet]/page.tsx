@@ -208,7 +208,12 @@ export default function CreatorProfilePage({ params }: PageProps) {
                       <span className="text-[#555] text-[10px]">{timeAgo(token.createdAt)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[#666] text-[10px]">{parseFloat(token.realSolReserves).toFixed(2)} SOL raised</span>
+                      <span className="text-[#666] text-[10px]">
+                        {parseFloat(token.realSolReserves).toFixed(2)} SOL raised
+                        {solToUsd(parseFloat(token.realSolReserves), solPrice) && (
+                          <span className="text-[#444] ml-1">({solToUsd(parseFloat(token.realSolReserves), solPrice)})</span>
+                        )}
+                      </span>
                       <span className="text-[#333] text-[10px]">·</span>
                       <span className="text-[#666] text-[10px]">{token.trades} trades</span>
                     </div>
@@ -221,7 +226,12 @@ export default function CreatorProfilePage({ params }: PageProps) {
                       <span className="px-1.5 py-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[#555] text-[10px]">LIVE</span>
                     )}
                     {parseFloat(token.claimableEarnings) > 0 && (
-                      <div className="text-[#00ff88] text-[10px] font-mono mt-1">{parseFloat(token.claimableEarnings).toFixed(3)} SOL</div>
+                      <div className="text-[#00ff88] text-[10px] font-mono mt-1">
+                        {parseFloat(token.claimableEarnings).toFixed(3)} SOL
+                      </div>
+                    )}
+                    {parseFloat(token.claimableEarnings) > 0 && solToUsd(parseFloat(token.claimableEarnings), solPrice) && (
+                      <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(token.claimableEarnings), solPrice)}</div>
                     )}
                   </div>
                 </Link>
@@ -258,13 +268,23 @@ export default function CreatorProfilePage({ params }: PageProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-[#888] text-xs">{parseFloat(token.realSolReserves).toFixed(2)}</span>
-                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      <div>
+                        <span className="text-[#888] text-xs">{parseFloat(token.realSolReserves).toFixed(2)}</span>
+                        <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      </div>
+                      {solToUsd(parseFloat(token.realSolReserves), solPrice) && (
+                        <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(token.realSolReserves), solPrice)}</div>
+                      )}
                     </div>
                     <div className="text-right text-[#666] text-xs">{token.trades}</div>
                     <div className="text-right">
                       {parseFloat(token.claimableEarnings) > 0 ? (
-                        <span className="text-[#00ff88] text-xs font-mono">{parseFloat(token.claimableEarnings).toFixed(4)}</span>
+                        <>
+                          <div className="text-[#00ff88] text-xs font-mono">{parseFloat(token.claimableEarnings).toFixed(4)}</div>
+                          {solToUsd(parseFloat(token.claimableEarnings), solPrice) && (
+                            <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(token.claimableEarnings), solPrice)}</div>
+                          )}
+                        </>
                       ) : (
                         <span className="text-[#333] text-xs">—</span>
                       )}

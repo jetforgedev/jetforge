@@ -28,6 +28,8 @@ export function useSolPrice(): number | null {
  */
 export function solToUsd(sol: number, solPrice: number | null): string | null {
   if (!solPrice || !isFinite(sol)) return null;
-  const usd = Math.abs(sol) * solPrice;
-  return `≈ $${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const abs = Math.abs(sol) * solPrice;
+  const formatted = abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (sol < 0) return `≈ -$${formatted}`;
+  return `≈ $${formatted}`;
 }
