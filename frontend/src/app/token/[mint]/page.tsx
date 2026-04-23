@@ -780,9 +780,9 @@ export default function TokenPage({ params }: PageProps) {
       <SocialProofStrip mint={mint} trades={token.trades} holders={token.holders} />
 
       {/* Main content grid — desktop: chart fills viewport height, right panel is sticky sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 lg:items-start">
         {/* Chart — mobile: order 1, desktop: col 1 */}
-        <div className="order-1">
+        <div className="order-1 min-w-0">
           <PriceChart
             mint={mint}
             symbol={token.symbol}
