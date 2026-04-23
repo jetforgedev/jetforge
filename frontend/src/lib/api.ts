@@ -350,7 +350,7 @@ export interface PortfolioHolding {
   symbol: string;
   imageUrl?: string | null;
   isGraduated: boolean;
-  /** "bonding_curve" | "raydium_stale" | "none" */
+  /** "bonding_curve" | "raydium" | "raydium_stale" | "none" */
   priceSource: string;
   // Open position
   tokenBalance: number;      // display units (6 decimals divided out)

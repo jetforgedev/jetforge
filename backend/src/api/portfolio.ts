@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { prisma } from "../index";
+import { prefetchRaydiumPrices, getRaydiumPrice } from "../services/raydiumPriceSync";
 
 export const portfolioRouter = Router();
 
@@ -136,6 +137,14 @@ export async function computeWalletPortfolio(wallet: string) {
 
   const tokenMap = new Map(tokenRecords.map((t) => [t.mint, t]));
 
+  // 4b. Pre-fetch live Raydium prices for all open graduated positions in parallel.
+  //     Results land in the price cache; subsequent getRaydiumPrice() calls below
+  //     are synchronous cache hits — no sequential awaits inside the loop.
+  const graduatedPools = tokenRecords
+    .filter((t) => t.isGraduated && t.raydiumPoolId)
+    .map((t) => ({ poolId: t.raydiumPoolId!, tokenMint: t.mint }));
+  await prefetchRaydiumPrices(graduatedPools);
+
   // Also batch-fetch names for closed positions (for display)
   const closedMints = [...positions.keys()].filter((m) => !openMints.includes(m));
   const closedTokenRecords = closedMints.length > 0
@@ -170,7 +179,7 @@ export async function computeWalletPortfolio(wallet: string) {
     globalReceived += pos.totalReceivedLamports;
 
     let currentValueLamports = 0n;
-    let priceSource: "bonding_curve" | "raydium_stale" | "none" = "none";
+    let priceSource: "bonding_curve" | "raydium" | "raydium_stale" | "none" = "none";
 
     if (pos.tokenBalance > 0n) {
       const tok = tokenMap.get(mint);
@@ -183,10 +192,23 @@ export async function computeWalletPortfolio(wallet: string) {
             tok.virtualTokenReserves as bigint,
           );
           priceSource = "bonding_curve";
+        } else if (tok.raydiumPoolId) {
+          // Post-graduation: try live Raydium pool price (cache was warmed above)
+          const livePriceSol = await getRaydiumPrice(tok.raydiumPoolId, mint);
+          if (livePriceSol !== null && livePriceSol > 0) {
+            // value = displayTokens × priceSol × 1e9  (lamports)
+            const displayTokens = Number(pos.tokenBalance) / 1e6;
+            currentValueLamports = BigInt(Math.round(displayTokens * livePriceSol * 1e9));
+            priceSource = "raydium";
+          } else {
+            // Live fetch failed — fall back to stored reserves snapshot
+            const vSol = tok.virtualSolReserves as bigint;
+            const vTok = tok.virtualTokenReserves as bigint;
+            currentValueLamports = vTok > 0n ? (vSol * pos.tokenBalance) / vTok : 0n;
+            priceSource = "raydium_stale";
+          }
         } else {
-          // Post-graduation: use last stored price (may be stale until Raydium sync runs)
-          // price = virtualSol / virtualToken  (lamports per base unit)
-          // value = price * tokenBalance
+          // Graduated but no poolId recorded yet (graduation tx in flight)
           const vSol = tok.virtualSolReserves as bigint;
           const vTok = tok.virtualTokenReserves as bigint;
           currentValueLamports = vTok > 0n ? (vSol * pos.tokenBalance) / vTok : 0n;
