@@ -341,17 +341,23 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     areaSeriesRef.current?.setData(lineData);
     barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
-    // For sparse data: show the last N candles + a small right margin instead of
-    // fitContent (which stretches few candles to fill the full width) or
-    // scrollToRealTime (which shows 200+ empty bars on the left).
+    // Position the time-axis so bars render at a consistent ~8 px width.
+    // fitContent() stretches sparse data to fill the full canvas (huge bars).
+    // scrollToRealTime() leaves 200+ empty bars on the left.
+    // Instead: target ~8 px/bar by computing how many bars fit the container,
+    // place candles at the right edge with a 4-bar margin, and let the left
+    // be empty space (negative logical indices are valid in lightweight-charts).
     const ts = chartRef.current?.timeScale();
     if (ts) {
-      if (displayCandles.length >= 20) {
+      if (displayCandles.length >= 60) {
+        // Enough history — normal fit
         ts.fitContent();
       } else {
-        // Show at most 40 bars total, candles at the right with 4 bars padding
-        const to = displayCandles.length - 1 + 4;
-        const from = Math.max(0, to - 40);
+        const containerW = chartContainerRef.current?.clientWidth ?? 900;
+        const targetBarPx = 8; // desired bar width in pixels
+        const barsOnScreen = Math.max(60, Math.floor(containerW / targetBarPx));
+        const to   = displayCandles.length - 1 + 4; // 4-bar right margin
+        const from = to - barsOnScreen;              // may be negative — that's fine
         ts.setVisibleLogicalRange({ from, to });
       }
     }
@@ -1049,10 +1055,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         )}
 
         {!isLoading && (!ohlcv || ohlcv.length === 0) && (
-          <div
-            className="flex items-center justify-center text-white/25 h-[420px] md:h-[500px] lg:h-[580px]"
-            style={fsChartH !== null ? { height: fsChartH } : {}}
-          >
+          <div className="absolute inset-0 z-10 flex items-center justify-center text-white/25 pointer-events-none">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <div className="text-sm">No chart data yet</div>

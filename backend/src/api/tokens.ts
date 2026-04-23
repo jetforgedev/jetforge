@@ -556,17 +556,21 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
       volume: number;
     }>();
 
+    let prevClose: number | null = null;
     for (const trade of trades) {
       const candleTime =
         Math.floor(trade.timestamp.getTime() / intervalMs) * intervalMs;
       const price = trade.price;
 
       if (!candles.has(candleTime)) {
+        // Use the previous candle's close as open so single-trade candles
+        // have a visible body instead of rendering as a zero-height doji.
+        const open = prevClose ?? price;
         candles.set(candleTime, {
           time: candleTime / 1000, // Unix seconds for lightweight-charts
-          open: price,
-          high: price,
-          low: price,
+          open,
+          high: Math.max(open, price),
+          low:  Math.min(open, price),
           close: price,
           volume: Number(trade.solAmount) / 1e9,
         });
@@ -577,6 +581,7 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
         candle.close = price;
         candle.volume += Number(trade.solAmount) / 1e9;
       }
+      prevClose = price;
     }
 
     const sortedCandles = Array.from(candles.values())
