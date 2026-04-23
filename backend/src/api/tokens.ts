@@ -556,7 +556,13 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
       volume: number;
     }>();
 
-    let prevClose: number | null = null;
+    // Seed prevClose with the bonding-curve launch price so the very first
+    // candle has a non-zero body (open = launch price, close = post-trade price).
+    const LAUNCH_PRICE =
+      Number(BONDING_CURVE_CONSTANTS.INITIAL_VIRTUAL_SOL) /
+      Number(BONDING_CURVE_CONSTANTS.INITIAL_VIRTUAL_TOKENS);
+
+    let prevClose: number = LAUNCH_PRICE;
     for (const trade of trades) {
       const candleTime =
         Math.floor(trade.timestamp.getTime() / intervalMs) * intervalMs;
@@ -565,7 +571,7 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
       if (!candles.has(candleTime)) {
         // Use the previous candle's close as open so single-trade candles
         // have a visible body instead of rendering as a zero-height doji.
-        const open = prevClose ?? price;
+        const open = prevClose;
         candles.set(candleTime, {
           time: candleTime / 1000, // Unix seconds for lightweight-charts
           open,
