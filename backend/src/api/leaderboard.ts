@@ -44,7 +44,10 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         orderBy = [{ marketCapSol: "desc" }, { createdAt: "desc" }];
         break;
       case "trades":
-        orderBy = [{ trades: "desc" }, { createdAt: "desc" }];
+        // Sort by the same relation count that is displayed in the response
+        // (token._count.tradeHistory) so rank and displayed number are always
+        // in sync. token.trades is a denormalized cache that can drift.
+        orderBy = [{ tradeHistory: { _count: "desc" } }, { createdAt: "desc" }];
         break;
       case "new":
         orderBy = { createdAt: "desc" };

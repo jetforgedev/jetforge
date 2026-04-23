@@ -424,10 +424,11 @@ export default function PortfolioPage({ params }: PageProps) {
             {[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-[#111] rounded-xl animate-pulse" />)}
           </div>
         ) : trades.length === 0 ? null : (
-          <div className="overflow-x-auto rounded-xl">
-          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[360px]">
-            <table className="w-full text-xs">
-              <thead>
+          /* Single scrollable container: x-scroll for narrow screens,
+             y-scroll capped at ~15 rows to keep page height controlled. */
+          <div className="overflow-auto max-h-[420px] rounded-xl border border-[#1a1a1a] bg-[#111]">
+            <table className="w-full text-xs min-w-[360px]">
+              <thead className="sticky top-0 z-10 bg-[#111]">
                 <tr className="border-b border-[#1a1a1a]">
                   <th className="text-left text-[#555] p-3 font-medium">TOKEN</th>
                   <th className="text-left text-[#555] p-3 font-medium">TYPE</th>
@@ -464,7 +465,6 @@ export default function PortfolioPage({ params }: PageProps) {
                 ))}
               </tbody>
             </table>
-          </div>
           </div>
         )}
       </div>}
