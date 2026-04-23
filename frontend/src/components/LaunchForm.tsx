@@ -214,8 +214,27 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       const mint = mintKeypair.publicKey.toString();
 
-      // Token was already pre-registered above with the metadata URI.
-      // Indexer will sync the full on-chain state once the tx is confirmed.
+      // Post-launch metadata save: the pre-registration above always fails because
+      // the POST /tokens endpoint verifies the token exists on-chain, but we call
+      // it before sending the transaction. Now that the tx is confirmed, the token
+      // IS on-chain — call it again so imageUrl, description, and social links are
+      // actually persisted in the database.
+      try {
+        await createTokenRecord({
+          mint,
+          name,
+          symbol,
+          description: form.description.trim(),
+          imageUrl: form.imageUrl || undefined,
+          websiteUrl: form.websiteUrl || undefined,
+          twitterUrl: form.twitterUrl || undefined,
+          telegramUrl: form.telegramUrl || undefined,
+          creator: publicKey.toString(),
+        });
+      } catch (metaErr) {
+        // Non-fatal — indexer will still index the token; image just won't show
+        console.warn("[LaunchForm] Post-launch metadata save failed:", metaErr);
+      }
 
       toast.dismiss(loadingToast);
       setForm(INITIAL_FORM);
