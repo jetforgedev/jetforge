@@ -9,6 +9,7 @@ import {
   timeAgo,
   resolveImageUrl,
 } from "@/lib/api";
+import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
 type TokenTab = "volume" | "marketcap" | "trades" | "new";
 type TraderTab = "volume" | "trades";
@@ -62,6 +63,7 @@ function fmtPnl(pnl: string): string {
 export default function LeaderboardPage() {
   const [tokenTab, setTokenTab] = useState<TokenTab>("volume");
   const [traderTab, setTraderTab] = useState<TraderTab>("volume");
+  const solPrice = useSolPrice();
 
   const { data: tokens, isLoading: loadingTokens } = useQuery({
     queryKey: ["leaderboard-tokens", tokenTab],
@@ -233,7 +235,7 @@ export default function LeaderboardPage() {
                 <div>Wallet</div>
                 <div className="text-right">Volume</div>
                 <div className="text-right">Trades</div>
-                <div className="text-right">PnL</div>
+                <div className="text-right">Realized PnL</div>
               </div>
 
               {loadingTraders ? (
@@ -268,14 +270,22 @@ export default function LeaderboardPage() {
                         <div className="text-[#444] text-[10px]">{trader.totalTrades} trades</div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[#888] text-xs">{trader.totalVolumeSol}</span>
-                        <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                        <div>
+                          <span className="text-[#888] text-xs">{trader.totalVolumeSol}</span>
+                          <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                        </div>
+                        {solToUsd(parseFloat(trader.totalVolumeSol), solPrice) && (
+                          <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(trader.totalVolumeSol), solPrice)}</div>
+                        )}
                       </div>
                       <div className="text-right text-[#666] text-xs">
                         {trader.totalTrades}
                       </div>
                       <div className="text-right">
-                        <PnlBadge value={trader.realizedPnl} />
+                        <PnlBadge value={trader.realizedPnlSol} />
+                        {solToUsd(parseFloat(trader.realizedPnlSol ?? "0"), solPrice) && (
+                          <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(trader.realizedPnlSol ?? "0"), solPrice)}</div>
+                        )}
                       </div>
                     </Link>
                   ))}
@@ -301,7 +311,11 @@ export default function LeaderboardPage() {
             value: traders
               ? traders.reduce((acc, t) => acc + parseFloat(t.totalVolumeSol), 0).toFixed(1) + " SOL"
               : "—",
-            sub: "all time",
+            sub: (() => {
+              if (!traders) return "all time";
+              const vol = traders.reduce((acc, t) => acc + parseFloat(t.totalVolumeSol), 0);
+              return solToUsd(vol, solPrice) ?? "all time";
+            })(),
           },
         ].map((stat) => (
           <div key={stat.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">

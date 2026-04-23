@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
+import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -27,6 +28,8 @@ export default function CreatorProfilePage({ params }: PageProps) {
   const queryClient = useQueryClient();
   const viewer = publicKey?.toBase58();
   const isOwn = viewer === wallet;
+
+  const solPrice = useSolPrice();
 
   const { data: creator, isLoading, error } = useQuery({
     queryKey: ["creator-profile", wallet],
@@ -123,15 +126,21 @@ export default function CreatorProfilePage({ params }: PageProps) {
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-6">
           {[
-            { label: "Tokens Launched", value: creator.tokensLaunched, accent: false, sub: null },
-            { label: "Graduated", value: creator.graduatedTokens, accent: creator.graduatedTokens > 0, sub: null },
-            { label: "Total Volume", value: `${parseFloat(creator.totalVolumeSol).toFixed(2)} SOL`, accent: false, sub: null },
+            { label: "Tokens Launched", value: creator.tokensLaunched, accent: false, usd: null },
+            { label: "Graduated", value: creator.graduatedTokens, accent: creator.graduatedTokens > 0, usd: null },
+            {
+              label: "Total Volume",
+              value: `${parseFloat(creator.totalVolumeSol).toFixed(2)} SOL`,
+              accent: false,
+              usd: solToUsd(parseFloat(creator.totalVolumeSol), solPrice),
+            },
           ].map((s) => (
             <div key={s.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3">
               <div className="text-[#555] text-xs mb-1">{s.label}</div>
               <div className={`font-mono font-semibold text-sm ${s.accent ? "text-[#00ff88]" : "text-white"}`}>
                 {s.value}
               </div>
+              {s.usd && <div className="text-[#444] text-[10px] mt-0.5">{s.usd}</div>}
             </div>
           ))}
         </div>
@@ -143,6 +152,9 @@ export default function CreatorProfilePage({ params }: PageProps) {
             <div className="text-[#00ff88] font-mono font-bold text-xl">
               {parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL
             </div>
+            {solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice) && (
+              <div className="text-[#00ff8880] text-xs mt-0.5">{solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice)}</div>
+            )}
             <div className="text-[#444] text-[10px] mt-1">
               0.4% of all trading volume on your tokens · cumulative total
             </div>
@@ -152,6 +164,9 @@ export default function CreatorProfilePage({ params }: PageProps) {
             <div className="text-white font-mono font-bold text-xl">
               {parseFloat(creator.claimableEarningsSol ?? "0").toFixed(4)} SOL
             </div>
+            {solToUsd(parseFloat(creator.claimableEarningsSol ?? "0"), solPrice) && (
+              <div className="text-[#88888880] text-xs mt-0.5">{solToUsd(parseFloat(creator.claimableEarningsSol ?? "0"), solPrice)}</div>
+            )}
             <div className="text-[#444] text-[10px] mt-1">
               Sitting in your on-chain vaults · withdraw from each token page
             </div>

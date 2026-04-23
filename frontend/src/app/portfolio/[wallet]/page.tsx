@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -14,25 +15,35 @@ function fmtPrice(sol: number): string {
   if (sol === 0) return "0.000000";
   if (sol >= 0.000001) return sol.toFixed(6);
   if (sol >= 0.0000001) return sol.toFixed(9);
-  // Scientific notation for extremely small values
   return sol.toExponential(3);
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function StatCard({
+  label, value, sub, color,
+}: {
+  label: string;
+  value: string;
+  sub?: string | null;
+  color?: "green" | "red" | "white";
+}) {
+  const cls =
+    color === "green" ? "text-[#00ff88]"
+    : color === "red"   ? "text-[#ff4444]"
+    : "text-white";
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
       <div className="text-[#555] text-xs mb-1">{label}</div>
-      <div className={`font-mono font-semibold text-lg ${accent ? "text-[#00ff88]" : "text-white"}`}>
-        {value}
-      </div>
+      <div className={`font-mono font-semibold text-lg ${cls}`}>{value}</div>
+      {sub && <div className="text-[#444] text-[10px] mt-0.5">{sub}</div>}
     </div>
   );
 }
 
-
 export default function PortfolioPage({ params }: PageProps) {
   const { wallet } = React.use(params);
   const [activeList, setActiveList] = React.useState<"followers" | "following" | null>(null);
+  const solPrice = useSolPrice();
+
   const { data: tradesData, isLoading: tradesLoading } = useQuery({
     queryKey: ["portfolio-trades", wallet],
     queryFn: () => getUserTrades(wallet),
@@ -70,7 +81,10 @@ export default function PortfolioPage({ params }: PageProps) {
   const trades = tradesData?.trades ?? [];
   const createdTokens = tokensData?.tokens ?? [];
   const holdings = portfolioData?.holdings ?? [];
-  const realizedPnlSol = portfolioData?.realizedPnlSol ?? 0;
+  const realizedPnlSol   = portfolioData?.realizedPnlSol   ?? 0;
+  const unrealizedPnlSol = portfolioData?.unrealizedPnlSol ?? 0;
+  const totalPnlSol      = portfolioData?.totalPnlSol      ?? 0;
+  const openValueSol     = portfolioData?.unrealizedValueSol ?? 0;
 
   const activeHoldings = holdings.filter((h) => h.tokenBalance > 0.001);
 
@@ -194,7 +208,7 @@ export default function PortfolioPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Summary stats */}
+      {/* PnL summary cards */}
       {tradesLoading || portfolioLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
@@ -203,16 +217,29 @@ export default function PortfolioPage({ params }: PageProps) {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Total Buys" value={summary?.totalBuys ?? "0"} />
-          <StatCard label="Total Sells" value={summary?.totalSells ?? "0"} />
-          <StatCard
-            label="SOL Spent"
-            value={`${(portfolioData?.totalSpentSol ?? Number(summary?.totalSpentSol ?? 0)).toFixed(4)} SOL`}
-          />
           <StatCard
             label="Realized PnL"
             value={`${realizedPnlSol >= 0 ? "+" : ""}${realizedPnlSol.toFixed(4)} SOL`}
-            accent={realizedPnlSol >= 0}
+            color={realizedPnlSol >= 0 ? "green" : "red"}
+            sub={solToUsd(realizedPnlSol, solPrice)}
+          />
+          <StatCard
+            label="Unrealized PnL"
+            value={`${unrealizedPnlSol >= 0 ? "+" : ""}${unrealizedPnlSol.toFixed(4)} SOL`}
+            color={unrealizedPnlSol >= 0 ? "green" : "red"}
+            sub={solToUsd(unrealizedPnlSol, solPrice)}
+          />
+          <StatCard
+            label="Total PnL"
+            value={`${totalPnlSol >= 0 ? "+" : ""}${totalPnlSol.toFixed(4)} SOL`}
+            color={totalPnlSol >= 0 ? "green" : "red"}
+            sub={solToUsd(totalPnlSol, solPrice)}
+          />
+          <StatCard
+            label="Open Value"
+            value={`${openValueSol.toFixed(4)} SOL`}
+            color="white"
+            sub={solToUsd(openValueSol, solPrice)}
           />
         </div>
       )}
@@ -252,20 +279,24 @@ export default function PortfolioPage({ params }: PageProps) {
           </div>
         ) : activeHoldings.length === 0 ? null : (
           <div className="overflow-x-auto rounded-xl">
-          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[340px]">
-            <div className="grid grid-cols-[1fr_80px_100px_80px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[#444] text-[10px] uppercase tracking-wider">
+          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[620px]">
+            {/* 6-column header: Token | Balance | Cost Basis | Current Value | Unrealized PnL | Realized PnL */}
+            <div className="grid grid-cols-[1fr_72px_86px_86px_90px_80px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[#444] text-[10px] uppercase tracking-wider">
               <div>Token</div>
               <div className="text-right">Balance</div>
-              <div className="text-right">SOL Spent</div>
+              <div className="text-right">Cost Basis</div>
+              <div className="text-right">Curr. Value</div>
+              <div className="text-right">Unreal. PnL</div>
               <div className="text-right">Real. PnL</div>
             </div>
             {activeHoldings.map((h) => {
-              const pnlPositive = h.realizedPnlSol >= 0;
+              const unrealPositive = h.unrealizedPnlSol >= 0;
+              const realPositive   = h.realizedPnlSol   >= 0;
               return (
                 <Link
                   key={h.mint}
                   href={`/token/${h.mint}`}
-                  className="grid grid-cols-[1fr_80px_100px_80px] gap-2 px-4 py-3 border-b border-[#0f0f0f] hover:bg-[#0f0f0f] transition-colors items-center last:border-0"
+                  className="grid grid-cols-[1fr_72px_86px_86px_90px_80px] gap-2 px-4 py-3 border-b border-[#0f0f0f] hover:bg-[#0f0f0f] transition-colors items-center last:border-0"
                 >
                   {/* Token info */}
                   <div className="flex items-center gap-2 min-w-0">
@@ -278,7 +309,12 @@ export default function PortfolioPage({ params }: PageProps) {
                     </div>
                     <div className="min-w-0">
                       <div className="text-white text-xs font-semibold truncate">{h.name}</div>
-                      <div className="text-[#555] text-[10px]">${h.symbol}</div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[#555] text-[10px]">${h.symbol}</span>
+                        {h.isGraduated && (
+                          <span className="text-[#00ff88] text-[9px] border border-[#00ff8840] px-1 rounded leading-4">GRAD</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -288,17 +324,40 @@ export default function PortfolioPage({ params }: PageProps) {
                     <div className="text-[#555] text-[10px]">{h.symbol}</div>
                   </div>
 
-                  {/* SOL Spent */}
+                  {/* Cost Basis */}
                   <div className="text-right">
                     <div className="text-[#888] text-xs font-mono">{h.costBasisSol.toFixed(4)}</div>
-                    <div className="text-[#444] text-[10px]">SOL</div>
+                    <div className="text-[#444] text-[10px]">{solToUsd(h.costBasisSol, solPrice) ?? "SOL"}</div>
+                  </div>
+
+                  {/* Current Value */}
+                  <div className="text-right">
+                    <div className="text-white text-xs font-mono">{h.currentValueSol.toFixed(4)}</div>
+                    <div className="text-[#444] text-[10px]">{solToUsd(h.currentValueSol, solPrice) ?? "SOL"}</div>
+                  </div>
+
+                  {/* Unrealized PnL */}
+                  <div className="text-right">
+                    <div className={`text-xs font-mono font-semibold ${unrealPositive ? "text-[#00ff88]" : "text-[#ff4444]"}`}>
+                      {(unrealPositive ? "+" : "") + h.unrealizedPnlSol.toFixed(4)}
+                    </div>
+                    <div className="text-[#444] text-[10px]">
+                      {h.unrealizedPnlPct !== 0
+                        ? `${h.unrealizedPnlPct >= 0 ? "+" : ""}${h.unrealizedPnlPct.toFixed(1)}%`
+                        : "SOL"}
+                    </div>
                   </div>
 
                   {/* Realized PnL */}
                   <div className="text-right">
-                    <div className={`text-xs font-mono font-semibold ${pnlPositive ? "text-[#00ff88]" : "text-[#ff4444]"}`}>
-                      {h.realizedPnlSol !== 0 ? (pnlPositive ? "+" : "") + h.realizedPnlSol.toFixed(4) + " SOL" : "—"}
+                    <div className={`text-xs font-mono font-semibold ${realPositive ? "text-[#00ff88]" : "text-[#ff4444]"}`}>
+                      {h.realizedPnlSol !== 0
+                        ? (realPositive ? "+" : "") + h.realizedPnlSol.toFixed(4)
+                        : <span className="text-[#333]">—</span>}
                     </div>
+                    {h.realizedPnlSol !== 0 && (
+                      <div className="text-[#444] text-[10px]">SOL</div>
+                    )}
                   </div>
                 </Link>
               );

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getCreators, CreatorData, truncateAddress, resolveImageUrl } from "@/lib/api";
+import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
 type Metric = "volume" | "tokens";
 
@@ -24,11 +25,12 @@ function ReputationBadge({ badge, label, color }: { badge: string; label: string
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function StatCard({ label, value, sub, usd }: { label: string; value: string | number; sub?: string; usd?: string | null }) {
   return (
     <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
       <div className="text-[#555] text-xs mb-1">{label}</div>
       <div className="text-white font-bold text-lg">{value}</div>
+      {usd && <div className="text-[#444] text-[10px] mt-0.5">{usd}</div>}
       {sub && <div className="text-[#333] text-xs mt-0.5">{sub}</div>}
     </div>
   );
@@ -36,6 +38,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 export default function CreatorsPage() {
   const [metric, setMetric] = useState<Metric>("volume");
+  const solPrice = useSolPrice();
 
   const { data: creators, isLoading } = useQuery({
     queryKey: ["creators", metric],
@@ -68,8 +71,8 @@ export default function CreatorsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Tokens Launched" value={totalTokens} sub="by all creators" />
         <StatCard label="Graduated" value={totalGraduated} sub="to DEX" />
-        <StatCard label="Total Volume" value={`${totalVol.toFixed(1)} SOL`} sub="all time" />
-        <StatCard label="Creator Earnings" value={`${totalEarnings.toFixed(3)} SOL`} sub="estimated fees" />
+        <StatCard label="Total Volume" value={`${totalVol.toFixed(1)} SOL`} usd={solToUsd(totalVol, solPrice)} sub="all time" />
+        <StatCard label="Creator Earnings" value={`${totalEarnings.toFixed(3)} SOL`} usd={solToUsd(totalEarnings, solPrice)} sub="estimated fees" />
       </div>
 
       {/* Leaderboard table */}
@@ -125,6 +128,9 @@ export default function CreatorsPage() {
               </div>
               <div className="shrink-0 text-right">
                 <div className="text-[#00ff88] text-xs font-mono">{parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL</div>
+                {solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice) && (
+                  <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice)}</div>
+                )}
                 <div className="text-[#555] text-[10px]">{creator.tokensLaunched} tokens · {creator.graduatedTokens} grad</div>
               </div>
             </Link>
@@ -194,12 +200,22 @@ export default function CreatorsPage() {
                       <span className={`text-xs font-mono ${creator.graduatedTokens > 0 ? "text-[#00ff88]" : "text-[#555]"}`}>{creator.graduatedTokens}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[#888] text-xs">{parseFloat(creator.totalVolumeSol).toFixed(2)}</span>
-                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      <div>
+                        <span className="text-[#888] text-xs">{parseFloat(creator.totalVolumeSol).toFixed(2)}</span>
+                        <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      </div>
+                      {solToUsd(parseFloat(creator.totalVolumeSol), solPrice) && (
+                        <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(creator.totalVolumeSol), solPrice)}</div>
+                      )}
                     </div>
                     <div className="text-right">
-                      <span className="text-[#00ff88] text-xs font-mono">{parseFloat(creator.estimatedEarningsSol).toFixed(4)}</span>
-                      <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      <div>
+                        <span className="text-[#00ff88] text-xs font-mono">{parseFloat(creator.estimatedEarningsSol).toFixed(4)}</span>
+                        <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                      </div>
+                      {solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice) && (
+                        <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(creator.estimatedEarningsSol), solPrice)}</div>
+                      )}
                     </div>
                   </Link>
                 ))}
