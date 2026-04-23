@@ -109,6 +109,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   type ChartType = "heikinashi" | "candles" | "line" | "area" | "bars";
   const [chartType, setChartType] = useState<ChartType>("candles");
   const [showChartDropdown, setShowChartDropdown] = useState(false);
+  const [dropdownAnchor, setDropdownAnchor] = useState<{ top: number; left: number } | null>(null);
   const chartTypeRef = useRef<ChartType>("candles");
 
   // ATH stored in raw backend units (pre-multiplier) so it survives USD↔SOL / MCap↔Price toggles (P1-2)
@@ -514,15 +515,24 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     return () => { socket.off("price_update", onPriceUpdate); };
   }, [socket, mint]);
 
-  // Fix #3: close chart type dropdown on outside click
+  // Close chart type dropdown on outside click or scroll (anchor drifts on scroll)
   useEffect(() => {
     if (!showChartDropdown) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Element;
-      if (!target.closest('[data-dropdown="charttype"]')) setShowChartDropdown(false);
+    const close = (e: Event) => {
+      if (e instanceof MouseEvent) {
+        const target = e.target as Element;
+        if (!target.closest('[data-dropdown="charttype"]')) setShowChartDropdown(false);
+      } else {
+        // scroll event — always close so anchor stays accurate
+        setShowChartDropdown(false);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', close, true); // capture phase catches nested scrollers
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', close, true);
+    };
   }, [showChartDropdown]);
 
   // Current display price — prefer live close, fall back to last OHLCV candle
@@ -791,10 +801,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
           </ToolbarBtn>
 
-          {/* Fix #3: chart type dropdown with data-dropdown attribute for outside-click detection */}
+          {/* Chart type dropdown — rendered via fixed positioning so it escapes overflow-x-auto clipping */}
           <div className="relative shrink-0" data-dropdown="charttype">
             <button
-              onClick={() => setShowChartDropdown((v) => !v)}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDropdownAnchor({ top: rect.bottom + 4, left: rect.left });
+                setShowChartDropdown((v) => !v);
+              }}
               className={clsx(
                 "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors whitespace-nowrap",
                 showChartDropdown
@@ -811,29 +825,6 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
                 <path d="M1 2l3 3 3-3" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
               </svg>
             </button>
-            {showChartDropdown && (
-              <div className="absolute top-full left-0 mt-1 z-50 bg-[#111] border border-white/12 rounded-xl overflow-hidden shadow-2xl min-w-[120px]">
-                {(["heikinashi", "candles", "line", "area", "bars"] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => { setChartType(type); setShowChartDropdown(false); }}
-                    className={clsx(
-                      "flex items-center justify-between w-full px-3 py-2 text-xs text-left hover:bg-white/6 transition-colors",
-                      chartType === type ? "text-[#00ff88]" : "text-white/55"
-                    )}
-                  >
-                    <span>
-                      {type === "heikinashi" ? "Heikin Ashi"
-                        : type === "candles" ? "Candles"
-                        : type === "line" ? "Line"
-                        : type === "area" ? "Area"
-                        : "Bars"}
-                    </span>
-                    {chartType === type && <span className="text-[#00ff88] text-[10px]">✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
@@ -1167,5 +1158,37 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     </div>
   );
 
-  return chartEl;
+  return (
+    <>
+      {chartEl}
+      {/* Chart type dropdown — fixed to viewport so overflow-x-auto on toolbar can't clip it */}
+      {showChartDropdown && dropdownAnchor && (
+        <div
+          data-dropdown="charttype"
+          style={{ position: "fixed", top: dropdownAnchor.top, left: dropdownAnchor.left, zIndex: 99999 }}
+          className="bg-[#111] border border-white/12 rounded-xl overflow-hidden shadow-2xl min-w-[120px]"
+        >
+          {(["heikinashi", "candles", "line", "area", "bars"] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => { setChartType(type); setShowChartDropdown(false); }}
+              className={clsx(
+                "flex items-center justify-between w-full px-3 py-2 text-xs text-left hover:bg-white/6 transition-colors",
+                chartType === type ? "text-[#00ff88]" : "text-white/55"
+              )}
+            >
+              <span>
+                {type === "heikinashi" ? "Heikin Ashi"
+                  : type === "candles" ? "Candles"
+                  : type === "line" ? "Line"
+                  : type === "area" ? "Area"
+                  : "Bars"}
+              </span>
+              {chartType === type && <span className="text-[#00ff88] text-[10px]">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
