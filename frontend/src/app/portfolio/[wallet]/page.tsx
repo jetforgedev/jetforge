@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
@@ -38,6 +38,11 @@ export default function PortfolioPage({ params }: PageProps) {
     queryFn: () => getUserTrades(wallet),
   });
 
+  const { data: portfolioData, isLoading: portfolioLoading } = useQuery({
+    queryKey: ["portfolio", wallet],
+    queryFn: () => getPortfolio(wallet),
+  });
+
   const { data: tokensData, isLoading: tokensLoading } = useQuery({
     queryKey: ["portfolio-tokens", wallet],
     queryFn: () => getTokensByCreator(wallet),
@@ -64,62 +69,14 @@ export default function PortfolioPage({ params }: PageProps) {
   const summary = tradesData?.summary;
   const trades = tradesData?.trades ?? [];
   const createdTokens = tokensData?.tokens ?? [];
+  const holdings = portfolioData?.holdings ?? [];
+  const realizedPnlSol = portfolioData?.realizedPnlSol ?? 0;
 
-  const pnl = parseFloat(summary?.realizedPnl ?? "0");
-
-  // Compute per-token holdings from trade history
-  const holdings = useMemo(() => {
-    if (!trades.length) return [];
-
-    const byMint: Record<string, {
-      mint: string;
-      symbol: string;
-      name: string;
-      imageUrl?: string;
-      tokensBought: number;
-      tokensSold: number;
-      solSpent: number;
-      solReceived: number;
-    }> = {};
-
-    for (const t of trades) {
-      if (!byMint[t.mint]) {
-        byMint[t.mint] = {
-          mint: t.mint,
-          symbol: t.token?.symbol ?? "?",
-          name: t.token?.name ?? t.mint.slice(0, 8),
-          imageUrl: t.token?.imageUrl,
-          tokensBought: 0,
-          tokensSold: 0,
-          solSpent: 0,
-          solReceived: 0,
-        };
-      }
-      const tokens = Number(t.tokenAmount) / 1_000_000;
-      const sol = Number(t.solAmount) / 1e9;
-      if (t.type === "BUY") {
-        byMint[t.mint].tokensBought += tokens;
-        byMint[t.mint].solSpent += sol;
-      } else {
-        byMint[t.mint].tokensSold += tokens;
-        byMint[t.mint].solReceived += sol;
-      }
-    }
-
-    return Object.values(byMint).map((d) => {
-      const netTokens = d.tokensBought - d.tokensSold;
-      const avgBuyPrice = d.tokensBought > 0 ? d.solSpent / d.tokensBought : 0;
-      const realizedPnl = d.solReceived - d.tokensSold * avgBuyPrice;
-      const costBasisHeld = netTokens * avgBuyPrice;
-      return { ...d, netTokens, avgBuyPrice, realizedPnl, costBasisHeld };
-    }).sort((a, b) => b.netTokens - a.netTokens);
-  }, [trades]);
-
-  const activeHoldings = holdings.filter((h) => h.netTokens > 0.001);
+  const activeHoldings = holdings.filter((h) => h.tokenBalance > 0.001);
 
   const totalTrades = (parseInt(summary?.totalBuys ?? "0") + parseInt(summary?.totalSells ?? "0"));
   const hasWhaleTrade = trades.some((t: any) => Number(t.solAmount) / 1e9 >= 1);
-  const hasProfitableTrade = holdings.some((h) => h.realizedPnl > 0);
+  const hasProfitableTrade = holdings.some((h) => h.realizedPnlSol > 0);
 
   const badges: { icon: string; label: string; description: string; color: string }[] = [];
   if (totalTrades >= 1) badges.push({ icon: "🌟", label: "Rising Star", description: "Made first trade", color: "#f59e0b" });
@@ -238,7 +195,7 @@ export default function PortfolioPage({ params }: PageProps) {
       )}
 
       {/* Summary stats */}
-      {tradesLoading ? (
+      {tradesLoading || portfolioLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-20 bg-[#111] rounded-xl animate-pulse" />
@@ -250,12 +207,12 @@ export default function PortfolioPage({ params }: PageProps) {
           <StatCard label="Total Sells" value={summary?.totalSells ?? "0"} />
           <StatCard
             label="SOL Spent"
-            value={`${summary?.totalSpentSol ?? "0"} SOL`}
+            value={`${(portfolioData?.totalSpentSol ?? Number(summary?.totalSpentSol ?? 0)).toFixed(4)} SOL`}
           />
           <StatCard
             label="Realized PnL"
-            value={`${pnl >= 0 ? "+" : ""}${summary?.realizedPnl ?? "0"} SOL`}
-            accent={pnl >= 0}
+            value={`${realizedPnlSol >= 0 ? "+" : ""}${realizedPnlSol.toFixed(4)} SOL`}
+            accent={realizedPnlSol >= 0}
           />
         </div>
       )}
@@ -280,12 +237,12 @@ export default function PortfolioPage({ params }: PageProps) {
       )}
 
       {/* Holdings — hidden for new traders (banner shown instead) */}
-      {(tradesLoading || trades.length > 0) && <div>
+      {(tradesLoading || portfolioLoading || trades.length > 0) && <div>
         <div className="text-white font-semibold mb-3">
           Holdings{" "}
           <span className="text-[#555] font-normal text-sm">({activeHoldings.length})</span>
         </div>
-        {tradesLoading ? (
+        {tradesLoading || portfolioLoading ? (
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-[#111] rounded-xl animate-pulse" />)}
           </div>
@@ -303,7 +260,7 @@ export default function PortfolioPage({ params }: PageProps) {
               <div className="text-right">Real. PnL</div>
             </div>
             {activeHoldings.map((h) => {
-              const pnlPositive = h.realizedPnl >= 0;
+              const pnlPositive = h.realizedPnlSol >= 0;
               return (
                 <Link
                   key={h.mint}
@@ -327,20 +284,20 @@ export default function PortfolioPage({ params }: PageProps) {
 
                   {/* Balance */}
                   <div className="text-right">
-                    <div className="text-white text-xs font-mono">{h.netTokens.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-white text-xs font-mono">{h.tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                     <div className="text-[#555] text-[10px]">{h.symbol}</div>
                   </div>
 
                   {/* SOL Spent */}
                   <div className="text-right">
-                    <div className="text-[#888] text-xs font-mono">{h.solSpent.toFixed(4)}</div>
+                    <div className="text-[#888] text-xs font-mono">{h.costBasisSol.toFixed(4)}</div>
                     <div className="text-[#444] text-[10px]">SOL</div>
                   </div>
 
                   {/* Realized PnL */}
                   <div className="text-right">
                     <div className={`text-xs font-mono font-semibold ${pnlPositive ? "text-[#00ff88]" : "text-[#ff4444]"}`}>
-                      {h.realizedPnl !== 0 ? (pnlPositive ? "+" : "") + h.realizedPnl.toFixed(4) + " SOL" : "—"}
+                      {h.realizedPnlSol !== 0 ? (pnlPositive ? "+" : "") + h.realizedPnlSol.toFixed(4) + " SOL" : "—"}
                     </div>
                   </div>
                 </Link>
