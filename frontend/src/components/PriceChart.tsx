@@ -341,23 +341,25 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     areaSeriesRef.current?.setData(lineData);
     barSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumes);
-    // Position the time-axis so bars render at a consistent ~8 px width.
-    // fitContent() stretches sparse data to fill the full canvas (huge bars).
-    // scrollToRealTime() leaves 200+ empty bars on the left.
-    // Instead: target ~8 px/bar by computing how many bars fit the container,
-    // place candles at the right edge with a 4-bar margin, and let the left
-    // be empty space (negative logical indices are valid in lightweight-charts).
+    // Time-axis positioning strategy:
+    // - ≤10 candles  → fitContent with a fixed barSpacing so new tokens look good
+    // - 11-59 candles → computed range targeting ~8 px/bar with a small right margin
+    // - ≥60 candles  → normal fitContent
     const ts = chartRef.current?.timeScale();
     if (ts) {
-      if (displayCandles.length >= 60) {
-        // Enough history — normal fit
+      if (displayCandles.length <= 10) {
+        // Very sparse: use a comfortable bar size and let fitContent handle positioning
+        chartRef.current?.applyOptions({
+          timeScale: { rightOffset: 8, barSpacing: 12 },
+        });
+        ts.fitContent();
+      } else if (displayCandles.length >= 60) {
         ts.fitContent();
       } else {
         const containerW = chartContainerRef.current?.clientWidth ?? 900;
-        const targetBarPx = 8; // desired bar width in pixels
-        const barsOnScreen = Math.max(60, Math.floor(containerW / targetBarPx));
-        const to   = displayCandles.length - 1 + 4; // 4-bar right margin
-        const from = to - barsOnScreen;              // may be negative — that's fine
+        const barsOnScreen = Math.max(30, Math.floor(containerW / 8));
+        const to   = displayCandles.length - 1 + 6;
+        const from = Math.max(-10, to - barsOnScreen);
         ts.setVisibleLogicalRange({ from, to });
       }
     }
@@ -366,15 +368,18 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     const maxHighRaw = Math.max(...ohlcv.map((d) => d.high));
     setAthRaw(maxHighRaw);
 
-    if (displayCandles.length > 0) {
-      const last = displayCandles[displayCandles.length - 1];
+    if (candles.length > 0) {
+      // Seed liveCandle from RAW candles (not HA display candles) so live trade
+      // updates accumulate correctly regardless of chart type.
+      const lastRaw = candles[candles.length - 1];
       liveCandle.current = {
-        time: last.time as number,
-        open: last.open, high: last.high, low: last.low, close: last.close,
+        time: lastRaw.time as number,
+        open: lastRaw.open, high: lastRaw.high, low: lastRaw.low, close: lastRaw.close,
       };
-      // Seed lastHaCandle so live HA updates have a valid previous candle (P1-1)
-      if (chartType === "heikinashi") {
-        lastHaCandle.current = last as OHLC;
+      // Seed lastHaCandle from HA displayCandles so the live HA update has a
+      // valid previous HA candle to build the next one from.
+      if (chartType === "heikinashi" && displayCandles.length > 0) {
+        lastHaCandle.current = displayCandles[displayCandles.length - 1] as OHLC;
       }
     }
   }, [ohlcv, solPrice, priceMode, currencyMode, getMultiplier, chartType, chartReady]);
@@ -572,13 +577,24 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       return () => clearTimeout(tid);
     } else {
       // ── ENTER ─────────────────────────────────────────────────────────────
-      setFsChartH(window.innerHeight - 86); // 86 ≈ Row1 (44px) + Row2 (42px)
       setIsFullscreen(true);
       onFullscreenChange?.(true);
 
-      // Position trade panel bottom-right once layout settles
+      // Measure actual chart-overlay height after flexbox layout settles so
+      // the canvas exactly fills the space below the toolbars — no guessing.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (chartOverlayRef.current) {
+            const h = chartOverlayRef.current.clientHeight;
+            const w = chartOverlayRef.current.clientWidth;
+            setFsChartH(h);
+            if (chartRef.current) {
+              chartRef.current.applyOptions({ width: w, height: h });
+              chartRef.current.timeScale().fitContent();
+            }
+          }
+
+          // Position trade panel bottom-right
           if (panelRef.current && chartOverlayRef.current) {
             const ctr = chartOverlayRef.current.getBoundingClientRect();
             const pw  = panelRef.current.offsetWidth  || 300;
