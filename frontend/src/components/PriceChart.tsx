@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getOHLCV, getTrades } from "@/lib/api";
+import { getOHLCV, getTrades, getPortfolio } from "@/lib/api";
 import { getTradeTag } from "@/components/TradesList";
 import { useSocket } from "@/hooks/useLiveFeed";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -82,6 +82,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   const barSeriesRef = useRef<any>(null);
   const activeSeriesRef = useRef<any>(null);  // always points to visible series
   const volumeSeriesRef = useRef<any>(null);
+  // Tracks the entry price line so it can be removed/moved when the series switches
+  const entryPriceLineRef = useRef<{ line: any; series: any } | null>(null);
   const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
   // Last HA candle in display units — needed to compute live HA updates correctly (P1-1)
   const lastHaCandle = useRef<OHLC | null>(null);
@@ -137,6 +139,21 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     staleTime: 60_000,
     enabled: showTrades,
   });
+
+  // Portfolio query — shares cache key with TradingPanel so only one request is made.
+  // Filtered to this mint to keep payload tiny (backend filters server-side).
+  const walletStr = publicKey?.toString();
+  const { data: tokenPortfolio } = useQuery({
+    queryKey: ["portfolio-token", mint, walletStr],
+    queryFn: () => getPortfolio(walletStr!, mint),
+    enabled: !!walletStr,
+    staleTime: 15_000,
+    refetchInterval: 20_000,
+  });
+  const entryHolding = tokenPortfolio?.holdings?.find((h) => h.mint === mint);
+  // Only show entry overlay when there is an open position (tokenBalance > 0)
+  const avgBuyPriceSol = (entryHolding && entryHolding.tokenBalance > 0) ? entryHolding.avgBuyPriceSol : null;
+  const entryTokenBalance = entryHolding?.tokenBalance ?? 0;
 
   // Compute display multiplier based on mode.
   // ohlcv price values are in "SOL per token × 1e6" units (mcap-scale).
@@ -278,6 +295,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       activeSeriesRef.current = null;
       volumeSeriesRef.current = null;
       liveCandle.current = null;
+      entryPriceLineRef.current = null;
       setChartReady(false);
     };
   }, []);
@@ -306,6 +324,66 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     else if (chartType === "bars") activeSeriesRef.current = barSeriesRef.current;
     else activeSeriesRef.current = candleSeriesRef.current;
   }, [chartType]);
+
+  // Current display price — prefer live close, fall back to last OHLCV candle.
+  // Declared here (before Effects 1 & 2) so it is available in Effect 2's deps array.
+  const currentVal = liveClose
+    ?? (ohlcv && ohlcv.length > 0 ? ohlcv[ohlcv.length - 1].close * getMultiplier(solPrice) : null);
+
+  // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
+  const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
+
+  // ── Entry price line (Effect 1): create / destroy ────────────────────────────
+  // Runs when position data, chart type, or display mode changes.
+  // Removes the old line from the previous series before creating a new one —
+  // this handles the series-switch that happens on chartType changes.
+  useEffect(() => {
+    // Always clean up first
+    if (entryPriceLineRef.current) {
+      try {
+        entryPriceLineRef.current.series.removePriceLine(entryPriceLineRef.current.line);
+      } catch { /* series may already be gone */ }
+      entryPriceLineRef.current = null;
+    }
+
+    if (!chartReady || !activeSeriesRef.current || !avgBuyPriceSol || entryTokenBalance <= 0) return;
+
+    const mult = getMultiplier(solPrice);
+    if (!mult) return;
+    // Convert SOL-per-display-token to chart display units:
+    //   rawOhlcvPrice = priceSOL × 1000 (OHLCV is in "mcap-scale" units)
+    //   displayPrice  = rawOhlcvPrice × mult
+    const entryDisplayPrice = avgBuyPriceSol * 1000 * mult;
+
+    const line = activeSeriesRef.current.createPriceLine({
+      price: entryDisplayPrice,
+      color: "#888888", // neutral — Effect 2 sets the correct color immediately after
+      lineWidth: 1,
+      lineStyle: 1,     // 1 = dashed
+      axisLabelVisible: true,
+      title: "Avg Entry",
+    });
+
+    entryPriceLineRef.current = { line, series: activeSeriesRef.current };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartReady, chartType, priceMode, currencyMode, avgBuyPriceSol, entryTokenBalance, solPrice, getMultiplier]);
+
+  // ── Entry price line (Effect 2): color-only update ───────────────────────────
+  // Cheap applyOptions call — avoids recreating the line on every price tick.
+  // chartType is included so this fires right after Effect 1 recreates the line.
+  useEffect(() => {
+    if (!entryPriceLineRef.current || !avgBuyPriceSol || currentVal === null) return;
+    const mult = getMultiplier(solPrice);
+    if (!mult) return;
+    const entryDisplayPrice = avgBuyPriceSol * 1000 * mult;
+    const color =
+      currentVal > entryDisplayPrice * 1.001 ? "#00ff88" :
+      currentVal < entryDisplayPrice * 0.999 ? "#ff4444" :
+      "#888888";
+    try {
+      entryPriceLineRef.current.line.applyOptions({ color });
+    } catch { /* line was just removed */ }
+  }, [currentVal, avgBuyPriceSol, solPrice, getMultiplier, chartType]);
 
   // Load OHLCV data — depends on chartReady so it re-fires after async chart init
   useEffect(() => {
@@ -536,13 +614,6 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     };
   }, [showChartDropdown]);
 
-  // Current display price — prefer live close, fall back to last OHLCV candle
-  const currentVal = liveClose
-    ?? (ohlcv && ohlcv.length > 0 ? ohlcv[ohlcv.length - 1].close * getMultiplier(solPrice) : null);
-
-  // ATH in display units — derived at render time from raw so it's always in current mode (P1-2)
-  const athDisplay = athRaw !== null ? athRaw * getMultiplier(solPrice) : null;
-
   // ── CSS-based fullscreen ─────────────────────────────────────────────────────
   // Uses className toggle (fixed inset-0 z-[9999]) instead of the browser's
   // Fullscreen API so the DOM tree is never moved and the canvas bitmap survives.
@@ -724,6 +795,25 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     </button>
   );
 
+  // ── Entry PnL badge — computed at render time from live currentVal ───────────
+  const entryPnlBadge = (() => {
+    if (!avgBuyPriceSol || entryTokenBalance <= 0 || currentVal === null) return null;
+    const mult = getMultiplier(solPrice);
+    if (!mult) return null;
+    // Reverse the display-unit conversion to get live SOL-per-display-token price
+    const liveSpotSOL = currentVal / (1000 * mult);
+    const livePnlSol = entryTokenBalance * (liveSpotSOL - avgBuyPriceSol);
+    const livePnlPct = ((liveSpotSOL - avgBuyPriceSol) / avgBuyPriceSol) * 100;
+    const livePnlUsd = solPrice ? livePnlSol * solPrice : null;
+    const isProfit = livePnlSol > 0.0001;
+    const isLoss   = livePnlSol < -0.0001;
+    const pctStr   = `${isProfit ? "+" : ""}${livePnlPct.toFixed(1)}%`;
+    const usdStr   = livePnlUsd !== null
+      ? (livePnlUsd >= 0 ? `+$${livePnlUsd.toFixed(2)}` : `-$${Math.abs(livePnlUsd).toFixed(2)}`)
+      : null;
+    return { pctStr, usdStr, isProfit, isLoss };
+  })();
+
   const chartEl = (
     <div
       ref={chartWrapperRef}
@@ -751,13 +841,29 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {athDisplay !== null && (
-            <span className="text-[#555] text-[10px] font-mono">
+            <span className="text-[#555] text-[10px] font-mono hidden sm:inline">
               ATH{" "}
               <span className="text-[#888]">
                 {priceMode === "mcap"
                   ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
                   : (currencyMode === "usd" ? `$${athDisplay.toFixed(8)}` : `${athDisplay.toFixed(8)} SOL`)}
               </span>
+            </span>
+          )}
+          {/* Entry PnL badge — shown when wallet has an open position */}
+          {entryPnlBadge && (
+            <span
+              className={clsx(
+                "text-[10px] font-mono font-semibold",
+                entryPnlBadge.isProfit ? "text-[#00ff88]"
+                : entryPnlBadge.isLoss ? "text-[#ff4444]"
+                : "text-[#888888]"
+              )}
+            >
+              {entryPnlBadge.pctStr}
+              {entryPnlBadge.usdStr && (
+                <span className="opacity-60 ml-0.5 hidden sm:inline">({entryPnlBadge.usdStr})</span>
+              )}
             </span>
           )}
           {/* Fullscreen toggle — desktop only (hidden on mobile) */}
