@@ -196,6 +196,8 @@ export async function computeWalletPortfolio(wallet: string) {
     isGraduated: boolean; priceSource: string;
     tokenBalance: number; costBasisSol: number; avgBuyPriceSol: number;
     currentValueSol: number; unrealizedPnlSol: number; unrealizedPnlPct: number;
+    /** Full-bag AMM sell quote (incl. slippage + 1% fee). Null for graduated tokens. */
+    estimatedLiquidationValueSol: number | null;
     realizedPnlSol: number;
     totalBuys: number; totalSells: number;
     totalSpentSol: number; totalReceivedSol: number;
@@ -208,18 +210,23 @@ export async function computeWalletPortfolio(wallet: string) {
     globalReceived += pos.totalReceivedLamports;
 
     let currentValueLamports = 0n;
+    let estimatedLiquidationValueLamports: bigint | null = null;
     let priceSource: "bonding_curve" | "raydium" | "raydium_stale" | "none" = "none";
 
     if (pos.tokenBalance > 0n) {
       const tok = tokenMap.get(mint);
       if (tok) {
         if (!tok.isGraduated) {
-          // Pre-graduation: use bonding-curve sell quote
-          currentValueLamports = sellQuoteLamports(
-            pos.tokenBalance,
-            tok.virtualSolReserves as bigint,
-            tok.virtualTokenReserves as bigint,
-          );
+          const vSol = tok.virtualSolReserves as bigint;
+          const vTok = tok.virtualTokenReserves as bigint;
+          // Mark-to-market: spot price × balance (no slippage, no fee).
+          // Spot = virtualSol / virtualToken per base-unit token.
+          // This rises/falls in sync with every other wallet's trades, giving
+          // the correct "what is my bag worth right now" number.
+          currentValueLamports = vTok > 0n ? (vSol * pos.tokenBalance) / vTok : 0n;
+          // Liquidation value: what you'd actually receive selling the whole bag
+          // through the AMM (includes price impact + 1% fee).
+          estimatedLiquidationValueLamports = sellQuoteLamports(pos.tokenBalance, vSol, vTok);
           priceSource = "bonding_curve";
         } else if (tok.raydiumPoolId) {
           // Post-graduation: try live Raydium pool price (cache was warmed above)
@@ -268,12 +275,16 @@ export async function computeWalletPortfolio(wallet: string) {
         tokenBalance: tokenBalanceUi,
         costBasisSol,
         avgBuyPriceSol,
-        // Value
+        // Value (mark-to-market)
         currentValueSol,
         unrealizedPnlSol,
         unrealizedPnlPct: costBasisSol > 0
           ? (unrealizedPnlSol / costBasisSol) * 100
           : 0,
+        // Full-bag liquidation estimate (bonding curve only; null for Raydium)
+        estimatedLiquidationValueSol: estimatedLiquidationValueLamports !== null
+          ? Number(estimatedLiquidationValueLamports) / 1e9
+          : null,
         // Realized
         realizedPnlSol,
         // Trade counts
@@ -299,6 +310,7 @@ export async function computeWalletPortfolio(wallet: string) {
           currentValueSol: 0,
           unrealizedPnlSol: 0,
           unrealizedPnlPct: 0,
+          estimatedLiquidationValueSol: null,
           realizedPnlSol: Number(pos.realizedPnlLamports) / 1e9,
           totalBuys: pos.totalBuys,
           totalSells: pos.totalSells,

@@ -372,6 +372,12 @@ export interface PortfolioHolding {
   currentValueSol: number;
   unrealizedPnlSol: number;
   unrealizedPnlPct: number;
+  /**
+   * Full-bag AMM liquidation estimate (includes slippage + 1% fee).
+   * Only present for bonding-curve (pre-graduation) holdings.
+   * Null for graduated tokens priced via Raydium.
+   */
+  estimatedLiquidationValueSol: number | null;
   // Closed portion
   realizedPnlSol: number;
   // Trade counts

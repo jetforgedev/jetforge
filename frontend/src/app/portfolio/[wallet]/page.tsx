@@ -287,7 +287,7 @@ export default function PortfolioPage({ params }: PageProps) {
               <div>Token</div>
               <div className="text-right">Balance</div>
               <div className="text-right">Cost Basis</div>
-              <div className="text-right">Curr. Value</div>
+              <div className="text-right" title="Mark-to-market spot price × balance">Mkt Value</div>
               <div className="text-right">Unreal. PnL</div>
               <div className="text-right">Real. PnL</div>
             </div>
@@ -332,10 +332,18 @@ export default function PortfolioPage({ params }: PageProps) {
                     <div className="text-[#444] text-[10px]">{solToUsd(h.costBasisSol, solPrice) ?? "SOL"}</div>
                   </div>
 
-                  {/* Current Value */}
+                  {/* Current Value — mark-to-market spot price */}
                   <div className="text-right">
                     <div className="text-white text-xs font-mono">{h.currentValueSol.toFixed(4)}</div>
                     <div className="text-[#444] text-[10px]">{solToUsd(h.currentValueSol, solPrice) ?? "SOL"}</div>
+                    {h.estimatedLiquidationValueSol != null && (
+                      <div
+                        className="text-[#444] text-[9px] font-mono"
+                        title="Estimated proceeds if you sold your entire bag right now (includes AMM slippage + 1% fee)"
+                      >
+                        liq ≈ {h.estimatedLiquidationValueSol.toFixed(4)}
+                      </div>
+                    )}
                   </div>
 
                   {/* Unrealized PnL */}
