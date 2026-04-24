@@ -67,7 +67,7 @@ export function useToken(mint: string) {
       // On the first trade after page load (or after the last refetch) we fire
       // immediately; subsequent trades within the window are coalesced.
       const now = Date.now();
-      if (now - lastHoldersInvalidate.current > 8_000) {
+      if (now - lastHoldersInvalidate.current > 2_000) {
         lastHoldersInvalidate.current = now;
         // Invalidate by prefix so all dev-holdings keys for this mint match
         // regardless of which creator address was passed.

@@ -539,6 +539,16 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     series.setMarkers(markers);
   }, [tradesData, creator, ohlcv, showTrades, showBubbles, publicKey, chartType]);
 
+  // Ensure PriceChart is subscribed to the token room independently of sibling
+  // hooks (useTokenData, useTrades). If the socket reconnects and those hooks
+  // re-subscribe, PriceChart may miss the window; this effect closes that gap.
+  // No unsubscribe:token on cleanup — the room is shared; leaving would break
+  // sibling listeners. Socket.IO join is idempotent.
+  useEffect(() => {
+    if (!socket || !mint) return;
+    socket.emit("subscribe:token", mint);
+  }, [socket, mint]);
+
   // Live trade flash bubble
   const [flashTrades, setFlashTrades] = useState<Array<{
     id: number; type: "BUY" | "SELL"; trader: string; solAmount: string;

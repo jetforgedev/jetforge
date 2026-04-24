@@ -22,6 +22,7 @@ import {
 } from "@/lib/bondingCurve";
 import { TokenData, getPortfolio, fmtTokenPrice } from "@/lib/api";
 import { buildBuyTransaction, buildSellTransaction } from "@/lib/program";
+import { useSocket } from "@/hooks/useLiveFeed";
 
 interface TradingPanelProps {
   token: TokenData;
@@ -64,6 +65,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
   const anchorWallet = useAnchorWallet();
   const { connection } = useConnection();
   const queryClient = useQueryClient();
+  const socket = useSocket();
 
   const [tab, setTab] = useState<"buy" | "sell">("buy");
   const [inputAmount, setInputAmount] = useState("");
@@ -96,25 +98,26 @@ export function TradingPanel({ token }: TradingPanelProps) {
     }
   }, [token.mint]);
 
-  // Fetch session key balances
-  useEffect(() => {
+  // Fetch session key balances — stable callback so socket effect can call it too
+  const fetchSessionBalances = useCallback(async () => {
     if (!fastTradeEnabled || !sessionPubkey) return;
-    const fetchSessionBalances = async () => {
-      const pk = new PublicKey(sessionPubkey);
-      const sol = await connection.getBalance(pk).catch(() => 0);
-      setSessionSolBal(sol / 1e9);
-      try {
-        const ata = getAssociatedTokenAddressSync(new PublicKey(token.mint), pk);
-        const acc = await connection.getTokenAccountBalance(ata);
-        setSessionTokenBal(new BN(acc.value.amount));
-      } catch {
-        setSessionTokenBal(new BN(0));
-      }
-    };
+    const pk = new PublicKey(sessionPubkey);
+    const sol = await connection.getBalance(pk).catch(() => 0);
+    setSessionSolBal(sol / 1e9);
+    try {
+      const ata = getAssociatedTokenAddressSync(new PublicKey(token.mint), pk);
+      const acc = await connection.getTokenAccountBalance(ata);
+      setSessionTokenBal(new BN(acc.value.amount));
+    } catch {
+      setSessionTokenBal(new BN(0));
+    }
+  }, [fastTradeEnabled, sessionPubkey, connection, token.mint]);
+
+  useEffect(() => {
     fetchSessionBalances();
     const id = setInterval(fetchSessionBalances, 8_000);
     return () => clearInterval(id);
-  }, [fastTradeEnabled, sessionPubkey, connection, token.mint]);
+  }, [fetchSessionBalances]);
 
   const toggleFastTrade = useCallback(() => {
     if (fastTradeEnabled) {
@@ -166,7 +169,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
     queryKey: ["portfolio-token", token.mint, publicKey?.toString()],
     queryFn: () => getPortfolio(publicKey!.toString(), token.mint),
     enabled: !!publicKey && tab === "sell" && !fastTradeEnabled,
-    staleTime: 30_000,
+    staleTime: 10_000, // reduced from 30s — invalidated on new_trade anyway
   });
 
   // Average buy price in SOL per token — from cost-basis accounting over ALL trades
@@ -176,28 +179,41 @@ export function TradingPanel({ token }: TradingPanelProps) {
     return holding.avgBuyPriceSol;
   }, [tokenPortfolio, token.mint]);
 
-  // Fetch main wallet balances (only when not in fast trade mode)
-  useEffect(() => {
+  // Fetch main wallet balances — stable callback so socket effect can call it too
+  const fetchMainBalances = useCallback(async () => {
     if (!publicKey || fastTradeEnabled) return;
-
-    const fetchBalances = async () => {
-      const balance = await connection.getBalance(publicKey);
-      setSolBalance(balance / 1e9);
-
-      try {
-        const mint = new PublicKey(token.mint);
-        const ata = getAssociatedTokenAddressSync(mint, publicKey);
-        const tokenAcct = await connection.getTokenAccountBalance(ata);
-        setTokenBalance(new BN(tokenAcct.value.amount));
-      } catch {
-        setTokenBalance(new BN(0));
-      }
-    };
-
-    fetchBalances();
-    const id = setInterval(fetchBalances, 15_000);
-    return () => clearInterval(id);
+    const balance = await connection.getBalance(publicKey);
+    setSolBalance(balance / 1e9);
+    try {
+      const mintPk = new PublicKey(token.mint);
+      const ata = getAssociatedTokenAddressSync(mintPk, publicKey);
+      const tokenAcct = await connection.getTokenAccountBalance(ata);
+      setTokenBalance(new BN(tokenAcct.value.amount));
+    } catch {
+      setTokenBalance(new BN(0));
+    }
   }, [publicKey, connection, token.mint, fastTradeEnabled]);
+
+  useEffect(() => {
+    fetchMainBalances();
+    const id = setInterval(fetchMainBalances, 8_000); // reduced from 15s
+    return () => clearInterval(id);
+  }, [fetchMainBalances]);
+
+  // On any trade for this token, immediately refresh balances and portfolio
+  // so TradingPanel stays in sync after trades made on another device.
+  useEffect(() => {
+    if (!socket) return;
+    const onNewTrade = (data: any) => {
+      if (data.mint !== token.mint) return;
+      fetchMainBalances();
+      fetchSessionBalances();
+      // Portfolio holding / avg-entry-price may have changed — invalidate by prefix
+      queryClient.invalidateQueries({ queryKey: ["portfolio-token", token.mint] });
+    };
+    socket.on("new_trade", onNewTrade);
+    return () => { socket.off("new_trade", onNewTrade); };
+  }, [socket, token.mint, fetchMainBalances, fetchSessionBalances, queryClient]);
 
   // Effective balances based on mode
   const effectiveSolBalance = fastTradeEnabled ? sessionSolBal : solBalance;
