@@ -789,7 +789,12 @@ export default function TokenPage({ params }: PageProps) {
             visibility:hidden keeps the 340 px column alive; the chart's
             fixed inset-0 overlay sits on top of it anyway. */}
         <div className={`space-y-3 lg:space-y-4 order-2 lg:sticky lg:top-24${isChartFullscreen ? " invisible pointer-events-none" : ""}`}>
-          <TradingPanel token={token} />
+          {/* On mobile, graduated tokens show the full CTA in GraduationBar (order-3) below.
+              Hide TradingPanel on mobile when graduated to avoid showing two identical
+              "Graduated to DEX" cards back-to-back. Always visible on desktop (sidebar). */}
+          <div className={token.isGraduated ? "hidden lg:block" : ""}>
+            <TradingPanel token={token} />
+          </div>
 
           {/* Token details */}
           <div className="glass-panel rounded-[28px] p-3 sm:p-4">

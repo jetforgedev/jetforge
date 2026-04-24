@@ -822,7 +822,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     <button
       onClick={onClick}
       className={clsx(
-        "px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap",
+        "px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-medium transition-colors whitespace-nowrap",
         active
           ? "bg-[#00ff88]/12 text-[#00ff88] border border-[#00ff88]/30"
           : "text-white/40 hover:text-white/70 border border-transparent hover:border-white/10"
@@ -957,7 +957,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
               key={i.value}
               onClick={() => setChartInterval(i.value)}
               className={clsx(
-                "px-2.5 py-1 text-xs rounded font-medium transition-colors whitespace-nowrap",
+                "px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs rounded font-medium transition-colors whitespace-nowrap",
                 interval === i.value
                   ? "bg-[#00ff88]/12 text-[#00ff88]"
                   : "text-white/35 hover:text-white/70"
@@ -970,11 +970,13 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
           <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
 
           <ToolbarBtn active={showTrades} onClick={() => setShowTrades((v) => !v)}>
-            Trade Display
+            <span className="sm:hidden">My Trades</span>
+            <span className="hidden sm:inline">Trade Display</span>
           </ToolbarBtn>
 
           <ToolbarBtn active={!showBubbles} onClick={() => setShowBubbles((v) => !v)}>
-            {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
+            <span className="sm:hidden">{showBubbles ? "Dev ✕" : "Dev ✓"}</span>
+            <span className="hidden sm:inline">{showBubbles ? "Hide Bubbles" : "Show Bubbles"}</span>
           </ToolbarBtn>
 
           {/* Chart type dropdown — rendered via fixed positioning so it escapes overflow-x-auto clipping */}
@@ -986,7 +988,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
                 setShowChartDropdown((v) => !v);
               }}
               className={clsx(
-                "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors whitespace-nowrap",
+                "flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded text-xs font-medium border transition-colors whitespace-nowrap",
                 showChartDropdown
                   ? "border-[#00ff88]/40 bg-[#00ff88]/10 text-[#00ff88]"
                   : "border-white/10 text-white/50 hover:text-white/80 hover:border-white/20"
@@ -1010,7 +1012,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <button
               onClick={() => setPriceMode("price")}
               className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                "px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 priceMode === "price" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -1019,7 +1021,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <button
               onClick={() => setPriceMode("mcap")}
               className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
+                "px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
                 priceMode === "mcap" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -1032,7 +1034,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <button
               onClick={() => setCurrencyMode("usd")}
               className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                "px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 currencyMode === "usd" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >
@@ -1041,7 +1043,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <button
               onClick={() => setCurrencyMode("sol")}
               className={clsx(
-                "px-2.5 py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
+                "px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-colors border-l border-white/10 whitespace-nowrap",
                 currencyMode === "sol" ? "bg-[#00ff88]/15 text-[#00ff88]" : "text-white/35 hover:text-white/60"
               )}
             >

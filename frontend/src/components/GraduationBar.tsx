@@ -213,7 +213,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
         <div className="rounded-xl sm:rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-3">
           <div className="mb-0.5 sm:mb-1 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-white/32">Target</div>
           <div className="font-mono text-xs sm:text-sm font-semibold text-white leading-snug">
-            {solTarget.toFixed(0)}<span className="text-[#555] text-[9px] sm:text-[10px]"> SOL</span>
+            {solTarget.toFixed(3)}<span className="text-[#555] text-[9px] sm:text-[10px]"> SOL</span>
           </div>
         </div>
         <div className="rounded-xl sm:rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-3">
@@ -225,7 +225,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
       </div>
 
       <div className="mt-3 sm:mt-4 border-t border-white/[0.08] pt-2.5 sm:pt-4 text-xs leading-5 sm:leading-6 text-white/42">
-        <span className="sm:hidden">Graduates at {solTarget.toFixed(0)} SOL raised.</span>
+        <span className="sm:hidden">Graduates at {solTarget.toFixed(3)} SOL raised.</span>
         <span className="hidden sm:inline">When this curve reaches {solTarget.toFixed(3)} SOL, liquidity is automatically deployed to a DEX and trading continues there.</span>
       </div>
     </div>
