@@ -7,7 +7,6 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
-import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { WalletModalProvider as _WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 
 // Cast to avoid React 18.3 / wallet-adapter FC return type mismatch
@@ -38,7 +37,7 @@ export const AppWalletProvider: FC<AppWalletProviderProps> = ({ children }) => {
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
+      // Solflare auto-registers via Wallet Standard — no explicit adapter needed
     ],
     []
   );
