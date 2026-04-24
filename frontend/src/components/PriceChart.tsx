@@ -807,11 +807,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     const livePnlUsd = solPrice ? livePnlSol * solPrice : null;
     const isProfit = livePnlSol > 0.0001;
     const isLoss   = livePnlSol < -0.0001;
-    const pctStr   = `${isProfit ? "+" : ""}${livePnlPct.toFixed(1)}%`;
-    const usdStr   = livePnlUsd !== null
+    const sign   = isProfit ? "+" : "";
+    const pctStr = `${sign}${livePnlPct.toFixed(1)}%`;
+    const usdStr = livePnlUsd !== null
       ? (livePnlUsd >= 0 ? `+$${livePnlUsd.toFixed(2)}` : `-$${Math.abs(livePnlUsd).toFixed(2)}`)
       : null;
-    return { pctStr, usdStr, isProfit, isLoss };
+    // solStr: always carries sign — negative numbers get "-" from toFixed itself
+    const solStr = `${sign}${livePnlSol.toFixed(4)} SOL`;
+    return { pctStr, usdStr, solStr, isProfit, isLoss };
   })();
 
   const chartEl = (
@@ -850,21 +853,44 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
               </span>
             </span>
           )}
-          {/* Entry PnL badge — shown when wallet has an open position */}
+          {/* Entry PnL badge — visually distinct pill tied to wallet position */}
           {entryPnlBadge && (
-            <span
-              className={clsx(
-                "text-[10px] font-mono font-semibold",
+            <div className={clsx(
+              "flex items-center gap-1 rounded-md border px-2 py-0.5 shrink-0",
+              entryPnlBadge.isProfit
+                ? "bg-[#00ff88]/8 border-[#00ff88]/25"
+                : entryPnlBadge.isLoss
+                ? "bg-[#ff4444]/8 border-[#ff4444]/25"
+                : "bg-white/[0.04] border-white/10"
+            )}>
+              {/* "PnL" label — makes it unmistakably about the user's position */}
+              <span className={clsx(
+                "text-[9px] font-bold uppercase tracking-widest",
+                entryPnlBadge.isProfit ? "text-[#00ff88]/60"
+                : entryPnlBadge.isLoss ? "text-[#ff4444]/60"
+                : "text-[#555]"
+              )}>PnL</span>
+              {/* Primary value: USD if available, else SOL */}
+              <span className={clsx(
+                "text-[11px] font-mono font-bold",
                 entryPnlBadge.isProfit ? "text-[#00ff88]"
                 : entryPnlBadge.isLoss ? "text-[#ff4444]"
-                : "text-[#888888]"
-              )}
-            >
-              {entryPnlBadge.pctStr}
-              {entryPnlBadge.usdStr && (
-                <span className="opacity-60 ml-0.5 hidden sm:inline">({entryPnlBadge.usdStr})</span>
-              )}
-            </span>
+                : "text-[#888]"
+              )}>
+                {entryPnlBadge.usdStr ?? entryPnlBadge.solStr}
+              </span>
+              {/* Secondary: SOL + % on desktop; % alone if no USD */}
+              <span className={clsx(
+                "text-[10px] font-mono hidden sm:inline",
+                entryPnlBadge.isProfit ? "text-[#00ff88]/50"
+                : entryPnlBadge.isLoss ? "text-[#ff4444]/50"
+                : "text-[#555]"
+              )}>
+                {entryPnlBadge.usdStr
+                  ? `${entryPnlBadge.solStr} (${entryPnlBadge.pctStr})`
+                  : `(${entryPnlBadge.pctStr})`}
+              </span>
+            </div>
           )}
           {/* Fullscreen toggle — desktop only (hidden on mobile) */}
           <button
