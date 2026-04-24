@@ -5,14 +5,34 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
 
+/** Returns true when running on a mobile / tablet device (UA sniff). */
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+}
+
 export function Header() {
   const pathname = usePathname();
-  const { publicKey } = useWallet();
+  const { publicKey, wallets } = useWallet();
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Show wallet-install banner on mobile when no wallet extension is detected
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    if (!isMobileDevice()) return;
+    const installed = wallets.some(
+      (w) =>
+        w.readyState === WalletReadyState.Installed ||
+        w.readyState === WalletReadyState.Loadable
+    );
+    setShowInstallBanner(!installed);
+  }, [wallets]);
 
   useEffect(() => {
     if (!publicKey) {
@@ -50,6 +70,7 @@ export function Header() {
           <BrandLogo markClassName="transition-transform duration-200 group-hover:scale-[1.04]" />
         </Link>
 
+        {/* Desktop nav */}
         <nav className="hidden items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] p-1 backdrop-blur-sm md:flex">
           {navLinks.map((link) => (
             <Link
@@ -95,8 +116,94 @@ export function Header() {
               fontWeight: 800,
             }}
           />
+
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="flex h-10 w-10 flex-col items-center justify-center gap-[5px] rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
+            aria-label="Toggle menu"
+          >
+            <span
+              className={clsx(
+                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
+                mobileMenuOpen && "translate-y-[7px] rotate-45"
+              )}
+            />
+            <span
+              className={clsx(
+                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
+                mobileMenuOpen && "opacity-0"
+              )}
+            />
+            <span
+              className={clsx(
+                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
+                mobileMenuOpen && "-translate-y-[7px] -rotate-45"
+              )}
+            />
+          </button>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 top-16 z-40 bg-black/50 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Menu panel */}
+          <div className="absolute inset-x-0 top-full z-50 border-b border-white/8 bg-[#07110f]/95 backdrop-blur-xl md:hidden">
+            <nav className="mx-auto max-w-[1440px] flex flex-col gap-1 px-4 py-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={clsx(
+                    "flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition-all",
+                    pathname === link.href
+                      ? "bg-white/[0.08] text-white border-l-2 border-[#00ff88]"
+                      : "text-white/60 hover:text-white hover:bg-white/[0.05]"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {/* Install guidance banner — shown when no wallet is detected on mobile */}
+              {showInstallBanner && (
+                <div className="mt-2 rounded-xl border border-[#ffcc44]/20 bg-[#ffcc44]/5 px-4 py-3">
+                  <p className="text-xs text-[#ffcc44]/90 font-medium mb-2">
+                    No Solana wallet detected
+                  </p>
+                  <p className="text-[11px] text-white/50 mb-3">
+                    Install Phantom or Solflare to connect your wallet.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <a
+                      href="https://phantom.app/download"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-[#9945ff] px-3 py-1.5 text-[11px] font-bold text-white"
+                    >
+                      Phantom ↗
+                    </a>
+                    <a
+                      href="https://solflare.com/download"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-[#FC7227] px-3 py-1.5 text-[11px] font-bold text-white"
+                    >
+                      Solflare ↗
+                    </a>
+                  </div>
+                </div>
+              )}
+            </nav>
+          </div>
+        </>
+      )}
     </header>
   );
 }

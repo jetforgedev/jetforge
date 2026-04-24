@@ -7,7 +7,7 @@ import { prefetchRaydiumPrices, getRaydiumPrice } from "../services/raydiumPrice
 // 60 s TTL: stale by at most one minute, acceptable for portfolio display.
 // Cache is evicted on TTL expiry; the trade indexer writes via a separate path
 // so no manual invalidation is needed for correctness.
-const PORTFOLIO_CACHE_TTL_MS = 60_000;
+const PORTFOLIO_CACHE_TTL_MS = 20_000;
 interface PortfolioCacheEntry { data: any; ts: number }
 const portfolioCache = new Map<string, PortfolioCacheEntry>();
 

@@ -52,6 +52,8 @@ export default function PortfolioPage({ params }: PageProps) {
   const { data: portfolioData, isLoading: portfolioLoading } = useQuery({
     queryKey: ["portfolio", wallet],
     queryFn: () => getPortfolio(wallet),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
 
   const { data: tokensData, isLoading: tokensLoading } = useQuery({
