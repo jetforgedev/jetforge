@@ -79,7 +79,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[#1a1a1a] flex justify-between items-center">
+      <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-[#1a1a1a] flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-white text-sm font-semibold">Recent Trades</span>
           {momentum && (
@@ -101,7 +101,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
 
       {/* Buy/Sell pressure bar */}
       {trades.length > 0 && (
-        <div className="px-4 py-2.5 border-b border-[#1a1a1a]">
+        <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-[#1a1a1a]">
           <div className="flex justify-between text-[10px] mb-1.5">
             <span className="text-[#00ff88] font-semibold">BUY {buyPct.toFixed(0)}%</span>
             <span className="font-semibold" style={{ color: pressure.color }}>
@@ -118,7 +118,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
 
       {/* Column headers */}
       {trades.length > 0 && (
-        <div className="grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
+        <div className="grid grid-cols-[1fr_60px_70px_70px_60px] px-3 py-1.5 sm:px-4 sm:py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
           <span>ACCOUNT</span>
           <span>TYPE</span>
           <span className="text-right">SOL</span>
@@ -128,9 +128,9 @@ export function TradesList({ mint, symbol }: TradesListProps) {
       )}
 
       {/* Trade rows */}
-      <div className="overflow-y-auto max-h-[400px]">
+      <div className="overflow-y-auto max-h-[300px] sm:max-h-[400px]">
         {trades.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-[#333]">
+          <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-[#333]">
             <div className="text-3xl mb-2">💸</div>
             <div className="text-sm">No trades yet</div>
             <div className="text-xs text-[#444] mt-1">Be the first to trade!</div>
@@ -146,7 +146,7 @@ export function TradesList({ mint, symbol }: TradesListProps) {
               <div
                 key={trade.id}
                 className={clsx(
-                  "grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2.5 border-b border-[#0a0a0a] text-xs",
+                  "grid grid-cols-[1fr_60px_70px_70px_60px] px-3 py-2 sm:px-4 sm:py-2.5 border-b border-[#0a0a0a] text-xs",
                   "hover:bg-[#0f0f0f] transition-colors animate-slide-in"
                 )}
               >

@@ -484,7 +484,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           <button
             onClick={() => { setTab("buy"); setInputAmount(""); }}
             className={clsx(
-              "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
+              "relative flex-1 rounded-2xl py-2.5 sm:py-3 text-sm font-semibold transition-all",
               tab === "buy"
                 ? "bg-[#00ff88]/10 text-[#00ff88] shadow-[inset_0_0_0_1px_rgba(0,255,136,0.35),0_0_22px_rgba(0,255,136,0.12)]"
                 : "text-white/40 hover:text-white border border-transparent"
@@ -495,7 +495,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           <button
             onClick={() => { setTab("sell"); setInputAmount(""); }}
             className={clsx(
-              "relative flex-1 rounded-2xl py-3 text-sm font-semibold transition-all",
+              "relative flex-1 rounded-2xl py-2.5 sm:py-3 text-sm font-semibold transition-all",
               tab === "sell"
                 ? "bg-[#ff4444]/10 text-[#ff7b88] shadow-[inset_0_0_0_1px_rgba(255,68,68,0.35),0_0_22px_rgba(255,68,68,0.12)]"
                 : "text-white/40 hover:text-white border border-transparent"
@@ -509,7 +509,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           onClick={toggleFastTrade}
           title={fastTradeEnabled ? "Fast Trade ON — click to disable" : "Enable Fast Trade (no wallet popup)"}
           className={clsx(
-            "flex items-center gap-1 rounded-2xl px-2.5 py-3 text-xs font-semibold transition-all border",
+            "flex items-center gap-1 rounded-2xl px-2.5 py-2.5 sm:py-3 text-xs font-semibold transition-all border",
             fastTradeEnabled
               ? "bg-[#ffaa00]/15 border-[#ffaa00]/40 text-[#ffaa00] shadow-[0_0_12px_rgba(255,170,0,0.2)]"
               : "border-white/10 text-white/30 hover:text-white/60 hover:border-white/20"
@@ -571,7 +571,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
         </div>
       )}
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-3 sm:space-y-4 p-3 sm:p-4">
         {/* Preset amounts */}
         {tab === "buy" && (
           <div className="flex gap-2">
@@ -646,7 +646,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           }
 
           return (
-            <div className="space-y-2 rounded-[20px] border border-white/8 bg-white/[0.04] p-3">
+            <div className="space-y-2 rounded-[20px] border border-white/8 bg-white/[0.04] p-2.5 sm:p-3">
               <div className="flex justify-between text-xs">
                 <span className="text-white/42">You receive</span>
                 <span className="text-white font-mono font-medium">
@@ -690,12 +690,12 @@ export function TradingPanel({ token }: TradingPanelProps) {
 
         {/* Price impact warnings */}
         {highImpact && (
-          <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
+          <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-2.5 sm:p-3 text-xs text-[#ff7b88]">
             🚨 Very high price impact ({calculation!.priceImpact.toFixed(1)}%). You may be sandwiched by bots. Split into smaller trades.
           </div>
         )}
         {mediumImpact && (
-          <div className="rounded-[20px] border border-[#ffcf5a30] bg-[#ffcf5a10] p-3 text-xs text-[#ffcf5a]">
+          <div className="rounded-[20px] border border-[#ffcf5a30] bg-[#ffcf5a10] p-2.5 sm:p-3 text-xs text-[#ffcf5a]">
             ⚠️ Price impact {calculation!.priceImpact.toFixed(1)}% — bots may front-run this trade.
           </div>
         )}
@@ -703,13 +703,13 @@ export function TradingPanel({ token }: TradingPanelProps) {
         {/* Insufficient balance warning */}
         {(fastTradeEnabled ? true : !!publicKey) && inputAmount && parseFloat(inputAmount) > 0 && (
           tab === "buy" && parseFloat(inputAmount) * 1.015 > effectiveSolBalance ? (
-            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
+            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-2.5 sm:p-3 text-xs text-[#ff7b88]">
               {effectiveSolBalance < 0.001
                 ? `${fastTradeEnabled ? "Fast trade wallet" : "Your wallet"} has no SOL.`
                 : `Insufficient SOL — need ~${(parseFloat(inputAmount) * 1.015).toFixed(3)} SOL, have ${effectiveSolBalance.toFixed(3)} SOL.`}
             </div>
           ) : tab === "sell" && parseTokenAmount(inputAmount).gt(effectiveTokenBalance) ? (
-            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-3 text-xs text-[#ff7b88]">
+            <div className="rounded-[20px] border border-[#ff444430] bg-[#ff444415] p-2.5 sm:p-3 text-xs text-[#ff7b88]">
               {effectiveTokenBalance.isZero()
                 ? `No ${token.symbol} in ${fastTradeEnabled ? "fast trade wallet" : "your wallet"}.`
                 : `Insufficient ${token.symbol} balance.`}
@@ -760,7 +760,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
           onClick={handleTrade}
           disabled={isLoading || (!fastTradeEnabled && !publicKey) || !inputAmount || parseFloat(inputAmount) <= 0 || token.isGraduated}
           className={clsx(
-            "w-full rounded-2xl py-3.5 text-sm font-bold transition-all",
+            "w-full rounded-2xl py-3 sm:py-3.5 text-sm font-bold transition-all",
             tab === "buy"
               ? "bg-[linear-gradient(90deg,#00ff88,#00e5ff)] text-[#03110d] shadow-[0_16px_38px_rgba(0,255,136,0.22)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
               : "bg-[linear-gradient(90deg,#ff5b6e,#ff8a5b)] text-white shadow-[0_16px_38px_rgba(255,91,110,0.18)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"

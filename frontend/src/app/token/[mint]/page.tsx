@@ -533,23 +533,23 @@ export default function TokenPage({ params }: PageProps) {
       </div>
 
       {/* Token header */}
-      <div className="glass-panel rounded-[24px] p-4 sm:rounded-[30px] sm:p-6">
+      <div className="glass-panel rounded-[24px] p-3 sm:rounded-[30px] sm:p-6">
         {/* ── Mobile layout (< sm) ── */}
         <div className="sm:hidden">
           {/* Row 1: image + name + alert */}
-          <div className="flex items-center gap-3">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[18px] bg-white/[0.06]">
+          <div className="flex items-center gap-2.5">
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[14px] bg-white/[0.06]">
               {resolveImageUrl(token.imageUrl) ? (
                 <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xl font-bold text-[#00ff88]">
+                <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#00ff88]">
                   {token.symbol.slice(0, 2)}
                 </div>
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-xl font-extrabold tracking-tight text-white">{token.name}</h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="truncate text-lg font-extrabold tracking-tight text-white">{token.name}</h1>
                 <span className="shrink-0 text-xs font-mono text-white/38">${token.symbol}</span>
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -581,22 +581,22 @@ export default function TokenPage({ params }: PageProps) {
             </div>
           </div>
           {/* Row 2: badges scrollable */}
-          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {token.isGraduated && (
-              <span className="shrink-0 px-2 py-1 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-[11px] font-medium">
+              <span className="shrink-0 px-2 py-0.5 bg-[#7c3aed20] border border-[#7c3aed40] rounded-full text-[#a78bfa] text-[10px] font-medium">
                 🎓 Graduated
               </span>
             )}
-            <span className="shrink-0 px-2 py-1 bg-[#00ff8810] border border-[#00ff8830] rounded-full text-[#00ff88] text-[11px]">
+            <span className="shrink-0 px-2 py-0.5 bg-[#00ff8810] border border-[#00ff8830] rounded-full text-[#00ff88] text-[10px]">
               🛡️ Anti-Rug
             </span>
             {isVerifiedCreator && (
-              <span className="shrink-0 px-2 py-1 bg-[#1d9bf015] border border-[#1d9bf030] rounded-full text-[#1d9bf0] text-[11px] font-medium">
+              <span className="shrink-0 px-2 py-0.5 bg-[#1d9bf015] border border-[#1d9bf030] rounded-full text-[#1d9bf0] text-[10px] font-medium">
                 ✓ Verified Creator
               </span>
             )}
             <span
-              className={`shrink-0 px-2 py-1 rounded-full text-[11px] font-medium border ${
+              className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                 devPct === 0 ? "bg-[#00ff8810] border-[#00ff8830] text-[#00ff88]"
                 : devPct < 5 ? "bg-[#88888810] border-[#88888830] text-[#888]"
                 : devPct < 15 ? "bg-[#ffaa0015] border-[#ffaa0030] text-[#ffaa00]"
@@ -608,7 +608,7 @@ export default function TokenPage({ params }: PageProps) {
           </div>
           {/* Row 3: description */}
           {token.description && (
-            <p className="mt-2.5 line-clamp-2 text-sm text-white/56">{token.description}</p>
+            <p className="mt-1.5 line-clamp-2 text-xs text-white/52">{token.description}</p>
           )}
         </div>
 
@@ -756,7 +756,7 @@ export default function TokenPage({ params }: PageProps) {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="shrink-0 flex items-center gap-2 glass-panel rounded-2xl px-3 py-2"
+            className="shrink-0 flex items-center gap-2 glass-panel rounded-2xl px-2.5 py-1.5 sm:px-3 sm:py-2"
           >
             <span className="text-[10px] uppercase tracking-widest text-white/30">{stat.label}</span>
             <span className={`text-[12px] font-mono font-bold ${stat.accent ? "text-[#00ff88]" : "text-white"}`}>
@@ -799,7 +799,7 @@ export default function TokenPage({ params }: PageProps) {
           {/* Token details */}
           <div className="glass-panel rounded-[28px] p-3 sm:p-4">
             <div className="text-white text-sm font-semibold mb-2 sm:mb-3">Token Details</div>
-            <div className="space-y-2.5 text-xs">
+            <div className="space-y-2 text-xs">
               {[
                 { label: "Mint Address", value: truncateAddress(mint, 8), copyable: true, full: mint },
                 { label: "Total Supply", value: "1,000,000,000" },
@@ -824,7 +824,7 @@ export default function TokenPage({ params }: PageProps) {
               ))}
 
               {/* Creator activity — key transparency metric */}
-              <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
+              <div className="pt-1.5 mt-1.5 border-t border-[#1a1a1a]">
                 <div className="flex justify-between items-center">
                   <CreatorActivityLabel />
                   <span className={`font-mono font-semibold ${devHoldingColor}`}>
@@ -849,8 +849,8 @@ export default function TokenPage({ params }: PageProps) {
               </div>
 
               {/* Buyback & Burn vault */}
-              <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
-                <div className="flex justify-between items-center mb-1">
+              <div className="pt-1.5 mt-1.5 border-t border-[#1a1a1a]">
+                <div className="flex justify-between items-center mb-0.5">
                   <span className="text-[#555]">🔥 Buyback Vault</span>
                   <span className="font-mono text-xs text-[#888]">
                     {buybackSol.toFixed(4)} / {BUYBACK_THRESHOLD_SOL} SOL
@@ -862,14 +862,14 @@ export default function TokenPage({ params }: PageProps) {
                     style={{ width: `${Math.min((buybackSol / BUYBACK_THRESHOLD_SOL) * 100, 100)}%` }}
                   />
                 </div>
-                <div className="text-[#444] text-[10px] mt-1">
+                <div className="text-[#444] text-[10px] mt-0.5">
                   Burns tokens automatically at {BUYBACK_THRESHOLD_SOL} SOL threshold
                 </div>
               </div>
 
               {/* Creator earnings vault */}
-              <div className="pt-2 mt-2 border-t border-[#1a1a1a]">
-                <div className="flex items-center justify-between mb-1">
+              <div className="pt-1.5 mt-1.5 border-t border-[#1a1a1a]">
+                <div className="flex items-center justify-between mb-0.5">
                   <span className="text-[#555]">💰 Creator Earnings</span>
                   <Link
                     href={`/creators/${token.creator}`}
@@ -906,7 +906,7 @@ export default function TokenPage({ params }: PageProps) {
                   <div className="mt-1.5 text-[10px] text-[#888] break-all">{withdrawMsg}</div>
                 )}
 
-                <div className="text-[#333] text-[10px] mt-1">
+                <div className="text-[#333] text-[10px] mt-0.5">
                   40% of all trading fees · withdrawable anytime
                 </div>
               </div>

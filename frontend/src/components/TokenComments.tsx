@@ -113,13 +113,13 @@ export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenComm
 
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+      <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-[#1a1a1a] flex items-center justify-between">
         <span className="text-white text-sm font-semibold">💬 Comments</span>
         <span className="text-[#555] text-xs">{comments.length}</span>
       </div>
 
       {/* Comments list */}
-      <div className="overflow-y-auto max-h-[320px] p-3 space-y-2">
+      <div className="overflow-y-auto max-h-[240px] sm:max-h-[320px] p-3 space-y-2">
         {isLoading ? (
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => (
@@ -127,7 +127,7 @@ export function TokenComments({ mint, progress = 0, totalTrades = 0 }: TokenComm
             ))}
           </div>
         ) : displayItems.length === 0 ? (
-          <div className="flex flex-col items-center py-8 text-[#333]">
+          <div className="flex flex-col items-center py-5 sm:py-8 text-[#333]">
             <div className="text-3xl mb-2">💬</div>
             <div className="text-sm">No comments yet — be the first!</div>
           </div>
