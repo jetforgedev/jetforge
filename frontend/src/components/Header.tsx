@@ -15,15 +15,127 @@ function isMobileDevice(): boolean {
   return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 }
 
+// ── No-wallet bottom sheet ────────────────────────────────────────────────────
+
+const WALLETS = [
+  {
+    name: "Phantom",
+    tagline: "Most popular Solana wallet",
+    icon: "👻",
+    color: "#9945ff",
+    bg: "rgba(153,69,255,0.12)",
+    border: "rgba(153,69,255,0.28)",
+    href: "https://phantom.app/download",
+  },
+  {
+    name: "Solflare",
+    tagline: "Feature-rich Solana wallet",
+    icon: "☀️",
+    color: "#FC7227",
+    bg: "rgba(252,114,39,0.10)",
+    border: "rgba(252,114,39,0.25)",
+    href: "https://solflare.com/download",
+  },
+] as const;
+
+function NoWalletSheet({ onClose }: { onClose: () => void }) {
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Bottom sheet */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Install a Solana wallet"
+        className="fixed inset-x-0 bottom-0 z-[70] rounded-t-[28px] border-t border-white/10 bg-[#0a1510] px-5 pb-safe-bottom pb-8 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]"
+      >
+        {/* Drag handle */}
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
+
+        {/* Icon + heading */}
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">
+          🔌
+        </div>
+
+        <h3 className="mb-1.5 text-[17px] font-bold tracking-tight text-white">
+          No Solana Wallet Detected
+        </h3>
+        <p className="mb-5 text-sm leading-6 text-white/52">
+          Install Phantom or Solflare to connect your wallet and start trading.
+          After installing, reopen this page inside the wallet's built-in browser.
+        </p>
+
+        {/* Wallet options */}
+        <div className="space-y-2.5 mb-5">
+          {WALLETS.map((w) => (
+            <a
+              key={w.name}
+              href={w.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-70"
+              style={{ background: w.bg, borderColor: w.border }}
+            >
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
+                style={{ background: w.bg }}
+              >
+                {w.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-white">{w.name}</div>
+                <div className="text-xs text-white/45">{w.tagline}</div>
+              </div>
+              <span className="shrink-0 text-xs font-bold" style={{ color: w.color }}>
+                Install ↗
+              </span>
+            </a>
+          ))}
+        </div>
+
+        <p className="mb-3 text-center text-[11px] leading-5 text-white/30">
+          Already have a wallet?{" "}
+          <span className="text-white/50">
+            Open this page inside its browser tab.
+          </span>
+        </p>
+
+        <button
+          onClick={onClose}
+          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-sm font-semibold text-white/55 transition-colors hover:bg-white/[0.07] active:bg-white/[0.10]"
+        >
+          Dismiss
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
 export function Header() {
   const pathname = usePathname();
   const { publicKey, wallets } = useWallet();
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
 
-  // Show wallet-install banner on mobile when no wallet extension is detected
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  // True when running on a mobile/tablet with no supported wallet injected.
+  const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
     if (!isMobileDevice()) return;
     const installed = wallets.some(
@@ -31,7 +143,7 @@ export function Header() {
         w.readyState === WalletReadyState.Installed ||
         w.readyState === WalletReadyState.Loadable
     );
-    setShowInstallBanner(!installed);
+    setNoWalletOnMobile(!installed);
   }, [wallets]);
 
   useEffect(() => {
@@ -61,6 +173,24 @@ export function Header() {
     { href: "/creators", label: "Creators" },
     ...(publicKey ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }] : []),
   ];
+
+  // The connect entry point on mobile when no wallet is installed.
+  // Renders the same visual as WalletMultiButton but opens our install sheet.
+  const noWalletButton = (
+    <button
+      onClick={() => setShowNoWalletSheet(true)}
+      className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
+      style={{
+        height: "40px",
+        padding: "0 14px",
+        background: "linear-gradient(90deg,#00ff88,#00e5ff)",
+        minWidth: "80px",
+      }}
+      aria-label="Connect wallet"
+    >
+      Connect
+    </button>
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07110f]/70 backdrop-blur-xl">
@@ -105,17 +235,20 @@ export function Header() {
             Launch Token
           </Link>
 
-          <WalletMultiButton
-            style={{
-              height: "40px",
-              fontSize: "13px",
-              padding: "0 14px",
-              borderRadius: "14px",
-              background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-              color: "#03110d",
-              fontWeight: 800,
-            }}
-          />
+          {/* Connect — swap for install sheet on mobile when no wallet detected */}
+          {noWalletOnMobile && !publicKey ? noWalletButton : (
+            <WalletMultiButton
+              style={{
+                height: "40px",
+                fontSize: "13px",
+                padding: "0 14px",
+                borderRadius: "14px",
+                background: "linear-gradient(90deg,#00ff88,#00e5ff)",
+                color: "#03110d",
+                fontWeight: 800,
+              }}
+            />
+          )}
 
           {/* Hamburger — mobile only */}
           <button
@@ -171,38 +304,40 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              {/* Install guidance banner — shown when no wallet is detected on mobile */}
-              {showInstallBanner && (
+
+              {/* No-wallet guidance in the hamburger menu */}
+              {noWalletOnMobile && !publicKey && (
                 <div className="mt-2 rounded-xl border border-[#ffcc44]/20 bg-[#ffcc44]/5 px-4 py-3">
-                  <p className="text-xs text-[#ffcc44]/90 font-medium mb-2">
+                  <p className="text-xs text-[#ffcc44]/90 font-medium mb-1">
                     No Solana wallet detected
                   </p>
                   <p className="text-[11px] text-white/50 mb-3">
-                    Install Phantom or Solflare to connect your wallet.
+                    Install Phantom or Solflare to connect.
                   </p>
                   <div className="flex gap-2 flex-wrap">
-                    <a
-                      href="https://phantom.app/download"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg bg-[#9945ff] px-3 py-1.5 text-[11px] font-bold text-white"
-                    >
-                      Phantom ↗
-                    </a>
-                    <a
-                      href="https://solflare.com/download"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-lg bg-[#FC7227] px-3 py-1.5 text-[11px] font-bold text-white"
-                    >
-                      Solflare ↗
-                    </a>
+                    {WALLETS.map((w) => (
+                      <a
+                        key={w.name}
+                        href={w.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
+                        style={{ background: w.color }}
+                      >
+                        {w.name} ↗
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
             </nav>
           </div>
         </>
+      )}
+
+      {/* No-wallet install sheet — rendered at root level so it covers the full screen */}
+      {showNoWalletSheet && (
+        <NoWalletSheet onClose={() => setShowNoWalletSheet(false)} />
       )}
     </header>
   );

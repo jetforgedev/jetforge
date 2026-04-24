@@ -15,6 +15,7 @@
     "@solana/wallet-adapter-phantom": "^0.9.24",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/wallet-adapter-solflare": "^0.6.33",
     "@solana/web3.js": "^1.91.0",
     "@tanstack/react-query": "^5.28.0",
     "bn.js": "^5.2.1",
