@@ -605,9 +605,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       const prev = liveCandle.current;
       let updated: typeof prev;
       if (prev && prev.time === candleTime) {
+        // Same bucket — extend the existing candle
         updated = { time: candleTime, open: prev.open, high: Math.max(prev.high, val), low: Math.min(prev.low, val), close: val };
       } else {
-        updated = { time: candleTime, open: val, high: val, low: val, close: val };
+        // New bucket — open at the previous candle's close so the candle has a
+        // visible body, matching the backend OHLCV "prevClose-as-open" convention.
+        // Falls back to val (launch or first-ever live candle) when prev is null.
+        const open = prev ? prev.close : val;
+        updated = { time: candleTime, open, high: Math.max(open, val), low: Math.min(open, val), close: val };
       }
       liveCandle.current = updated;
 

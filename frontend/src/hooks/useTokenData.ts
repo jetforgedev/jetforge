@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { getToken, getTokens, TokenData } from "@/lib/api";
 import { useSocket } from "@/hooks/useLiveFeed";
 
@@ -9,8 +9,6 @@ export function useToken(mint: string) {
   const queryClient = useQueryClient();
   const socket = useSocket();
 
-  // Throttle reference: don't hammer holders/dev-holdings on every trade
-  const lastHoldersInvalidate = useRef(0);
 
   const query = useQuery({
     queryKey: ["token", mint],
@@ -51,8 +49,7 @@ export function useToken(mint: string) {
       });
     };
 
-    // ── new_trade: patch the trade counter + throttled invalidation of
-    //    holders and dev-holdings so those sections stay current ──────────────
+    // ── new_trade: patch the trade counter + invalidate holders/dev-holdings ──
     const onNewTrade = (data: any) => {
       if (data.mint !== mint) return;
 
@@ -63,17 +60,11 @@ export function useToken(mint: string) {
         return { ...old, trades: (old.trades ?? 0) + 1 };
       });
 
-      // Throttle holders + dev-holdings refetch to at most once every 8 s.
-      // On the first trade after page load (or after the last refetch) we fire
-      // immediately; subsequent trades within the window are coalesced.
-      const now = Date.now();
-      if (now - lastHoldersInvalidate.current > 2_000) {
-        lastHoldersInvalidate.current = now;
-        // Invalidate by prefix so all dev-holdings keys for this mint match
-        // regardless of which creator address was passed.
-        queryClient.invalidateQueries({ queryKey: ["holders", mint] });
-        queryClient.invalidateQueries({ queryKey: ["dev-holdings", mint] });
-      }
+      // Invalidate on every trade — React Query deduplicates concurrent
+      // in-flight requests internally so this is safe to call unconditionally.
+      // Prefix match covers all dev-holdings keys regardless of creator address.
+      queryClient.invalidateQueries({ queryKey: ["holders", mint] });
+      queryClient.invalidateQueries({ queryKey: ["dev-holdings", mint] });
     };
 
     // ── token_graduated: mark graduated + full refetch ───────────────────────
