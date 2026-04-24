@@ -623,10 +623,13 @@ async function seedHolders(): Promise<void> {
       `;
 
       for (const row of rows) {
+        // $queryRaw returns PostgreSQL bigint as Prisma Decimal — must convert
+        // to JS BigInt explicitly before passing to the Holder upsert.
+        const balance = BigInt(row.balance.toString());
         await (prisma as any).holder.upsert({
           where:  { mint_wallet: { mint, wallet: row.wallet } },
-          update: { balance: row.balance },
-          create: { mint, wallet: row.wallet, balance: row.balance },
+          update: { balance },
+          create: { mint, wallet: row.wallet, balance },
         });
       }
 
