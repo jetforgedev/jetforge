@@ -1251,19 +1251,27 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
 
         {/* ── On-chart PnL tag — exchange-style pill anchored to Avg Entry level ── */}
-        {/* Uses priceToCoordinate() so it tracks the line on zoom / scroll / pan.   */}
+        {/* Profit → tag sits ABOVE the line; Loss → tag sits BELOW the line.        */}
+        {/* This mirrors exchange convention and keeps the tag off the line itself.   */}
         {entryLineY !== null && entryPnlBadge && (
           <div
             className="absolute pointer-events-none z-20"
-            style={{ top: Math.max(2, entryLineY - 10), left: 8 }}
+            style={{
+              // Profit/neutral: place above line (tag height ~20px + 5px gap = 25px up)
+              // Loss: place below line (5px gap below the 1px line)
+              top: entryPnlBadge.isLoss
+                ? entryLineY + 5
+                : Math.max(2, entryLineY - 25),
+              left: 8,
+            }}
           >
             <div className={clsx(
-              "flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold opacity-80",
+              "flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold opacity-85",
               entryPnlBadge.isProfit
-                ? "bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20"
+                ? "bg-[#00ff88]/12 text-[#00ff88] border border-[#00ff88]/25"
                 : entryPnlBadge.isLoss
-                ? "bg-[#ff4444]/10 text-[#ff4444] border border-[#ff4444]/20"
-                : "bg-white/[0.04] text-[#888] border border-white/8"
+                ? "bg-[#ff4444]/12 text-[#ff4444] border border-[#ff4444]/25"
+                : "bg-white/[0.05] text-[#888] border border-white/10"
             )}>
               {/* "PnL" prefix — desktop only; mobile shows value only to save space */}
               <span className="hidden sm:inline text-[8px] opacity-60 uppercase tracking-wider mr-0.5">PnL</span>
