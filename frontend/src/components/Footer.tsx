@@ -11,79 +11,45 @@ const communityLinks = [
 
 export function Footer() {
   return (
-    <footer className="mt-6 border-t border-white/6 bg-[#050b09] sm:mt-16">
-      <div className="mx-auto max-w-[1560px] px-3 py-4 sm:px-5 sm:py-14 lg:px-6">
+    <footer className="mt-4 border-t border-white/6 bg-[#050b09] sm:mt-16">
+      <div className="mx-auto max-w-[1560px] px-3 py-3 sm:px-5 sm:py-14 lg:px-6">
 
-        {/* ── Mobile footer ── */}
-        <div className="sm:hidden">
-          <div className="rounded-[20px] border border-white/8 bg-[linear-gradient(180deg,rgba(9,20,17,0.96),rgba(6,12,10,0.96))] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
-            {/* Brand + stat tiles row */}
-            <div className="flex items-center justify-between gap-2">
-              <BrandLogo
-                markClassName="h-8 w-8 rounded-[12px]"
-                titleClassName="text-[15px]"
-                subtitleClassName="text-[8px] tracking-[0.14em]"
-              />
-              <div className="flex gap-1.5">
-                {[["Model","Fair launch"],["Curve","Bonding"],["Network","Solana"]].map(([label, val]) => (
-                  <div key={label} className="rounded-[10px] border border-white/8 bg-white/[0.04] px-2 py-1.5">
-                    <div className="text-[7px] uppercase tracking-[0.12em] text-white/32">{label}</div>
-                    <div className="mt-0.5 text-[10px] font-semibold text-white">{val}</div>
-                  </div>
-                ))}
+        {/* ── Mobile footer — minimal strip ── */}
+        <div className="sm:hidden py-3">
+          {/* Brand + community row */}
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <BrandLogo
+              markClassName="h-7 w-7 rounded-[10px]"
+              titleClassName="text-[13px]"
+              subtitleClassName="text-[7px] tracking-[0.12em]"
+            />
+            <div className="flex items-center gap-1.5">
+              {communityLinks.map(([href, label, aria]) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-6 min-w-[30px] items-center justify-center rounded-lg border border-white/8 bg-white/[0.04] px-1.5 text-[10px] font-semibold text-white/45"
+                  aria-label={aria}
+                >
+                  {label}
+                </a>
+              ))}
+              <div className="rounded-full border border-[#9945ff]/18 bg-[#9945ff]/8 px-2 py-0.5 text-[8px] font-semibold text-[#c084fc]">
+                Solana
               </div>
             </div>
-
-            {/* Nav links */}
-            <div className="mt-3 grid grid-cols-2 gap-x-4 border-t border-white/8 pt-3">
-              <div>
-                <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/50">Platform</div>
-                {[["/","Home"],["/launch","Launch"],["/leaderboard","Leaderboard"],["/creators","Creators"]].map(([href, label]) => (
-                  <Link key={href} href={href} className="block py-0.5 text-[13px] text-white/75 transition-colors hover:text-[#00ff88]">{label}</Link>
-                ))}
-              </div>
-              <div>
-                <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/50">Resources</div>
-                {[["/faq","FAQ"],["/support","Support"],["/terms","Terms"],["/disclaimer","Disclaimer"]].map(([href, label]) => (
-                  <Link key={href} href={href} className="block py-0.5 text-[13px] text-white/75 transition-colors hover:text-[#00ff88]">{label}</Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Community + Built on Solana */}
-            <div className="mt-3 flex items-center justify-between border-t border-white/8 pt-3">
-              <div className="flex items-center gap-1.5">
-                {communityLinks.map(([href, label, aria]) => (
-                  <a
-                    key={href}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-7 min-w-[34px] items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] px-2 text-[10px] font-semibold text-white/55 transition-all hover:text-white"
-                    aria-label={aria}
-                  >
-                    {label}
-                  </a>
-                ))}
-              </div>
-              <div className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/10 px-2.5 py-1 text-[9px] font-semibold text-[#c084fc]">
-                Built on Solana
-              </div>
-            </div>
-
-            {/* Risk warning */}
-            <div className="mt-2.5 rounded-[14px] border border-[#ff5b6e]/16 bg-[#ff5b6e]/7 px-2.5 py-2">
-              <p className="text-center text-[9px] leading-4 text-[#ffc5cd]">
-                <strong>Risk Warning:</strong> Volatile and experimental.{" "}
-                <Link href="/disclaimer" className="font-semibold underline decoration-[#ff5b6e]/45 underline-offset-2 hover:text-white">
-                  Read disclaimer
-                </Link>
-              </p>
-            </div>
-
-            <div className="mt-2 text-center text-[9px] text-white/25">
-              Copyright {YEAR} JetForge. All rights reserved.
-            </div>
+          </div>
+          {/* Risk warning — 1 line */}
+          <p className="text-center text-[9px] leading-4 text-[#ffc5cd]/75 mb-2">
+            <strong>Risk Warning:</strong> Volatile and experimental.{" "}
+            <Link href="/disclaimer" className="underline underline-offset-2 opacity-80">Disclaimer</Link>
+            {" · "}
+            <Link href="/terms" className="underline underline-offset-2 opacity-60">Terms</Link>
+          </p>
+          <div className="text-center text-[9px] text-white/18">
+            © {YEAR} JetForge
           </div>
         </div>
 

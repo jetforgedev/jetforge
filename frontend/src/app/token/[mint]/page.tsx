@@ -100,7 +100,7 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
 
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+      <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-[#1a1a1a] flex items-center justify-between">
         <div className="text-white text-sm font-semibold">Top Holders</div>
         <div className="text-[#555] text-xs">Live · devnet</div>
       </div>
@@ -130,7 +130,7 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
                            "bg-[#333]";
 
             return (
-              <div key={h.wallet} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#0f0f0f] transition-colors">
+              <div key={h.wallet} className="flex items-center gap-3 px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-[#0f0f0f] transition-colors">
                 {/* Rank */}
                 <div className="text-[#444] text-xs font-mono w-4 shrink-0 text-right">
                   {i + 1}
@@ -316,7 +316,7 @@ function SocialProofStrip({ mint, trades, holders }: { mint: string; trades: num
   const { liveTradeCount: recentCount } = useLiveTrades(mint);
 
   return (
-    <div className="flex items-center gap-4 px-4 py-2.5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl text-xs overflow-x-auto">
+    <div className="flex items-center gap-4 px-3 py-2 sm:px-4 sm:py-2.5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl text-xs overflow-x-auto">
       {recentCount > 0 && (
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="inline-block w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
@@ -522,7 +522,7 @@ export default function TokenPage({ params }: PageProps) {
                    "text-[#ff4444]";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-[#555]">
         <Link href="/" className="hover:text-[#888] transition-colors">
@@ -770,7 +770,7 @@ export default function TokenPage({ params }: PageProps) {
       <SocialProofStrip mint={mint} trades={token.trades} holders={token.holders} />
 
       {/* Main content grid — desktop: chart fills viewport height, right panel is sticky sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-3 lg:gap-4 lg:items-start">
         {/* Chart — mobile: order 1, desktop: col 1 */}
         <div className="order-1 min-w-0">
           <PriceChart
@@ -788,12 +788,12 @@ export default function TokenPage({ params }: PageProps) {
             two-column layout never collapses) but hide it visually.
             visibility:hidden keeps the 340 px column alive; the chart's
             fixed inset-0 overlay sits on top of it anyway. */}
-        <div className={`space-y-4 order-2 lg:sticky lg:top-24${isChartFullscreen ? " invisible pointer-events-none" : ""}`}>
+        <div className={`space-y-3 lg:space-y-4 order-2 lg:sticky lg:top-24${isChartFullscreen ? " invisible pointer-events-none" : ""}`}>
           <TradingPanel token={token} />
 
           {/* Token details */}
-          <div className="glass-panel rounded-[28px] p-4">
-            <div className="text-white text-sm font-semibold mb-3">Token Details</div>
+          <div className="glass-panel rounded-[28px] p-3 sm:p-4">
+            <div className="text-white text-sm font-semibold mb-2 sm:mb-3">Token Details</div>
             <div className="space-y-2.5 text-xs">
               {[
                 { label: "Mint Address", value: truncateAddress(mint, 8), copyable: true, full: mint },

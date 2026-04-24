@@ -84,26 +84,27 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
       : raydiumSwapUrl;
 
     return (
-      <div className="rounded-[28px] border border-[#8b5cf6]/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.16),rgba(255,255,255,0.03))] p-5 shadow-[0_24px_50px_rgba(0,0,0,0.2)]">
-        <div className="mb-4 flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#8b5cf6]/18 text-3xl shadow-[0_0_28px_rgba(139,92,246,0.16)]">
+      <div className="rounded-[24px] sm:rounded-[28px] border border-[#8b5cf6]/25 bg-[linear-gradient(135deg,rgba(139,92,246,0.16),rgba(255,255,255,0.03))] p-3 sm:p-5 shadow-[0_24px_50px_rgba(0,0,0,0.2)]">
+        <div className="mb-3 sm:mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-[#8b5cf6]/18 text-xl sm:text-3xl shadow-[0_0_28px_rgba(139,92,246,0.16)]">
             🎓
           </div>
           <div>
-            <div className="text-sm font-semibold uppercase tracking-[0.22em] text-[#c4b5fd]">
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-[#c4b5fd]">
               Graduated to DEX
             </div>
-            <div className="mt-1 text-sm leading-6 text-white/58">
-              This token completed its bonding curve and is now trading on a decentralized exchange.
+            <div className="mt-0.5 text-xs sm:text-sm leading-5 sm:leading-6 text-white/58">
+              <span className="sm:hidden">Now trading on a DEX.</span>
+              <span className="hidden sm:inline">This token completed its bonding curve and is now trading on a decentralized exchange.</span>
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
           <a
             href={raydiumSwapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-[#8b5cf6]/35 bg-[#8b5cf6]/16 py-3 text-sm font-semibold text-[#ddd6fe] transition-colors hover:bg-[#8b5cf6]/24"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl sm:rounded-2xl border border-[#8b5cf6]/35 bg-[#8b5cf6]/16 py-2.5 sm:py-3 text-sm font-semibold text-[#ddd6fe] transition-colors hover:bg-[#8b5cf6]/24"
           >
             Trade on Raydium ↗
           </a>
@@ -112,7 +113,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
               href={raydiumPoolUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-white/72 transition-colors hover:bg-white/[0.08]"
+              className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2.5 sm:py-3 text-sm font-semibold text-white/72 transition-colors hover:bg-white/[0.08]"
             >
               Pool ↗
             </a>
@@ -125,32 +126,31 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
   return (
     <div
       className={clsx(
-        "relative rounded-[28px] border bg-white/[0.04] p-4 sm:p-5",
+        "relative rounded-[24px] sm:rounded-[28px] border bg-white/[0.04] p-3 sm:p-5",
         isFinalPhase
           ? "animate-glow-pulse border-[#ff6b6b]/40 shadow-[0_0_40px_rgba(255,107,107,0.12)]"
           : "border-white/10 shadow-[0_24px_50px_rgba(0,0,0,0.18)]"
       )}
     >
       <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_68%)]" />
-      {/* Shimmer lives in its own overflow-hidden so tooltip above is never clipped */}
       {isFinalPhase && (
-        <div className="absolute inset-0 overflow-hidden rounded-[28px] pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden rounded-[24px] sm:rounded-[28px] pointer-events-none">
           <div className="absolute inset-y-0 left-[-35%] w-1/3 animate-shimmer bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
         </div>
       )}
 
       {/* Header */}
-      <div className="relative mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#00ff88]/10 text-lg">
+      <div className="relative mb-3 sm:mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-[#00ff88]/10 text-sm sm:text-lg">
             {isFinalPhase ? "🚀" : "📈"}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center text-sm font-semibold text-white">
               Bonding Curve Progress
               <InfoTooltip text="Buys push the bonding curve upward. When the target is reached, liquidity is deployed to a DEX and trading continues there." />
             </div>
-            <div className="text-xs leading-5 text-white/42">
+            <div className="text-xs leading-4 text-white/42 truncate">
               {isFinalPhase
                 ? "Final push — every buy brings this closer to the DEX!"
                 : "Liquidity building toward DEX graduation"}
@@ -159,69 +159,74 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
         </div>
 
         {/* Phase badge + % */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <span
-            className="rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+            className="rounded-full border px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] sm:tracking-[0.16em]"
             style={{ color: phase.color, background: phase.bg, borderColor: phase.border }}
           >
             {phase.label}
           </span>
-          <span className="text-lg font-mono font-bold" style={{ color: phase.color }}>
+          <span className="text-base sm:text-lg font-mono font-bold" style={{ color: phase.color }}>
             {progress.toFixed(1)}%
           </span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="relative mb-4 overflow-hidden rounded-[22px] border border-white/8 bg-[#081713] p-3 sm:p-4">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+      <div className="relative mb-3 sm:mb-4 overflow-hidden rounded-[18px] sm:rounded-[22px] border border-white/8 bg-[#081713] p-2.5 sm:p-4">
+        <div className="mb-1.5 sm:mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
           <span>Curve Fill</span>
           <span>{Math.max(0, 100 - progress).toFixed(1)}% remaining</span>
         </div>
-        <div className="h-4 overflow-hidden rounded-full bg-white/[0.06]">
+        <div className="h-3 sm:h-4 overflow-hidden rounded-full bg-white/[0.06]">
           <div
             className={clsx("progress-bar-fill h-full rounded-full transition-all duration-700", isFinalPhase && "near-grad")}
             style={{ width: `${progress}%` }}
           />
         </div>
         {nextMilestone && (
-          <div className="mt-2 inline-block text-[10px] font-mono px-1.5 py-0.5 rounded"
+          <div className="mt-1.5 sm:mt-2 inline-block text-[10px] font-mono px-1.5 py-0.5 rounded"
                style={{ color: phase.color, background: phase.color + "18" }}>
             {nextMilestone}
           </div>
         )}
       </div>
 
-      {/* Final phase callout */}
+      {/* Final phase callout — compact on mobile */}
       {isFinalPhase && (
-        <div className="mb-4 rounded-2xl border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-center">
+        <div className="mb-3 sm:mb-4 rounded-xl sm:rounded-2xl border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-3 py-2 sm:px-4 sm:py-3 text-center">
           <div className="text-sm font-bold text-[#ff9090]">🚀 Final push to the DEX!</div>
-          <div className="text-xs text-white/50 mt-0.5">
+          <div className="text-xs text-white/50 mt-0.5 hidden sm:block">
             This token is about to graduate — buy now before it moves to the DEX.
           </div>
         </div>
       )}
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-          <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/32">Raised</div>
-          <div className="font-mono text-sm font-semibold text-white">{solRaised.toFixed(3)} SOL</div>
+      {/* Stats grid — 3 cols on all sizes; compact on mobile */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+        <div className="rounded-xl sm:rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-3">
+          <div className="mb-0.5 sm:mb-1 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-white/32">Raised</div>
+          <div className="font-mono text-xs sm:text-sm font-semibold text-white leading-snug">
+            {solRaised.toFixed(2)}<span className="text-[#555] text-[9px] sm:text-[10px]"> SOL</span>
+          </div>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-          <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/32">Target</div>
-          <div className="font-mono text-sm font-semibold text-white">{solTarget.toFixed(3)} SOL</div>
+        <div className="rounded-xl sm:rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-3">
+          <div className="mb-0.5 sm:mb-1 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-white/32">Target</div>
+          <div className="font-mono text-xs sm:text-sm font-semibold text-white leading-snug">
+            {solTarget.toFixed(0)}<span className="text-[#555] text-[9px] sm:text-[10px]"> SOL</span>
+          </div>
         </div>
-        <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
-          <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/32">Status</div>
-          <div className="text-sm font-semibold" style={{ color: phase.color }}>
+        <div className="rounded-xl sm:rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-3">
+          <div className="mb-0.5 sm:mb-1 text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-white/32">Status</div>
+          <div className="text-xs sm:text-sm font-semibold leading-snug" style={{ color: phase.color }}>
             {phase.label}
           </div>
         </div>
       </div>
 
-      <div className="mt-4 border-t border-white/[0.08] pt-4 text-xs leading-6 text-white/42">
-        When this curve reaches {solTarget.toFixed(3)} SOL, liquidity is automatically deployed to a DEX and trading continues there.
+      <div className="mt-3 sm:mt-4 border-t border-white/[0.08] pt-2.5 sm:pt-4 text-xs leading-5 sm:leading-6 text-white/42">
+        <span className="sm:hidden">Graduates at {solTarget.toFixed(0)} SOL raised.</span>
+        <span className="hidden sm:inline">When this curve reaches {solTarget.toFixed(3)} SOL, liquidity is automatically deployed to a DEX and trading continues there.</span>
       </div>
     </div>
   );
