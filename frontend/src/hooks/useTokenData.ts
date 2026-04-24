@@ -43,6 +43,12 @@ export function useToken(mint: string) {
     // Uses a named function so cleanup only removes this component's listener.
     const onPriceUpdate = (data: any) => {
       if (data.mint !== mint) return;
+      // Cancel any in-flight REST poll before patching.  The 5-second polling
+      // cycle can arrive with stale DB data if the backend broadcasts the socket
+      // event before the DB write commits, causing the bonding-curve bar and
+      // market cap to momentarily revert.  Cancelling discards that stale
+      // response; the next scheduled poll (5 s later) will have fresh data.
+      queryClient.cancelQueries({ queryKey: ["token", mint] });
       queryClient.setQueryData<TokenData>(["token", mint], (old) => {
         if (!old) return old;
         return {

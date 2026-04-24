@@ -65,10 +65,10 @@ function TokenSyncing({ mint }: { mint: string }) {
 const TOTAL_SUPPLY = 1_000_000_000; // 1B tokens (UI display, no decimals)
 
 function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["holders", mint],
     queryFn: () => getTopHolders(mint),
-    refetchInterval: 30_000,
+    refetchInterval: 10_000, // Poll every 10 s in addition to on-trade invalidation
     staleTime: 0, // Always refetch on invalidation — no stale grace period
     retry: 2,
   });
@@ -102,7 +102,12 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
       <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-[#1a1a1a] flex items-center justify-between">
         <div className="text-white text-sm font-semibold">Top Holders</div>
-        <div className="text-[#555] text-xs">Live · devnet</div>
+        <div className="flex items-center gap-1.5 text-[#555] text-xs">
+          {isFetching && !isLoading && (
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+          )}
+          <span>Live</span>
+        </div>
       </div>
 
       {isLoading ? (

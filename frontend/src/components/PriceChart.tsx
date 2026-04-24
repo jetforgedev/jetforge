@@ -87,6 +87,10 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   const liveCandle = useRef<{ time: number; open: number; high: number; low: number; close: number } | null>(null);
   // Last HA candle in display units — needed to compute live HA updates correctly (P1-1)
   const lastHaCandle = useRef<OHLC | null>(null);
+  // Track whether OHLCV has been loaded for the first time so subsequent
+  // refreshes (triggered by new trades) don't call fitContent() and reset the
+  // user's zoom / scroll position.
+  const ohlcvFirstLoad = useRef(true);
 
   // Fix #8: rename setter to avoid shadowing window.setInterval
   const [interval, setChartInterval] = useState<Interval>("1m");
@@ -341,6 +345,10 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     else activeSeriesRef.current = candleSeriesRef.current;
   }, [chartType]);
 
+  // Reset first-load flag when the user changes interval or chart type so
+  // fitContent() fires again for the new data set.
+  useEffect(() => { ohlcvFirstLoad.current = true; }, [interval, chartType]);
+
   // Current display price — prefer live close, fall back to last OHLCV candle.
   // Declared here (before Effects 1 & 2) so it is available in Effect 2's deps array.
   const currentVal = liveClose
@@ -468,13 +476,17 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     // For ≤10 candles we lock in a readable barSpacing first so 1-5 candles
     // don't stretch to 200px wide; for anything larger fitContent handles it.
     const ts = chartRef.current?.timeScale();
-    if (ts) {
+    if (ts && ohlcvFirstLoad.current) {
+      // Only fit-to-content on the first data load (or after the user changes
+      // interval / chart type).  Subsequent refreshes triggered by new trades
+      // leave the viewport alone so the user's scroll position is preserved.
       if (displayCandles.length <= 10) {
         chartRef.current?.applyOptions({
           timeScale: { rightOffset: 8, barSpacing: 12 },
         });
       }
       ts.fitContent();
+      ohlcvFirstLoad.current = false;
     }
 
     // ATH: store raw backend value (pre-multiplier) so toggles don't corrupt it (P1-2)
@@ -570,6 +582,10 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         setFlashTrades((prev) => prev.filter((f) => f.id !== id));
       }, 5000);
       queryClient.invalidateQueries({ queryKey: ["trades-markers", mint] });
+      // Refresh historical OHLCV so completed candle buckets appear immediately
+      // instead of waiting for window-focus or the next manual reload.
+      // The fitContent guard above ensures this doesn't reset the user's zoom.
+      queryClient.invalidateQueries({ queryKey: ["ohlcv", mint] });
     };
 
     socket.on("new_trade", onNewTrade);
