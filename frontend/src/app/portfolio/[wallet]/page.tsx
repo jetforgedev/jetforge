@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
 import { useSolPrice } from "@/hooks/useSolPrice";
 
 interface PageProps {
@@ -123,6 +123,17 @@ export default function PortfolioPage({ params }: PageProps) {
     queryKey: ["following-list", wallet],
     queryFn: () => getFollowing(wallet),
     enabled: activeList === "following",
+  });
+
+  // Creator profile — only fetch once we know the wallet has created tokens.
+  // getCreatorProfile returns 404 when wallet has no tokens; retry:false prevents
+  // React Query from retrying that expected non-error case.
+  const { data: creatorData } = useQuery({
+    queryKey: ["creator-profile", wallet],
+    queryFn: () => getCreatorProfile(wallet),
+    enabled: !!tokensData && (tokensData.tokens?.length ?? 0) > 0,
+    retry: false,
+    staleTime: 30_000,
   });
 
   const summary = tradesData?.summary;
@@ -295,6 +306,65 @@ export default function PortfolioPage({ params }: PageProps) {
         </div>
       )}
 
+      {/* Creator Earnings — only shown when wallet has created tokens */}
+      {creatorData && parseFloat(creatorData.estimatedEarningsSol ?? "0") > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-semibold text-sm">Creator Earnings</span>
+              <span className="text-[#555] text-xs">· 0.4% of all trading fees</span>
+            </div>
+            <Link
+              href={`/creators/${wallet}`}
+              className="text-[#00ff88] text-xs hover:underline transition-colors"
+            >
+              Full creator profile →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {/* All-Time Earnings */}
+            <div className="bg-[#0d1a12] border border-[#00ff8820] rounded-xl p-4">
+              <div className="text-[#555] text-xs mb-1">All-Time Earnings</div>
+              <div className="text-[#00ff88] font-mono font-semibold text-lg leading-tight">
+                {fmtUsd(parseFloat(creatorData.estimatedEarningsSol), solPrice) ?? `${parseFloat(creatorData.estimatedEarningsSol).toFixed(4)} SOL`}
+              </div>
+              {solPrice && (
+                <div className="text-[#2a6644] text-[10px] font-mono mt-0.5">
+                  {parseFloat(creatorData.estimatedEarningsSol).toFixed(4)} SOL
+                </div>
+              )}
+            </div>
+            {/* Claimable Now */}
+            <div className="bg-[#0d1a12] border border-[#00ff8820] rounded-xl p-4">
+              <div className="text-[#555] text-xs mb-1">Claimable Now</div>
+              <div className="text-[#00ff88] font-mono font-semibold text-lg leading-tight">
+                {fmtUsd(parseFloat(creatorData.claimableEarningsSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.claimableEarningsSol ?? "0").toFixed(4)} SOL`}
+              </div>
+              {solPrice && (
+                <div className="text-[#2a6644] text-[10px] font-mono mt-0.5">
+                  {parseFloat(creatorData.claimableEarningsSol ?? "0").toFixed(4)} SOL
+                </div>
+              )}
+            </div>
+            {/* Tokens Launched */}
+            <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 col-span-2 sm:col-span-1">
+              <div className="text-[#555] text-xs mb-1">Tokens Launched</div>
+              <div className="text-white font-semibold text-lg leading-tight">
+                {creatorData.tokensLaunched ?? 0}
+                {(creatorData.graduatedTokens ?? 0) > 0 && (
+                  <span className="text-[#a78bfa] text-sm font-normal ml-2">
+                    {creatorData.graduatedTokens} 🎓
+                  </span>
+                )}
+              </div>
+              <div className="text-[#444] text-[10px] mt-0.5">
+                {fmtUsd(parseFloat(creatorData.totalVolumeSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.totalVolumeSol ?? "0").toFixed(1)} SOL`} total volume
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* New trader welcome banner */}
       {!tradesLoading && trades.length === 0 && (
         <div className="bg-[#00ff8808] border border-[#00ff8820] rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -316,9 +386,17 @@ export default function PortfolioPage({ params }: PageProps) {
 
       {/* Holdings — hidden for new traders (banner shown instead) */}
       {(tradesLoading || portfolioLoading || trades.length > 0) && <div>
-        <div className="text-white font-semibold mb-3">
-          Holdings{" "}
-          <span className="text-[#555] font-normal text-sm">({activeHoldings.length})</span>
+        <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
+          <div className="text-white font-semibold">
+            Holdings{" "}
+            <span className="text-[#555] font-normal text-sm">({activeHoldings.length})</span>
+          </div>
+          {activeHoldings.some((h) => h.isGraduated) && (
+            <div className="text-[10px] text-[#555] max-w-xs text-right leading-relaxed">
+              🎓 Graduated tokens are valued at the live Raydium DEX price.
+              Negative unrealized PnL means the current market price is below your average buy cost.
+            </div>
+          )}
         </div>
         {tradesLoading || portfolioLoading ? (
           <div className="space-y-2">
@@ -363,10 +441,27 @@ export default function PortfolioPage({ params }: PageProps) {
                     </div>
                     <div className="min-w-0">
                       <div className="text-white text-xs font-semibold truncate">{h.name}</div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-[#555] text-[10px]">${h.symbol}</span>
                         {h.isGraduated && (
                           <span className="text-[#00ff88] text-[9px] border border-[#00ff8840] px-1 rounded leading-4">GRAD</span>
+                        )}
+                        {/* Price source indicator for graduated tokens */}
+                        {h.priceSource === "raydium" && (
+                          <span
+                            className="text-[#00ccff] text-[9px] border border-[#00ccff30] px-1 rounded leading-4"
+                            title="Valued at live Raydium DEX price"
+                          >
+                            LIVE
+                          </span>
+                        )}
+                        {h.priceSource === "raydium_stale" && (
+                          <span
+                            className="text-[#ffcc44] text-[9px] border border-[#ffcc4430] px-1 rounded leading-4"
+                            title="Raydium price unavailable — using last known reserves snapshot"
+                          >
+                            STALE
+                          </span>
                         )}
                       </div>
                     </div>
