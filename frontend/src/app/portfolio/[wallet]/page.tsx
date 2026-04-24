@@ -44,12 +44,14 @@ function fmtSol(sol: number, signed = false): string {
  */
 function StatCard({
   label,
+  sublabel,
   sol,
   solPrice,
   color,
   signed = false,
 }: {
   label: string;
+  sublabel?: string;
   sol: number;
   solPrice: number | null;
   color?: "green" | "red" | "white";
@@ -64,7 +66,10 @@ function StatCard({
 
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
-      <div className="text-[#555] text-xs mb-1">{label}</div>
+      <div className={`text-[#555] text-xs ${sublabel ? "mb-0" : "mb-1"}`}>{label}</div>
+      {sublabel && (
+        <div className="text-[#3a3a3a] text-[9px] mb-1 leading-tight">{sublabel}</div>
+      )}
       <div className={`font-mono font-semibold text-lg leading-tight ${cls}`}>
         {usd ?? fmtSol(sol, signed)}
       </div>
@@ -270,6 +275,7 @@ export default function PortfolioPage({ params }: PageProps) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             label="Realized PnL"
+            sublabel="closed trades only"
             sol={realizedPnlSol}
             solPrice={solPrice}
             color={realizedPnlSol >= 0 ? "green" : "red"}
@@ -277,6 +283,7 @@ export default function PortfolioPage({ params }: PageProps) {
           />
           <StatCard
             label="Unrealized PnL"
+            sublabel="open positions only"
             sol={unrealizedPnlSol}
             solPrice={solPrice}
             color={unrealizedPnlSol >= 0 ? "green" : "red"}
@@ -284,6 +291,7 @@ export default function PortfolioPage({ params }: PageProps) {
           />
           <StatCard
             label="Total PnL"
+            sublabel="realized + unrealized"
             sol={totalPnlSol}
             solPrice={solPrice}
             color={totalPnlSol >= 0 ? "green" : "red"}
@@ -291,6 +299,7 @@ export default function PortfolioPage({ params }: PageProps) {
           />
           <StatCard
             label="Portfolio Value"
+            sublabel="spot price · open positions"
             sol={openValueSol}
             solPrice={solPrice}
             color="white"
@@ -330,7 +339,8 @@ export default function PortfolioPage({ params }: PageProps) {
             </div>
             {/* Claimable Now */}
             <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3.5">
-              <div className="text-[#444] text-[10px] mb-1">Claimable Now</div>
+              <div className="text-[#444] text-[10px] mb-0">Claimable Now</div>
+              <div className="text-[#333] text-[9px] mb-1 leading-tight">available to withdraw</div>
               <div className="text-[#00cc77] font-mono font-semibold text-base leading-tight">
                 {fmtUsd(parseFloat(creatorData.claimableEarningsSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.claimableEarningsSol ?? "0").toFixed(4)} SOL`}
               </div>
@@ -384,8 +394,8 @@ export default function PortfolioPage({ params }: PageProps) {
           <span className="text-white font-semibold">Holdings</span>
           <span className="text-[#555] font-normal text-sm ml-1.5">({activeHoldings.length})</span>
           {activeHoldings.some((h) => h.isGraduated) && (
-            <span className="text-[#3a3a3a] font-normal text-[10px] ml-2">
-              · graduated holdings priced via Raydium DEX; see LIVE / STALE per row
+            <span className="text-[#555] font-normal text-[10px] ml-2">
+              · LIVE = current DEX price · STALE = last snapshot
             </span>
           )}
         </div>
@@ -405,9 +415,9 @@ export default function PortfolioPage({ params }: PageProps) {
               <div>Token</div>
               <div className="text-right">Balance</div>
               <div className="text-right">Cost Basis</div>
-              <div className="text-right">Mkt Value</div>
-              <div className="text-right">Unreal. PnL</div>
-              <div className="text-right">Real. PnL</div>
+              <div className="text-right">Market Value</div>
+              <div className="text-right">Unrealized PnL</div>
+              <div className="text-right">Realized PnL</div>
             </div>
             {activeHoldings.map((h) => {
               const unrealPositive = h.unrealizedPnlSol >= 0;

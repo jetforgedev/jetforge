@@ -680,7 +680,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
               )}
               {tab === "sell" && avgBuyPriceSol !== null && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/30">Avg buy price</span>
+                  <span className="text-white/30">Avg Entry</span>
                   <span className="font-mono text-white/30">{fmtTokenPrice(avgBuyPriceSol)} SOL/token</span>
                 </div>
               )}
