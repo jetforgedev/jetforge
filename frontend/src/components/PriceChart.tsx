@@ -120,6 +120,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
 
   // Fix #7: live close price state for fresh header display
   const [liveClose, setLiveClose] = useState<number | null>(null);
+  // Y pixel of the entry price line within the chart canvas — drives the on-chart PnL tag
+  const [entryLineY, setEntryLineY] = useState<number | null>(null);
 
   // Tracks whether the chart + all series refs are ready.
   // Data-loading effects depend on this so they re-run after async chart init.
@@ -167,6 +169,20 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       return currencyMode === "usd" ? solUsd * 1_000 : 1_000;
     }
   }, [priceMode, currencyMode]);
+
+  // Converts avgBuyPriceSol → Y pixel within the chart canvas using the active series.
+  // Returns null when the price is off-screen or no position exists.
+  const computeEntryLineYRef = useRef<() => number | null>(() => null);
+  const computeEntryLineY = useCallback((): number | null => {
+    if (!activeSeriesRef.current || !avgBuyPriceSol || entryTokenBalance <= 0) return null;
+    const mult = getMultiplier(solPrice);
+    if (!mult) return null;
+    const entryDisplayPrice = avgBuyPriceSol * 1000 * mult;
+    const y = activeSeriesRef.current.priceToCoordinate(entryDisplayPrice);
+    return typeof y === "number" && isFinite(y) && y >= 0 ? y : null;
+  }, [avgBuyPriceSol, entryTokenBalance, solPrice, getMultiplier]);
+  // Keep ref current so the stable chart-event handler always calls the latest version
+  useEffect(() => { computeEntryLineYRef.current = computeEntryLineY; }, [computeEntryLineY]);
 
   // Reset live state when any display mode changes so stale units don't bleed in (P1-3)
   useEffect(() => {
@@ -384,6 +400,27 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       entryPriceLineRef.current.line.applyOptions({ color });
     } catch { /* line was just removed */ }
   }, [currentVal, avgBuyPriceSol, solPrice, getMultiplier, chartType]);
+
+  // ── On-chart PnL tag: subscribe to chart events that move the price scale ────
+  // Uses a stable `update` closure (via ref) so we never need to resubscribe on
+  // every solPrice tick — only when chartReady toggles.
+  useEffect(() => {
+    if (!chartReady || !chartRef.current) return;
+    const update = () => setEntryLineY(computeEntryLineYRef.current());
+    update(); // initial placement
+    chartRef.current.timeScale().subscribeVisibleTimeRangeChange(update);
+    chartRef.current.subscribeCrosshairMove(update);
+    return () => {
+      chartRef.current?.timeScale().unsubscribeVisibleTimeRangeChange(update);
+      chartRef.current?.unsubscribeCrosshairMove(update);
+    };
+  }, [chartReady]);
+
+  // Recompute Y whenever position data, display mode, or live price changes.
+  // chartType included so the Y is refreshed after the series-switch (Effect 1).
+  useEffect(() => {
+    setEntryLineY(computeEntryLineY());
+  }, [computeEntryLineY, currentVal, chartType]);
 
   // Load OHLCV data — depends on chartReady so it re-fires after async chart init
   useEffect(() => {
@@ -1212,6 +1249,28 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
           style={fsChartH !== null ? { height: fsChartH } : {}}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(7,17,15,0),rgba(7,17,15,0.85))]" />
+
+        {/* ── On-chart PnL tag — exchange-style pill anchored to Avg Entry level ── */}
+        {/* Uses priceToCoordinate() so it tracks the line on zoom / scroll / pan.   */}
+        {entryLineY !== null && entryPnlBadge && (
+          <div
+            className="absolute pointer-events-none z-20"
+            style={{ top: Math.max(2, entryLineY - 10), left: 8 }}
+          >
+            <div className={clsx(
+              "flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold opacity-80",
+              entryPnlBadge.isProfit
+                ? "bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20"
+                : entryPnlBadge.isLoss
+                ? "bg-[#ff4444]/10 text-[#ff4444] border border-[#ff4444]/20"
+                : "bg-white/[0.04] text-[#888] border border-white/8"
+            )}>
+              {/* "PnL" prefix — desktop only; mobile shows value only to save space */}
+              <span className="hidden sm:inline text-[8px] opacity-60 uppercase tracking-wider mr-0.5">PnL</span>
+              <span>{entryPnlBadge.usdStr ?? entryPnlBadge.solStr}</span>
+            </div>
+          </div>
+        )}
 
         {/* ── Floating trade panel — fullscreen only, draggable ──────────── */}
         {isFullscreen && floatingPanel && (
