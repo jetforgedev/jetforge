@@ -16,6 +16,7 @@ import {
 } from "../websocket/index";
 import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
+import { holdersCache } from "../holdersCache";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD);
@@ -154,9 +155,15 @@ async function handleBuyEvent(
     });
     const volume24h = Number(vol24h._sum.solAmount ?? 0n) / 1e9;
 
-    const uniqueTraders = await prisma.trade.groupBy({
-      by: ["trader"],
-      where: { mint },
+    // Upsert buyer's balance in the Holder table and get updated count.
+    // Replaces the expensive groupBy-all-trades that was here before.
+    await (prisma as any).holder.upsert({
+      where: { mint_wallet: { mint, wallet: buyer } },
+      update: { balance: { increment: tokenAmount } },
+      create: { mint, wallet: buyer, balance: tokenAmount },
+    });
+    const holdersCount = await (prisma as any).holder.count({
+      where: { mint, balance: { gt: 0n } },
     });
 
     await prisma.token.update({
@@ -171,9 +178,12 @@ async function handleBuyEvent(
         isGraduated,
         graduatedAt: isGraduated ? new Date() : undefined,
         trades: { increment: 1 },
-        holders: uniqueTraders.length,
+        holders: holdersCount,
       },
     });
+
+    // Invalidate the holders cache so the next request gets fresh DB data.
+    holdersCache.delete(mint);
 
     const token = await prisma.token.findUnique({
       where: { mint },
@@ -282,9 +292,18 @@ async function handleSellEvent(
     });
     const volume24h = Number(vol24h._sum.solAmount ?? 0n) / 1e9;
 
-    const uniqueTraders = await prisma.trade.groupBy({
-      by: ["trader"],
-      where: { mint },
+    // Decrement seller's balance. deleteMany removes the row when it hits 0
+    // (can't sell what you don't hold, but guard for safety).
+    await (prisma as any).holder.upsert({
+      where: { mint_wallet: { mint, wallet: seller } },
+      update: { balance: { decrement: tokenAmount } },
+      create: { mint, wallet: seller, balance: 0n },
+    });
+    await (prisma as any).holder.deleteMany({
+      where: { mint, wallet: seller, balance: { lte: 0n } },
+    });
+    const holdersCount = await (prisma as any).holder.count({
+      where: { mint, balance: { gt: 0n } },
     });
 
     await prisma.token.update({
@@ -297,9 +316,12 @@ async function handleSellEvent(
         marketCapSol,
         volume24h,
         trades: { increment: 1 },
-        holders: uniqueTraders.length,
+        holders: holdersCount,
       },
     });
+
+    // Invalidate the holders cache so the next request gets fresh DB data.
+    holdersCache.delete(mint);
 
     const token = await prisma.token.findUnique({
       where: { mint },
@@ -574,11 +596,58 @@ async function connect(io: Server): Promise<void> {
   console.log(`Indexer connected to ${config.solana.rpcUrl}`);
 }
 
+// ─── One-time Holder table backfill ───────────────────────────────────────────
+// Populates the Holder table from trade history for any mint that has trades
+// but no holder records yet (i.e. tokens that existed before this migration).
+// Runs once on startup; subsequent trades are maintained incrementally above.
+
+async function seedHolders(): Promise<void> {
+  try {
+    const mintsWithTrades  = await prisma.trade.groupBy({ by: ["mint"] });
+    const mintsWithHolders = await (prisma as any).holder.groupBy({ by: ["mint"] });
+    const seeded = new Set((mintsWithHolders as any[]).map((h: any) => h.mint));
+    const unseeded = mintsWithTrades.filter((t) => !seeded.has(t.mint));
+
+    if (unseeded.length === 0) return;
+
+    console.log(`[SEED] Backfilling Holder table for ${unseeded.length} mint(s)…`);
+
+    for (const { mint } of unseeded) {
+      const rows = await prisma.$queryRaw<{ wallet: string; balance: bigint }[]>`
+        SELECT trader AS wallet,
+               SUM(CASE WHEN type = 'BUY' THEN "tokenAmount" ELSE -"tokenAmount" END) AS balance
+        FROM   "Trade"
+        WHERE  mint = ${mint}
+        GROUP  BY trader
+        HAVING SUM(CASE WHEN type = 'BUY' THEN "tokenAmount" ELSE -"tokenAmount" END) > 0
+      `;
+
+      for (const row of rows) {
+        await (prisma as any).holder.upsert({
+          where:  { mint_wallet: { mint, wallet: row.wallet } },
+          update: { balance: row.balance },
+          create: { mint, wallet: row.wallet, balance: row.balance },
+        });
+      }
+
+      if (rows.length > 0) {
+        console.log(`[SEED] ${mint.slice(0, 8)}… — ${rows.length} holder(s) seeded`);
+      }
+    }
+  } catch (err) {
+    // Non-fatal — the endpoint falls back to legacy SQL if table is empty.
+    console.error("[SEED] Holder seeding error:", err);
+  }
+}
+
 export async function startIndexer(io: Server): Promise<void> {
   if (isRunning) return;
   isRunning = true;
 
   console.log("Starting blockchain indexer...");
+
+  // Backfill Holder table for pre-existing tokens (non-blocking).
+  seedHolders().catch(console.error);
 
   try {
     await connect(io);

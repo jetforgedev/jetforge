@@ -87,6 +87,20 @@ model Comment {
   @@index([createdAt])
 }
 
+// Per-mint holder balances — maintained by the indexer on every buy/sell.
+// Replaces the expensive "SELECT … GROUP BY trader" fallback and the
+// multi-round-trip RPC path in GET /tokens/:mint/holders.
+model Holder {
+  id        Int      @id @default(autoincrement())
+  mint      String
+  wallet    String
+  balance   BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([mint, wallet])
+  @@index([mint, balance])
+}
+
 // Social follow graph — wallet-to-wallet, no auth required (wallet IS identity)
 model Follow {
   id          String   @id @default(cuid())

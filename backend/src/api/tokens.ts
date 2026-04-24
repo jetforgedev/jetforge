@@ -434,9 +434,9 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// Simple in-memory cache for holders — 30s TTL per mint
-const holdersCache = new Map<string, { data: any; ts: number }>();
-const HOLDERS_TTL = 30_000;
+// Shared cache — defined in holdersCache.ts so the indexer can invalidate it
+// immediately after each trade without creating a circular import.
+import { holdersCache, HOLDERS_TTL } from "../holdersCache";
 
 // Compute holders from trade history in DB (fallback when RPC is unavailable)
 async function getHoldersFromDB(mint: string, totalSupplyUi: number) {
@@ -457,18 +457,20 @@ async function getHoldersFromDB(mint: string, totalSupplyUi: number) {
   });
 }
 
-// GET /api/tokens/:mint/holders - top token holders (RPC with DB fallback)
+// GET /api/tokens/:mint/holders
+// Fast path: Holder table (indexed DB read, maintained per-trade by indexer, ~5ms).
+// Fallback: RPC → legacy SQL scan (pre-migration tokens / edge cases).
 tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
 
-    // Return cached result if still fresh
+    // Burst-absorb cache — indexer deletes this entry after every trade so the
+    // first post-trade request always misses and gets fresh data.
     const cached = holdersCache.get(mint);
     if (cached && Date.now() - cached.ts < HOLDERS_TTL) {
       return res.json(cached.data);
     }
 
-    // Get token's totalSupply from DB
     const tokenRecord = await prisma.token.findUnique({
       where: { mint },
       select: { totalSupply: true },
@@ -477,16 +479,34 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       ? Number(tokenRecord.totalSupply) / 1e6
       : Number(BONDING_CURVE_CONSTANTS.TOTAL_SUPPLY) / 1e6;
 
-    // Try RPC first, fall back to DB-computed holders on any error
+    // ── Primary: indexed Holder table (O(log n), < 10 ms) ──────────────────────
+    const holderRows = await (prisma as any).holder.findMany({
+      where: { mint, balance: { gt: 0n } },
+      orderBy: { balance: "desc" },
+      take: 20,
+    });
+
+    if (holderRows.length > 0) {
+      const result = {
+        holders: holderRows.map((h: any) => {
+          const amount = Number(h.balance) / 1e6;
+          const pct = totalSupplyUi > 0 ? (amount / totalSupplyUi) * 100 : 0;
+          return { wallet: h.wallet, amount, pct };
+        }),
+        source: "db-indexed",
+      };
+      holdersCache.set(mint, { data: result, ts: Date.now() });
+      return res.json(result);
+    }
+
+    // ── Fallback A: RPC (accurate for tokens that pre-date the Holder table) ──
     try {
       const mintPubkey = new PublicKey(mint);
       const connection = new Connection(config.solana.rpcUrl, "confirmed");
-
       const largest = await connection.getTokenLargestAccounts(mintPubkey);
       const accounts = largest.value.slice(0, 20);
 
       if (accounts.length > 0) {
-        // Batch-resolve all owners in ONE RPC call
         const accountInfos = await connection.getMultipleParsedAccounts(
           accounts.map((a) => a.address)
         );
@@ -503,12 +523,12 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
         return res.json(result);
       }
     } catch (rpcErr) {
-      console.warn(`RPC holders failed for ${mint}, falling back to DB:`, (rpcErr as Error).message);
+      console.warn(`RPC holders failed for ${mint}, falling back to SQL:`, (rpcErr as Error).message);
     }
 
-    // DB fallback — computed from trade history
+    // ── Fallback B: legacy trade-history SQL scan ──────────────────────────────
     const holders = await getHoldersFromDB(mint, totalSupplyUi);
-    const result = { holders, source: "db" };
+    const result = { holders, source: "db-legacy" };
     holdersCache.set(mint, { data: result, ts: Date.now() });
     res.json(result);
   } catch (error) {
