@@ -130,9 +130,19 @@ async function handleBuyEvent(
     Number(virtualTok) / 1e9;
 
   try {
-    await prisma.trade.upsert({
+    // Guard against duplicate processing: both the WebSocket onLogs path and
+    // the 3-second polling fallback can deliver the same confirmed transaction.
+    // The upsert's update:{} is a no-op but the code after it would still
+    // re-emit price_update / new_trade, causing the frontend bar and candle
+    // to fire a second time for the same trade.  Return early if already indexed.
+    const alreadyIndexed = await prisma.trade.findUnique({
       where: { signature },
-      create: {
+      select: { id: true },
+    });
+    if (alreadyIndexed) return;
+
+    await prisma.trade.create({
+      data: {
         signature,
         mint,
         trader: buyer,
@@ -143,7 +153,6 @@ async function handleBuyEvent(
         fee,
         timestamp: new Date(timestamp * 1000),
       },
-      update: {},
     });
 
     // Recompute the rolling 24h volume from the trade table so the list
@@ -268,9 +277,15 @@ async function handleSellEvent(
     Number(virtualTok) / 1e9;
 
   try {
-    await prisma.trade.upsert({
+    // Same duplicate-guard as handleBuyEvent — return early if already indexed.
+    const alreadyIndexed = await prisma.trade.findUnique({
       where: { signature },
-      create: {
+      select: { id: true },
+    });
+    if (alreadyIndexed) return;
+
+    await prisma.trade.create({
+      data: {
         signature,
         mint,
         trader: seller,
@@ -281,7 +296,6 @@ async function handleSellEvent(
         fee,
         timestamp: new Date(timestamp * 1000),
       },
-      update: {},
     });
 
     // Recompute rolling 24h volume (same pattern as handleBuyEvent).

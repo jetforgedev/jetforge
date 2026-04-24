@@ -582,10 +582,11 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
         setFlashTrades((prev) => prev.filter((f) => f.id !== id));
       }, 5000);
       queryClient.invalidateQueries({ queryKey: ["trades-markers", mint] });
-      // Refresh historical OHLCV so completed candle buckets appear immediately
-      // instead of waiting for window-focus or the next manual reload.
-      // The fitContent guard above ensures this doesn't reset the user's zoom.
-      queryClient.invalidateQueries({ queryKey: ["ohlcv", mint] });
+      // OHLCV is intentionally NOT invalidated here. Invalidating on every
+      // new_trade caused the chart to redraw from DB data on any user's trade,
+      // making the candle appear to fire before the user's own transaction
+      // confirmed. The live candle is maintained in real-time by the
+      // price_update socket handler instead, which is accurate and instant.
     };
 
     socket.on("new_trade", onNewTrade);
