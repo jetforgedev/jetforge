@@ -21,6 +21,11 @@ export function useTrades(mint: string) {
     if (!socket || !mint) return;
 
     socket.emit("subscribe:token", mint);
+    // Re-subscribe on reconnect — server drops room membership on every new
+    // connection; the singleton socket never changes reference so effects
+    // don't re-run automatically.
+    const onReconnect = () => socket.emit("subscribe:token", mint);
+    socket.on("connect", onReconnect);
 
     // Named handler so .off() only removes this component's listener —
     // NOT every new_trade listener registered by other components (PriceChart, etc.).
@@ -52,6 +57,7 @@ export function useTrades(mint: string) {
 
     return () => {
       socket.emit("unsubscribe:token", mint);
+      socket.off("connect", onReconnect);
       socket.off("new_trade", onNewTrade);
     };
   }, [socket, mint, queryClient]);

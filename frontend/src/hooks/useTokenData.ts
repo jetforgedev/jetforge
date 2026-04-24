@@ -29,8 +29,15 @@ export function useToken(mint: string) {
   useEffect(() => {
     if (!socket || !mint) return;
 
-    // Subscribe to token-specific updates
+    // Subscribe to token-specific updates.
+    // Also re-subscribe on every reconnect — socket.io rooms are per-connection;
+    // after a reconnect the server drops the client from all rooms and the
+    // singleton socket object never changes reference, so React effects don't
+    // re-run. Listening for "connect" (fires on initial connect + every
+    // reconnect) and re-emitting keeps the subscription alive automatically.
     socket.emit("subscribe:token", mint);
+    const onReconnect = () => socket.emit("subscribe:token", mint);
+    socket.on("connect", onReconnect);
 
     // ── price_update: update reserves, market cap, graduation progress ─────────
     // Uses a named function so cleanup only removes this component's listener.
@@ -83,6 +90,7 @@ export function useToken(mint: string) {
 
     return () => {
       socket.emit("unsubscribe:token", mint);
+      socket.off("connect", onReconnect);
       // Use the named handlers so we only remove our own listeners —
       // NOT all listeners for these events (PriceChart etc. register their own).
       socket.off("price_update", onPriceUpdate);
