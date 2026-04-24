@@ -69,7 +69,7 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
     queryKey: ["holders", mint],
     queryFn: () => getTopHolders(mint),
     refetchInterval: 30_000,
-    staleTime: 15_000,
+    staleTime: 0, // Always refetch on invalidation — no stale grace period
     retry: 2,
   });
 
@@ -220,7 +220,9 @@ function useWhaleAlert(mint: string) {
 
   React.useEffect(() => {
     if (!socket || !mint) return;
-    socket.on("new_trade", (trade: any) => {
+    // Named handler so .off() only removes this listener, not every new_trade
+    // handler registered by sibling components (useTrades, PriceChart, etc.).
+    const onNewTrade = (trade: any) => {
       if (trade.mint !== mint) return;
       const sol = Number(trade.solAmount) / 1e9;
       if (sol >= WHALE_THRESHOLD_SOL) {
@@ -228,8 +230,12 @@ function useWhaleAlert(mint: string) {
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => setWhale(null), 6000);
       }
-    });
-    return () => { socket.off("new_trade"); if (timer.current) clearTimeout(timer.current); };
+    };
+    socket.on("new_trade", onNewTrade);
+    return () => {
+      socket.off("new_trade", onNewTrade);
+      if (timer.current) clearTimeout(timer.current);
+    };
   }, [socket, mint]);
 
   return whale;
@@ -404,7 +410,7 @@ function useDevHoldings(mint: string, creator: string) {
       }
     },
     refetchInterval: 30_000,
-    staleTime: 15_000,
+    staleTime: 0, // Always refetch on invalidation — no stale grace period
   });
 }
 

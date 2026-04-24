@@ -22,7 +22,9 @@ export function useTrades(mint: string) {
 
     socket.emit("subscribe:token", mint);
 
-    socket.on("new_trade", (trade: any) => {
+    // Named handler so .off() only removes this component's listener —
+    // NOT every new_trade listener registered by other components (PriceChart, etc.).
+    const onNewTrade = (trade: any) => {
       if (trade.mint === mint) {
         const newTrade: TradeData = {
           id: `live-${trade.signature || Date.now()}`,
@@ -44,11 +46,13 @@ export function useTrades(mint: string) {
           return [newTrade, ...prev].slice(0, 100);
         });
       }
-    });
+    };
+
+    socket.on("new_trade", onNewTrade);
 
     return () => {
       socket.emit("unsubscribe:token", mint);
-      socket.off("new_trade");
+      socket.off("new_trade", onNewTrade);
     };
   }, [socket, mint, queryClient]);
 
