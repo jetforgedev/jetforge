@@ -415,6 +415,28 @@ export async function getPortfolio(
   return fetchApi(`/portfolio/${wallet}${qs}`);
 }
 
+/**
+ * Adaptive SOL-per-token price formatter.
+ *
+ * Scales decimal places to magnitude so there are always ≥ 2 significant
+ * figures.  Never produces "0.000000" for a non-zero value.
+ *
+ *   ≥ 0.001        → 4 dp   e.g. "0.0285"
+ *   ≥ 0.0001       → 6 dp   e.g. "0.000285"
+ *   ≥ 0.000001     → 8 dp   e.g. "0.00002850"
+ *   ≥ 0.00000001   → 10 dp  e.g. "0.0000000280"
+ *   < 0.00000001   → scientific  e.g. "2.80e-9"
+ */
+export function fmtTokenPrice(sol: number): string {
+  if (sol === 0 || !isFinite(sol)) return "0";
+  const abs = Math.abs(sol);
+  if (abs >= 0.001)      return sol.toFixed(4);
+  if (abs >= 0.0001)     return sol.toFixed(6);
+  if (abs >= 0.000001)   return sol.toFixed(8);
+  if (abs >= 0.00000001) return sol.toFixed(10);
+  return sol.toExponential(3);
+}
+
 // Utility: format wallet address
 export function truncateAddress(address: string, chars = 4): string {
   return `${address.slice(0, chars)}...${address.slice(-chars)}`;

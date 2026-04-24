@@ -20,7 +20,7 @@ import {
   INITIAL_VIRTUAL_SOL,
   INITIAL_VIRTUAL_TOKENS,
 } from "@/lib/bondingCurve";
-import { TokenData, getPortfolio } from "@/lib/api";
+import { TokenData, getPortfolio, fmtTokenPrice } from "@/lib/api";
 import { buildBuyTransaction, buildSellTransaction } from "@/lib/program";
 
 interface TradingPanelProps {
@@ -681,7 +681,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
               {tab === "sell" && avgBuyPriceSol !== null && (
                 <div className="flex justify-between text-xs">
                   <span className="text-white/30">Avg buy price</span>
-                  <span className="font-mono text-white/30">{avgBuyPriceSol.toFixed(6)} SOL/token</span>
+                  <span className="font-mono text-white/30">{fmtTokenPrice(avgBuyPriceSol)} SOL/token</span>
                 </div>
               )}
             </div>

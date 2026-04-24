@@ -3,19 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl } from "@/lib/api";
+import { getUserTrades, getTokensByCreator, getFollowStats, getFollowers, getFollowing, getPortfolio, getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl, fmtTokenPrice } from "@/lib/api";
 import { useSolPrice } from "@/hooks/useSolPrice";
 
 interface PageProps {
   params: Promise<{ wallet: string }>;
-}
-
-// Format very small prices intelligently
-function fmtPrice(sol: number): string {
-  if (sol === 0) return "0.000000";
-  if (sol >= 0.000001) return sol.toFixed(6);
-  if (sol >= 0.0000001) return sol.toFixed(9);
-  return sol.toExponential(3);
 }
 
 /**
@@ -490,7 +482,7 @@ export default function PortfolioPage({ params }: PageProps) {
                     )}
                     {h.estimatedLiquidationValueSol != null && (
                       <div className="text-[#333] text-[9px] font-mono">
-                        liq ≈ {h.estimatedLiquidationValueSol.toFixed(4)}
+                        est. sell: {h.estimatedLiquidationValueSol.toFixed(4)} SOL
                       </div>
                     )}
                   </div>
