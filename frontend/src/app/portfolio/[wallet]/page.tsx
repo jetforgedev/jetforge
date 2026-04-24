@@ -306,50 +306,52 @@ export default function PortfolioPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Creator Earnings — only shown when wallet has created tokens */}
+      {/* Creator Earnings — secondary section; only shown when earnings > 0 */}
       {creatorData && parseFloat(creatorData.estimatedEarningsSol ?? "0") > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-white font-semibold text-sm">Creator Earnings</span>
-              <span className="text-[#555] text-xs">· 0.4% of all trading fees</span>
+          {/* Header row — smaller than trading PnL heading to signal secondary role */}
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[#888] font-medium text-xs uppercase tracking-wider">Creator Earnings</span>
+              <span className="text-[#444] text-[10px]">· 0.4% of trading fees</span>
             </div>
             <Link
               href={`/creators/${wallet}`}
-              className="text-[#00ff88] text-xs hover:underline transition-colors"
+              className="text-[#555] hover:text-[#888] text-[10px] transition-colors"
             >
-              Full creator profile →
+              Full profile →
             </Link>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {/* Cards — neutral bg (same as rest of page), smaller values than PnL cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {/* All-Time Earnings */}
-            <div className="bg-[#0d1a12] border border-[#00ff8820] rounded-xl p-4">
-              <div className="text-[#555] text-xs mb-1">All-Time Earnings</div>
-              <div className="text-[#00ff88] font-mono font-semibold text-lg leading-tight">
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3.5">
+              <div className="text-[#444] text-[10px] mb-1">All-Time Earnings</div>
+              <div className="text-[#00cc77] font-mono font-semibold text-base leading-tight">
                 {fmtUsd(parseFloat(creatorData.estimatedEarningsSol), solPrice) ?? `${parseFloat(creatorData.estimatedEarningsSol).toFixed(4)} SOL`}
               </div>
               {solPrice && (
-                <div className="text-[#2a6644] text-[10px] font-mono mt-0.5">
+                <div className="text-[#333] text-[10px] font-mono mt-0.5">
                   {parseFloat(creatorData.estimatedEarningsSol).toFixed(4)} SOL
                 </div>
               )}
             </div>
             {/* Claimable Now */}
-            <div className="bg-[#0d1a12] border border-[#00ff8820] rounded-xl p-4">
-              <div className="text-[#555] text-xs mb-1">Claimable Now</div>
-              <div className="text-[#00ff88] font-mono font-semibold text-lg leading-tight">
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3.5">
+              <div className="text-[#444] text-[10px] mb-1">Claimable Now</div>
+              <div className="text-[#00cc77] font-mono font-semibold text-base leading-tight">
                 {fmtUsd(parseFloat(creatorData.claimableEarningsSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.claimableEarningsSol ?? "0").toFixed(4)} SOL`}
               </div>
               {solPrice && (
-                <div className="text-[#2a6644] text-[10px] font-mono mt-0.5">
+                <div className="text-[#333] text-[10px] font-mono mt-0.5">
                   {parseFloat(creatorData.claimableEarningsSol ?? "0").toFixed(4)} SOL
                 </div>
               )}
             </div>
             {/* Tokens Launched */}
-            <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 col-span-2 sm:col-span-1">
-              <div className="text-[#555] text-xs mb-1">Tokens Launched</div>
-              <div className="text-white font-semibold text-lg leading-tight">
+            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3.5 col-span-2 sm:col-span-1">
+              <div className="text-[#444] text-[10px] mb-1">Tokens Launched</div>
+              <div className="text-[#888] font-semibold text-base leading-tight">
                 {creatorData.tokensLaunched ?? 0}
                 {(creatorData.graduatedTokens ?? 0) > 0 && (
                   <span className="text-[#a78bfa] text-sm font-normal ml-2">
@@ -357,8 +359,8 @@ export default function PortfolioPage({ params }: PageProps) {
                   </span>
                 )}
               </div>
-              <div className="text-[#444] text-[10px] mt-0.5">
-                {fmtUsd(parseFloat(creatorData.totalVolumeSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.totalVolumeSol ?? "0").toFixed(1)} SOL`} total volume
+              <div className="text-[#333] text-[10px] mt-0.5">
+                {fmtUsd(parseFloat(creatorData.totalVolumeSol ?? "0"), solPrice) ?? `${parseFloat(creatorData.totalVolumeSol ?? "0").toFixed(1)} SOL`} volume
               </div>
             </div>
           </div>
@@ -386,16 +388,13 @@ export default function PortfolioPage({ params }: PageProps) {
 
       {/* Holdings — hidden for new traders (banner shown instead) */}
       {(tradesLoading || portfolioLoading || trades.length > 0) && <div>
-        <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
-          <div className="text-white font-semibold">
-            Holdings{" "}
-            <span className="text-[#555] font-normal text-sm">({activeHoldings.length})</span>
-          </div>
+        <div className="mb-3">
+          <span className="text-white font-semibold">Holdings</span>
+          <span className="text-[#555] font-normal text-sm ml-1.5">({activeHoldings.length})</span>
           {activeHoldings.some((h) => h.isGraduated) && (
-            <div className="text-[10px] text-[#555] max-w-xs text-right leading-relaxed">
-              🎓 Graduated tokens are valued at the live Raydium DEX price.
-              Negative unrealized PnL means the current market price is below your average buy cost.
-            </div>
+            <span className="text-[#3a3a3a] font-normal text-[10px] ml-2">
+              · graduated holdings priced via Raydium DEX; see LIVE / STALE per row
+            </span>
           )}
         </div>
         {tradesLoading || portfolioLoading ? (
@@ -414,7 +413,7 @@ export default function PortfolioPage({ params }: PageProps) {
               <div>Token</div>
               <div className="text-right">Balance</div>
               <div className="text-right">Cost Basis</div>
-              <div className="text-right" title="Mark-to-market spot price × balance">Mkt Value</div>
+              <div className="text-right">Mkt Value</div>
               <div className="text-right">Unreal. PnL</div>
               <div className="text-right">Real. PnL</div>
             </div>
@@ -446,20 +445,14 @@ export default function PortfolioPage({ params }: PageProps) {
                         {h.isGraduated && (
                           <span className="text-[#00ff88] text-[9px] border border-[#00ff8840] px-1 rounded leading-4">GRAD</span>
                         )}
-                        {/* Price source indicator for graduated tokens */}
+                        {/* Price source badge — visible on both desktop and mobile */}
                         {h.priceSource === "raydium" && (
-                          <span
-                            className="text-[#00ccff] text-[9px] border border-[#00ccff30] px-1 rounded leading-4"
-                            title="Valued at live Raydium DEX price"
-                          >
+                          <span className="text-[#00ccff] text-[10px] border border-[#00ccff30] px-1 rounded leading-4">
                             LIVE
                           </span>
                         )}
                         {h.priceSource === "raydium_stale" && (
-                          <span
-                            className="text-[#ffcc44] text-[9px] border border-[#ffcc4430] px-1 rounded leading-4"
-                            title="Raydium price unavailable — using last known reserves snapshot"
-                          >
+                          <span className="text-[#ffcc44] text-[10px] border border-[#ffcc4430] px-1 rounded leading-4">
                             STALE
                           </span>
                         )}
@@ -496,10 +489,7 @@ export default function PortfolioPage({ params }: PageProps) {
                       <div className="text-white text-xs font-mono">{h.currentValueSol.toFixed(4)} SOL</div>
                     )}
                     {h.estimatedLiquidationValueSol != null && (
-                      <div
-                        className="text-[#333] text-[9px] font-mono"
-                        title="Estimated proceeds if you sold your entire bag right now (AMM slippage + 1% fee)"
-                      >
+                      <div className="text-[#333] text-[9px] font-mono">
                         liq ≈ {h.estimatedLiquidationValueSol.toFixed(4)}
                       </div>
                     )}
