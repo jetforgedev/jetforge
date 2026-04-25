@@ -723,6 +723,36 @@ export async function startIndexer(io: Server): Promise<void> {
   // Backfill Holder table for pre-existing tokens (non-blocking).
   seedHolders().catch(console.error);
 
+  // Decay stale volume24h every 10 minutes.
+  // Tokens stop receiving indexer updates after trading stops, so Token.volume24h
+  // never resets on its own. This job recomputes it from the bucket table for any
+  // token whose last trade was in the 24-48h window (i.e. sliding out of the window).
+  setInterval(async () => {
+    try {
+      const oneDayAgo  = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const stale = await prisma.token.findMany({
+        where: { updatedAt: { lt: oneDayAgo }, createdAt: { gte: twoDaysAgo }, isGraduated: false },
+        select: { mint: true },
+      });
+      for (const { mint } of stale) {
+        const sum = await (prisma as any).tradeVolumeBucket.aggregate({
+          where: { mint, bucketStart: { gte: oneDayAgo } },
+          _sum: { volumeLamports: true },
+        });
+        await prisma.token.update({
+          where: { mint },
+          data: { volume24h: Number(sum._sum.volumeLamports ?? 0n) / 1e9 },
+        });
+      }
+      if (stale.length > 0) {
+        console.log(`[DECAY] Recomputed volume24h for ${stale.length} idle token(s)`);
+      }
+    } catch (err) {
+      console.error("[DECAY] volume24h decay error:", err);
+    }
+  }, 10 * 60 * 1000);
+
   try {
     await connect(io);
   } catch (error) {
