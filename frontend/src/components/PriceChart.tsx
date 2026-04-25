@@ -443,6 +443,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     if (!chartReady || !candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
     const mult = getMultiplier(solPrice);
+    // Guard: in USD mode solPrice hasn't loaded yet → mult=0 → every candle
+    // maps to 0, corrupting the y-axis scale. Wait for solPrice before rendering.
+    if (mult === 0) return;
 
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
@@ -619,6 +622,9 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
 
       const ms = INTERVAL_MS[intervalRef.current] ?? 60_000;
       const mult = getMult.current(solPriceRef.current);
+      // Guard: solPrice not yet loaded → mult=0 → val=0 → pushes a zero-price
+      // candle that corrupts the y-axis scale. Skip until solPrice is ready.
+      if (mult === 0) return;
       const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
       const val = data.price * mult;
 
