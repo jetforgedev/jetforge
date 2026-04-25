@@ -370,44 +370,79 @@ export default function HomePage() {
   const socket = useSocket();
   const queryClient = useQueryClient();
 
-  // Patch token list caches in real-time when any token's price/graduation changes.
-  // Backend now broadcasts feed_price_update to global:feed on every trade so the
-  // home page doesn't need to subscribe to individual token rooms.
+  // ── Real-time cache patches from WebSocket ─────────────────────────────────
+  // Two events arrive per trade, in order:
+  //  1. feed_price_update  — fires BEFORE the DB write (lowest latency)
+  //     carries: marketCapSol, graduationProgress, realSolReserves
+  //  2. feed_trade         — fires AFTER the DB write (~30 ms later)
+  //     carries: volume24h, trades count, holders (exact DB values)
+  //
+  // Together they make every field on token cards and the stats bar update the
+  // moment a trade is indexed — no REST polling needed between intervals.
   useEffect(() => {
     if (!socket) return;
-    const onFeedPriceUpdate = (event: { mint: string; marketCapSol: number; graduationProgress: number; realSolReserves: string }) => {
-      // Update all active token list queries that contain this mint
+
+    // Stage 1: bonding curve bar + market cap — instant, pre-DB
+    const onFeedPriceUpdate = (event: {
+      mint: string; marketCapSol: number; graduationProgress: number; realSolReserves: string;
+    }) => {
+      const patch = (t: TokenData) =>
+        t.mint === event.mint
+          ? { ...t, marketCapSol: event.marketCapSol, graduationProgress: event.graduationProgress, realSolReserves: event.realSolReserves }
+          : t;
+
       queryClient.setQueriesData<{ tokens: TokenData[]; pagination: any }>(
         { queryKey: ["tokens"], type: "active" },
-        (old) => {
-          if (!old?.tokens) return old;
-          const idx = old.tokens.findIndex((t) => t.mint === event.mint);
-          if (idx === -1) return old; // this page doesn't contain that token
-          const updated = [...old.tokens];
-          updated[idx] = {
-            ...updated[idx],
-            marketCapSol: event.marketCapSol,
-            graduationProgress: event.graduationProgress,
-            realSolReserves: event.realSolReserves,
-          };
-          return { ...old, tokens: updated };
-        }
+        (old) => old?.tokens ? { ...old, tokens: old.tokens.map(patch) } : old
       );
-      // Also patch King of the Hill cache
       queryClient.setQueriesData<TokenData[]>(
         { queryKey: ["king-of-hill"] },
-        (old) => {
-          if (!old) return old;
-          return old.map((t) =>
-            t.mint === event.mint
-              ? { ...t, marketCapSol: event.marketCapSol, graduationProgress: event.graduationProgress, realSolReserves: event.realSolReserves }
-              : t
-          );
-        }
+        (old) => old ? old.map(patch) : old
       );
     };
+
+    // Stage 2: volume24h, trades, holders — arrives after DB write
+    const onFeedTrade = (event: {
+      mint: string; solAmount: string; type: string;
+      volume24h?: number; trades?: number; holders?: number;
+    }) => {
+      if (event.volume24h == null && event.trades == null && event.holders == null) return;
+
+      const patch = (t: TokenData) =>
+        t.mint === event.mint
+          ? {
+              ...t,
+              ...(event.volume24h != null && { volume24h: event.volume24h }),
+              ...(event.trades    != null && { trades: event.trades }),
+              ...(event.holders   != null && { holders: event.holders }),
+            }
+          : t;
+
+      queryClient.setQueriesData<{ tokens: TokenData[]; pagination: any }>(
+        { queryKey: ["tokens"], type: "active" },
+        (old) => old?.tokens ? { ...old, tokens: old.tokens.map(patch) } : old
+      );
+      queryClient.setQueriesData<TokenData[]>(
+        { queryKey: ["king-of-hill"] },
+        (old) => old ? old.map(patch) : old
+      );
+
+      // Patch platform stats bar — increment 24h counters live
+      const solDelta = Number(event.solAmount) / 1e9;
+      queryClient.setQueryData<{ totalTokens: number; volume24hSol: number; trades24h: number }>(
+        ["platform-stats"],
+        (old) => old
+          ? { ...old, trades24h: old.trades24h + 1, volume24hSol: old.volume24hSol + solDelta }
+          : old
+      );
+    };
+
     socket.on("feed_price_update", onFeedPriceUpdate);
-    return () => { socket.off("feed_price_update", onFeedPriceUpdate); };
+    socket.on("feed_trade", onFeedTrade);
+    return () => {
+      socket.off("feed_price_update", onFeedPriceUpdate);
+      socket.off("feed_trade", onFeedTrade);
+    };
   }, [socket, queryClient]);
 
   useEffect(() => {

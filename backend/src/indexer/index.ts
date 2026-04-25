@@ -201,7 +201,7 @@ async function handleBuyEvent(
     ]);
     if (tokenMeta && !cachedMeta) tokenMetaCache.set(mint, tokenMeta as any);
 
-    await prisma.token.update({
+    const updatedToken = await prisma.token.update({
       where: { mint },
       data: {
         virtualSolReserves: virtualSol,
@@ -215,6 +215,7 @@ async function handleBuyEvent(
         trades: { increment: 1 },
         holders: holdersCount,
       },
+      select: { trades: true },
     });
 
     holdersCache.delete(mint);
@@ -234,6 +235,9 @@ async function handleBuyEvent(
       tokenName: (tokenMeta as any)?.name,
       tokenSymbol: (tokenMeta as any)?.symbol,
       tokenImageUrl: (tokenMeta as any)?.imageUrl ?? undefined,
+      volume24h,
+      trades: updatedToken.trades,
+      holders: holdersCount,
     });
 
     if (isGraduated) {
@@ -345,7 +349,7 @@ async function handleSellEvent(
     ]);
     if (tokenMeta && !cachedMeta) tokenMetaCache.set(mint, tokenMeta as any);
 
-    await prisma.token.update({
+    const updatedToken = await prisma.token.update({
       where: { mint },
       data: {
         virtualSolReserves: virtualSol,
@@ -357,6 +361,7 @@ async function handleSellEvent(
         trades: { increment: 1 },
         holders: holdersCount,
       },
+      select: { trades: true },
     });
 
     holdersCache.delete(mint);
@@ -376,6 +381,9 @@ async function handleSellEvent(
       tokenName: (tokenMeta as any)?.name,
       tokenSymbol: (tokenMeta as any)?.symbol,
       tokenImageUrl: (tokenMeta as any)?.imageUrl ?? undefined,
+      volume24h,
+      trades: updatedToken.trades,
+      holders: holdersCount,
     });
 
     console.log(`[SELL] ${mint.slice(0, 8)}… seller=${seller.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);

@@ -17,6 +17,10 @@ export interface TradeEvent {
   tokenName?: string;
   tokenSymbol?: string;
   tokenImageUrl?: string;
+  // Post-DB stats — available after the write, used to update home page caches instantly
+  volume24h?: number;
+  trades?: number;
+  holders?: number;
 }
 
 export interface TokenCreatedEvent {
@@ -98,7 +102,8 @@ export function broadcastTrade(io: Server, event: TradeEvent): void {
   // Send to token-specific room
   io.to(`token:${event.mint}`).emit("new_trade", event);
 
-  // Send to global feed
+  // Send to global feed — includes post-DB stats so home page caches
+  // (volume24h, trades count, holders) all update from the same event.
   io.to("global:feed").emit("feed_trade", {
     type: event.type,
     mint: event.mint,
@@ -110,6 +115,9 @@ export function broadcastTrade(io: Server, event: TradeEvent): void {
     tokenSymbol: event.tokenSymbol,
     tokenImageUrl: event.tokenImageUrl,
     timestamp: event.timestamp,
+    volume24h: event.volume24h,
+    trades: event.trades,
+    holders: event.holders,
   });
 }
 
