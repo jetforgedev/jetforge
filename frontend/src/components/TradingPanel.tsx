@@ -60,6 +60,39 @@ function BuyCurveHint() {
   );
 }
 
+// HTTP-polling confirmation — more reliable than WebSocket subscriptions which
+// can silently hang on Helius devnet. Polls getSignatureStatus every 1.5 s for
+// up to `timeoutMs`, then does a final history-search check before giving up.
+async function pollConfirmation(
+  connection: import("@solana/web3.js").Connection,
+  signature: string,
+  timeoutMs = 60_000
+): Promise<void> {
+  const INTERVAL = 1_500;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const { value } = await connection.getSignatureStatus(signature, {
+      searchTransactionHistory: false,
+    });
+    if (value?.err) throw new Error(`Transaction failed on-chain: ${JSON.stringify(value.err)}`);
+    if (value?.confirmationStatus === "confirmed" || value?.confirmationStatus === "finalized") return;
+    await new Promise((r) => setTimeout(r, INTERVAL));
+  }
+
+  // Final check: search transaction history in case the node was slightly behind
+  const { value: final } = await connection.getSignatureStatus(signature, {
+    searchTransactionHistory: true,
+  });
+  if (final?.err) throw new Error(`Transaction failed on-chain: ${JSON.stringify(final.err)}`);
+  if (final?.confirmationStatus === "confirmed" || final?.confirmationStatus === "finalized") return;
+
+  throw new Error(
+    `Transaction sent but not confirmed within ${timeoutMs / 1000}s. ` +
+    `Check on explorer: ${signature.slice(0, 20)}…`
+  );
+}
+
 export function TradingPanel({ token }: TradingPanelProps) {
   const { publicKey, sendTransaction } = useWallet();
   const anchorWallet = useAnchorWallet();
@@ -419,32 +452,11 @@ export function TradingPanel({ token }: TradingPanelProps) {
         sig = await sendTransaction(tx, connection, { skipPreflight: true });
       }
 
-      // Use blockhash-based strategy — more reliable than the legacy string form.
-      // The tx already has recentBlockhash + lastValidBlockHeight set by program.ts.
-      // If the block height expires the error is definitive (tx failed), unlike
-      // the old 30s arbitrary timeout which throws "not confirmed" even when the
-      // tx actually succeeded.
-      try {
-        await connection.confirmTransaction(
-          {
-            signature: sig,
-            blockhash: tx.recentBlockhash!,
-            lastValidBlockHeight: tx.lastValidBlockHeight!,
-          },
-          "confirmed"
-        );
-      } catch (confirmErr: any) {
-        const msg: string = confirmErr?.message ?? "";
-        // TransactionExpiredBlockheightExceededError = tx definitively failed
-        if (msg.includes("block height exceeded") || msg.includes("BlockheightExceeded")) {
-          throw new Error("Transaction expired — the network was congested. Please try again.");
-        }
-        // Any other confirmation error: tx was sent but status is uncertain.
-        // Show the signature so the user can verify on explorer.
-        throw new Error(
-          `Transaction sent but confirmation timed out. Check the signature on explorer: ${sig.slice(0, 20)}…`
-        );
-      }
+      // Poll for confirmation via HTTP instead of relying on WebSocket
+      // subscriptions (which silently hang on Helius devnet).
+      // Polls getSignatureStatus every 1.5s for up to 60s, then does a final
+      // check with transaction history search before giving up.
+      await pollConfirmation(connection, sig, 60_000);
 
       // Invalidate trades + OHLCV so chart shows the new trade marker immediately
       queryClient.invalidateQueries({ queryKey: ["trades-markers", token.mint] });
