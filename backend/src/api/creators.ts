@@ -81,7 +81,7 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
         select: { creator: true, name: true, symbol: true, imageUrl: true, mint: true, createdAt: true },
       }),
       // All-time trade volume + count per creator via a single JOIN query
-      prisma.$queryRaw<{ creator: string; total_volume: bigint; trade_count: bigint }[]>`
+      prisma.$queryRaw`
         SELECT tk.creator,
                COALESCE(SUM(tr."solAmount"), 0) AS total_volume,
                COUNT(tr.id)                     AS trade_count
@@ -89,10 +89,11 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
         LEFT JOIN "Trade" tr ON tr.mint = tk.mint
         WHERE  tk.creator = ANY(${wallets})
         GROUP  BY tk.creator
-      `,
+      ` as Promise<Array<{ creator: string; total_volume: bigint; trade_count: bigint }>>,
     ]);
 
-    const graduatedMap = new Map(graduatedGroups.map((g) => [g.creator, g._count.mint]));
+    // Prisma groupBy _count may narrow to a non-number type in some versions — cast explicitly.
+    const graduatedMap = new Map(graduatedGroups.map((g) => [g.creator, Number(g._count.mint)]));
     const latestTokenMap = new Map<string, typeof allCreatorTokens[0]>();
     for (const t of allCreatorTokens) {
       if (!latestTokenMap.has(t.creator)) latestTokenMap.set(t.creator, t);
