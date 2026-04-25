@@ -458,13 +458,13 @@ export function TradingPanel({ token }: TradingPanelProps) {
       // check with transaction history search before giving up.
       await pollConfirmation(connection, sig, 60_000);
 
-      // Invalidate trade markers so the dot appears on the chart immediately.
-      // Do NOT invalidate ohlcv here — the indexer now emits price_update before
-      // its DB writes complete, so an immediate OHLCV refetch would return stale
-      // data, call setData() with old candles, and wipe the live candle that the
-      // socket already updated correctly. The 10s refetchInterval in PriceChart
-      // handles DB convergence without clobbering the real-time live candle.
+      // Invalidate trade markers (chart dots) and the trades list (TradesList panel).
+      // Do NOT invalidate ohlcv — the indexer emits price_update before its DB
+      // writes complete, so an immediate OHLCV refetch returns stale data and
+      // wipes the live candle the socket already updated. The 10s refetchInterval
+      // in PriceChart handles DB convergence without clobbering the live candle.
       queryClient.invalidateQueries({ queryKey: ["trades-markers", token.mint] });
+      queryClient.invalidateQueries({ queryKey: ["trades", token.mint] });
 
       toast.dismiss(loadingToast);
       toast.success(

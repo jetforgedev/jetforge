@@ -15,6 +15,7 @@ export function useTrades(mint: string) {
     queryFn: () => getTrades(mint, 1, 50),
     enabled: !!mint,
     staleTime: 10_000,
+    refetchInterval: 15_000, // Periodic resync so trades stay current even if socket misses an event
   });
 
   useEffect(() => {
@@ -56,7 +57,10 @@ export function useTrades(mint: string) {
     socket.on("new_trade", onNewTrade);
 
     return () => {
-      socket.emit("unsubscribe:token", mint);
+      // Do NOT emit unsubscribe:token here — the socket is shared globally.
+      // PriceChart (and potentially other components) may still be subscribed
+      // to this room; unsubscribing would remove the socket from the room for
+      // ALL components, silencing new_trade events for everyone.
       socket.off("connect", onReconnect);
       socket.off("new_trade", onNewTrade);
     };

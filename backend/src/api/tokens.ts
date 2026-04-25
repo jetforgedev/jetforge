@@ -53,7 +53,13 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
 
   const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
-    prisma.trade.groupBy({ by: ["mint", "trader"], where: { mint: { in: mints } } }),
+    // Holder count: indexed Holder table grouped by mint — O(log n) per mint,
+    // much faster than trade.groupBy which scans all trades for every mint.
+    (prisma as any).holder.groupBy({
+      by: ["mint"],
+      where: { mint: { in: mints }, balance: { gt: 0n } },
+      _count: { _all: true },
+    }),
     prisma.trade.groupBy({
       by: ["mint"],
       where: { mint: { in: mints }, timestamp: { gte: fifteenMinAgo } },
@@ -69,7 +75,7 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
 
   const holderCountByMint: Record<string, number> = {};
   for (const row of holderRows) {
-    holderCountByMint[row.mint] = (holderCountByMint[row.mint] ?? 0) + 1;
+    holderCountByMint[row.mint] = (row as any)._count._all;
   }
   const trades15mByMint: Record<string, number> = {};
   for (const row of recentTradeRows) {
@@ -306,22 +312,18 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       }
     }
 
-    // Get 24h volume
+    // Get 24h volume + holder count in parallel
+    // Holder count: use the indexed Holder table (O(log n), < 5 ms) instead of
+    // trade.groupBy which scans every trade row for the token (O(n), slow).
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentTrades = await prisma.trade.aggregate({
-      where: {
-        mint,
-        timestamp: { gte: oneDayAgo },
-      },
-      _sum: { solAmount: true },
-      _count: true,
-    });
-
-    // Get holder count (unique traders)
-    const holdersResult = await prisma.trade.groupBy({
-      by: ["trader"],
-      where: { mint },
-    });
+    const [recentTrades, holdersCount] = await Promise.all([
+      prisma.trade.aggregate({
+        where: { mint, timestamp: { gte: oneDayAgo } },
+        _sum: { solAmount: true },
+        _count: true,
+      }),
+      (prisma as any).holder.count({ where: { mint, balance: { gt: 0n } } }),
+    ]);
 
     const marketCapSol = computeMarketCap(
       liveVirtualSol,
@@ -341,7 +343,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       volume24h: recentTrades._sum.solAmount
         ? Number(recentTrades._sum.solAmount) / 1e9
         : Number(liveTotalVolumeSol) / 1e9,
-      holders: holdersResult.length,
+      holders: holdersCount,
       trades: _count.tradeHistory || Number(liveTotalTrades),
       totalTrades: _count.tradeHistory || Number(liveTotalTrades),
       isGraduated: liveIsGraduated,
