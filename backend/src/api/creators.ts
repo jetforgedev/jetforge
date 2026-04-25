@@ -110,6 +110,15 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
       })
     );
 
+    // Re-sort by all-time volume (totalVolumeSol) so the ranking matches the
+    // metric displayed in the UI. The initial groupBy sorts by volume24h as a
+    // fast pre-filter, but the final ordering must be consistent with what the
+    // frontend shows — otherwise rank #1 may have lower all-time volume than #2.
+    if (metric !== "tokens") {
+      results.sort((a, b) => parseFloat(b.totalVolumeSol) - parseFloat(a.totalVolumeSol));
+      results.forEach((r, i) => { r.rank = i + 1; });
+    }
+
     res.json(results);
   } catch (error) {
     console.error("GET /creators error:", error);

@@ -95,7 +95,11 @@ export function useToken(mint: string) {
     socket.on("token_graduated", onTokenGraduated);
 
     return () => {
-      socket.emit("unsubscribe:token", mint);
+      // Do NOT emit unsubscribe:token here — the socket is a global singleton
+      // shared by all components on this page (PriceChart, useTrades, TradingPanel,
+      // etc.). Emitting unsubscribe would remove the socket from the server room
+      // for ALL components, silencing every price_update / new_trade /
+      // token_graduated event for the lifetime of the page visit.
       socket.off("connect", onReconnect);
       // Use the named handlers so we only remove our own listeners —
       // NOT all listeners for these events (PriceChart etc. register their own).
