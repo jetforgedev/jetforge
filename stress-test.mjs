@@ -39,9 +39,10 @@ async function tokenEndpoints(tokens) {
   for (const [label, path] of [
     ["GET /tokens/:mint",         `/tokens/${mint}`],
     ["GET /tokens/:mint/holders", `/tokens/${mint}/holders`],
-    ["GET /tokens/:mint/trades",  `/tokens/${mint}/trades?limit=20`],
     ["GET /tokens/:mint/ohlcv",   `/tokens/${mint}/ohlcv?interval=1m&limit=50`],
-    ["GET /tokens/:mint/comments",`/tokens/${mint}/comments`],
+    ["GET /trades/:mint",         `/trades/${mint}?limit=20`],
+    ["GET /comments/:mint",       `/comments/${mint}`],
+    ["GET /trades/recent",        `/trades/recent?limit=20`],
   ]) {
     try {
       const t0 = Date.now();
@@ -66,6 +67,8 @@ async function concurrentLoad(tokens) {
       `/tokens/${mint}`,
       `/tokens/${mint}/holders`,
       `/tokens/${mint}/ohlcv?interval=1m&limit=100`,
+      `/trades/${mint}?limit=20`,
+      `/comments/${mint}`,
     ] : []),
   ];
 

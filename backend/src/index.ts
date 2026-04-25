@@ -37,29 +37,34 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting — general API: 120 req/min per IP
+// Rate limiting — general API: 300 req/min per IP.
+// A trading platform legitimately generates high read traffic: multiple browser
+// tabs each polling token/ohlcv/holders on 10-30s intervals, plus WebSocket
+// clients. 300/min = 5 req/s, plenty of headroom without opening the door to
+// trivial scraping.
 app.use(
   "/api",
   rateLimit({
     windowMs: 60 * 1000,
-    max: 120,
+    max: 300,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests, please slow down." },
   })
 );
 
-// Stricter limit for write endpoints: 20 req/min per IP
-app.use(
-  ["/api/tokens", "/api/comments", "/api/upload"],
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 20,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please slow down." },
-  })
-);
+// Stricter limit for WRITE endpoints only: 20 req/min per IP.
+// Applies only to POST/PUT/DELETE — never to GETs — so read-heavy polling
+// (token list, ohlcv, holders) is never blocked by this limiter.
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down." },
+});
+app.use(["/api/tokens", "/api/comments", "/api/upload"], writeLimiter);
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
