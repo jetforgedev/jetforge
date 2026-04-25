@@ -101,8 +101,8 @@ function StatsBar() {
   const { data: stats } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: getPlatformStats,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 12_000,
+    refetchInterval: 15_000,
   });
 
   const items = [

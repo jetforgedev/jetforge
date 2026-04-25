@@ -3,17 +3,18 @@ import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS } from "../config";
 
 // ─── Leaderboard caches ───────────────────────────────────────────────────────
-// Leaderboard aggregates the full Trade table on every request — expensive at scale.
-// Cache each (endpoint × metric) result for 60 s. Frontend refetches every 30 s,
-// so at worst users see data that is 90 s old — acceptable for a leaderboard.
-const LEADERBOARD_CACHE_TTL_MS = 60_000;
+// Token leaderboard: cheap query (findMany, no join) — cache for 5 s so rapid
+// consecutive requests don't hammer the DB but KoTH/home page get near-live data.
+// Trader leaderboard: aggregates the full Trade table — expensive, cache for 60 s.
+const TOKEN_LB_CACHE_TTL_MS  =  5_000;
+const TRADER_LB_CACHE_TTL_MS = 60_000;
 interface LBCacheEntry { data: any; ts: number }
 const tokenLBCache  = new Map<string, LBCacheEntry>(); // key = metric
 const traderLBCache = new Map<string, LBCacheEntry>(); // key = metric
 
-function getLBCache(map: Map<string, LBCacheEntry>, key: string): any | null {
+function getLBCache(map: Map<string, LBCacheEntry>, key: string, ttl: number): any | null {
   const entry = map.get(key);
-  if (entry && Date.now() - entry.ts < LEADERBOARD_CACHE_TTL_MS) return entry.data;
+  if (entry && Date.now() - entry.ts < ttl) return entry.data;
   map.delete(key);
   return null;
 }
@@ -35,7 +36,7 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
     const excludeGraduated = req.query.excludeGraduated === "true";
     const cacheKey = `${metric}:${limit}:${excludeGraduated}`;
 
-    const cached = getLBCache(tokenLBCache, cacheKey);
+    const cached = getLBCache(tokenLBCache, cacheKey, TOKEN_LB_CACHE_TTL_MS);
     if (cached) return res.json(cached);
 
     let orderBy: any;
@@ -117,7 +118,7 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
     const cacheKey = `${metric}:${limit}`;
 
-    const cached = getLBCache(traderLBCache, cacheKey);
+    const cached = getLBCache(traderLBCache, cacheKey, TRADER_LB_CACHE_TTL_MS);
     if (cached) return res.json(cached);
 
     // Aggregate by trader
