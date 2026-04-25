@@ -442,10 +442,11 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   useEffect(() => {
     if (!chartReady || !candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
 
-    const mult = getMultiplier(solPrice);
-    // Guard: in USD mode solPrice hasn't loaded yet → mult=0 → every candle
-    // maps to 0, corrupting the y-axis scale. Wait for solPrice before rendering.
-    if (mult === 0) return;
+    // If solPrice hasn't loaded yet, mult=0 in USD mode which maps every candle
+    // to 0 and corrupts the y-axis. Fall back to SOL-based units so the chart
+    // is never blank. The effect re-runs when solPrice arrives (it's in deps),
+    // at which point the correct USD scale is applied.
+    const mult = getMultiplier(solPrice) || (priceMode === "mcap" ? 1_000_000 : 1_000);
 
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
@@ -621,10 +622,13 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       if (!candleSeriesRef.current) return;
 
       const ms = INTERVAL_MS[intervalRef.current] ?? 60_000;
-      const mult = getMult.current(solPriceRef.current);
-      // Guard: solPrice not yet loaded → mult=0 → val=0 → pushes a zero-price
-      // candle that corrupts the y-axis scale. Skip until solPrice is ready.
-      if (mult === 0) return;
+      // If solPrice hasn't loaded yet, getMult returns 0 in USD mode.
+      // Fall back to getMult(1) which gives the correct MCap vs Price scale
+      // factor (1_000_000 or 1_000) without depending on the actual SOL price.
+      // This keeps the live candle in the same units as the OHLCV fallback so
+      // the scale stays consistent until solPrice arrives.
+      const rawMult = getMult.current(solPriceRef.current);
+      const mult = rawMult || getMult.current(1);
       const candleTime = (Math.floor((data.timestamp * 1000) / ms) * ms) / 1000;
       const val = data.price * mult;
 
