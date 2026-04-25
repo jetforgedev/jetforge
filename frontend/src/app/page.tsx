@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { TokenCard } from "@/components/TokenCard";
 import { LiveFeed } from "@/components/LiveFeed";
 import { getTokens, getTokensByMints, getTopTokens, getPlatformStats, TokenData, resolveImageUrl } from "@/lib/api";
+import { useSocket } from "@/hooks/useLiveFeed";
 import { clsx } from "clsx";
 import Link from "next/link";
 
@@ -181,8 +182,8 @@ function KingOfTheHill() {
   const { data } = useQuery({
     queryKey: ["king-of-hill"],
     queryFn: () => getTopTokens("volume", 1, true),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 8_000,
+    refetchInterval: 10_000,
   });
 
   const king = data?.[0];
@@ -366,6 +367,48 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const { watchlist, toggle } = useWatchlist();
+  const socket = useSocket();
+  const queryClient = useQueryClient();
+
+  // Patch token list caches in real-time when any token's price/graduation changes.
+  // Backend now broadcasts feed_price_update to global:feed on every trade so the
+  // home page doesn't need to subscribe to individual token rooms.
+  useEffect(() => {
+    if (!socket) return;
+    const onFeedPriceUpdate = (event: { mint: string; marketCapSol: number; graduationProgress: number; realSolReserves: string }) => {
+      // Update all active token list queries that contain this mint
+      queryClient.setQueriesData<{ tokens: TokenData[]; pagination: any }>(
+        { queryKey: ["tokens"], type: "active" },
+        (old) => {
+          if (!old?.tokens) return old;
+          const idx = old.tokens.findIndex((t) => t.mint === event.mint);
+          if (idx === -1) return old; // this page doesn't contain that token
+          const updated = [...old.tokens];
+          updated[idx] = {
+            ...updated[idx],
+            marketCapSol: event.marketCapSol,
+            graduationProgress: event.graduationProgress,
+            realSolReserves: event.realSolReserves,
+          };
+          return { ...old, tokens: updated };
+        }
+      );
+      // Also patch King of the Hill cache
+      queryClient.setQueriesData<TokenData[]>(
+        { queryKey: ["king-of-hill"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((t) =>
+            t.mint === event.mint
+              ? { ...t, marketCapSol: event.marketCapSol, graduationProgress: event.graduationProgress, realSolReserves: event.realSolReserves }
+              : t
+          );
+        }
+      );
+    };
+    socket.on("feed_price_update", onFeedPriceUpdate);
+    return () => { socket.off("feed_price_update", onFeedPriceUpdate); };
+  }, [socket, queryClient]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);

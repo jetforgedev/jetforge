@@ -114,7 +114,16 @@ export function broadcastTrade(io: Server, event: TradeEvent): void {
 }
 
 export function broadcastPriceUpdate(io: Server, event: PriceUpdateEvent): void {
+  // Token-specific room — PriceChart, useTokenData, etc.
   io.to(`token:${event.mint}`).emit("price_update", event);
+  // Global feed room — home page token cards need live graduation progress
+  // and market cap without subscribing to individual token rooms.
+  io.to("global:feed").emit("feed_price_update", {
+    mint: event.mint,
+    marketCapSol: event.marketCapSol,
+    graduationProgress: event.graduationProgress,
+    realSolReserves: event.realSolReserves,
+  });
 }
 
 export function broadcastTokenCreated(io: Server, event: TokenCreatedEvent): void {

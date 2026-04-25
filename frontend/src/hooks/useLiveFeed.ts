@@ -84,7 +84,13 @@ export function useLiveFeed(maxItems = 50) {
     socket.emit("subscribe:feed");
     setIsConnected(socket.connected);
 
-    const handleConnect = () => setIsConnected(true);
+    const handleConnect = () => {
+      // Re-subscribe on every (re)connect — server drops rooms on disconnect.
+      // The singleton socket never changes reference so this effect doesn't
+      // re-run automatically after a reconnect.
+      socket.emit("subscribe:feed");
+      setIsConnected(true);
+    };
     const handleDisconnect = () => setIsConnected(false);
 
     const handleFeedTrade = (data: any) => {
