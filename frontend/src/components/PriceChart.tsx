@@ -137,6 +137,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     queryKey: ["ohlcv", mint, interval],
     queryFn: () => getOHLCV(mint, interval, 200),
     staleTime: 30_000,
+    // Periodic resync keeps all open browser tabs consistent.
+    // Without this, each browser seeds liveCandle from whatever OHLCV state it
+    // loaded at page-open time and never refreshes — causing charts to diverge
+    // as price_update events extend each browser's independent liveCandle ref.
+    // Every 30 s all browsers reload from the same DB source, reseed liveCandle
+    // to the same value, and converge.  The ohlcvFirstLoad guard means this
+    // won't reset the user's zoom/scroll position.
+    refetchInterval: 30_000,
   });
 
   const { data: tradesData } = useQuery({
