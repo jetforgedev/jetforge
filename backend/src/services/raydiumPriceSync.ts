@@ -162,6 +162,13 @@ export async function getRaydiumPrice(
         `[RAYDIUM_PRICE] ${_consecutiveFailures} consecutive failures — ` +
         `resetting Raydium SDK instance for re-initialization on next request.`,
       );
+      // Attempt to release held resources before dereferencing
+      if (_raydium) {
+        try {
+          if (typeof _raydium.destroy === "function") _raydium.destroy();
+          else if (typeof _raydium.close === "function") _raydium.close();
+        } catch { /* ignore cleanup errors */ }
+      }
       _raydium = null;
       _raydiumInitPromise = null;
       _consecutiveFailures = 0;

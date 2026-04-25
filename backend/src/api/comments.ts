@@ -10,6 +10,11 @@ export const commentsRouter = Router();
 
 const PAGE_SIZE = 20;
 
+// In-memory cooldown: one comment per wallet per mint per 60 s.
+// Keyed as `${wallet}:${mint}`, value = last-post timestamp (ms).
+const commentCooldown = new Map<string, number>();
+const COMMENT_COOLDOWN_MS = 60_000;
+
 // Validates a base58 Solana public key
 function isValidSolanaAddress(addr: string): boolean {
   try {
@@ -84,12 +89,22 @@ commentsRouter.post("/:mint", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Message does not reference this token" });
     }
 
+    // Rate-limit: one comment per wallet per mint per 60 s
+    const cooldownKey = `${data.wallet}:${mint}`;
+    const lastPost = commentCooldown.get(cooldownKey);
+    if (lastPost && Date.now() - lastPost < COMMENT_COOLDOWN_MS) {
+      const retryAfter = Math.ceil((COMMENT_COOLDOWN_MS - (Date.now() - lastPost)) / 1000);
+      return res.status(429).json({ error: `Please wait ${retryAfter}s before posting again.` });
+    }
+
     const token = await prisma.token.findUnique({ where: { mint } });
     if (!token) return res.status(404).json({ error: "Token not found" });
 
     const comment = await prisma.comment.create({
       data: { mint, wallet: data.wallet, text: data.text },
     });
+
+    commentCooldown.set(cooldownKey, Date.now());
 
     const { io } = await import("../index");
     broadcastComment(io, comment);

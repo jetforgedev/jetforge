@@ -245,9 +245,13 @@ export async function computeWalletPortfolio(wallet: string) {
           // Post-graduation: try live Raydium pool price (cache was warmed above)
           const livePriceSol = await getRaydiumPrice(tok.raydiumPoolId, mint);
           if (livePriceSol !== null && livePriceSol > 0) {
-            // value = displayTokens × priceSol × 1e9  (lamports)
-            const displayTokens = Number(pos.tokenBalance) / 1e6;
-            currentValueLamports = BigInt(Math.round(displayTokens * livePriceSol * 1e9));
+            // Compute in BigInt to avoid Number precision loss for large balances.
+            // value (lamports) = tokenBalance (base) * livePriceSol (SOL/display) * 1e9 / 1e6
+            //                  = tokenBalance * livePriceSol * 1e3
+            // Scale livePriceSol to integer: priceScaled = round(livePriceSol * 1e9)
+            // then: value = tokenBalance * priceScaled / 1e6
+            const priceScaled = BigInt(Math.round(livePriceSol * 1_000_000_000));
+            currentValueLamports = (pos.tokenBalance * priceScaled) / 1_000_000n;
             priceSource = "raydium";
           } else {
             // Live fetch failed — fall back to stored reserves snapshot

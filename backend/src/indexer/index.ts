@@ -159,37 +159,41 @@ async function handleBuyEvent(
       timestamp,
     });
 
-    // Trade insert + bucket upsert run in parallel (independent writes).
+    // Trade insert — critical write. Must complete before anything else.
     const tradeTs = new Date(timestamp * 1000);
     const bucketStart = getMinuteBucketStart(tradeTs);
-    await Promise.all([
-      prisma.trade.create({
-        data: {
-          signature,
-          mint,
-          trader: buyer,
-          type: "BUY",
-          solAmount,
-          tokenAmount,
-          price,
-          fee,
-          timestamp: tradeTs,
-        },
-      }),
-      (prisma as any).tradeVolumeBucket.upsert({
+    await prisma.trade.create({
+      data: {
+        signature,
+        mint,
+        trader: buyer,
+        type: "BUY",
+        solAmount,
+        tokenAmount,
+        price,
+        fee,
+        timestamp: tradeTs,
+      },
+    });
+
+    // Bucket upsert — stats optimization. Isolated so any failure here never
+    // silences broadcastTrade. volume24h stays null → Token.volume24h not overwritten.
+    let volume24h: number | null = null;
+    try {
+      await (prisma as any).tradeVolumeBucket.upsert({
         where: { mint_bucketStart: { mint, bucketStart } },
         update: { volumeLamports: { increment: solAmount }, trades: { increment: 1 } },
         create: { mint, bucketStart, volumeLamports: solAmount, trades: 1 },
-      }),
-    ]);
-
-    // Sum last 24h buckets — ≤1440 rows, indexed, no full table scan.
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
-      where: { mint, bucketStart: { gte: oneDayAgo } },
-      _sum: { volumeLamports: true },
-    });
-    const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
+      });
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
+        where: { mint, bucketStart: { gte: oneDayAgo } },
+        _sum: { volumeLamports: true },
+      });
+      volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
+    } catch (bucketErr) {
+      console.error(`[BUCKET] BUY upsert failed for ${mint.slice(0, 8)}… — volume24h not updated:`, bucketErr);
+    }
 
     // Holder upsert then count (count must follow upsert).
     await (prisma as any).holder.upsert({
@@ -220,7 +224,7 @@ async function handleBuyEvent(
         realSolReserves: realSol,
         realTokenReserves: realTok,
         marketCapSol,
-        volume24h,
+        ...(volume24h !== null ? { volume24h } : {}),
         isGraduated,
         graduatedAt: isGraduated ? new Date() : undefined,
         trades: { increment: 1 },
@@ -246,7 +250,7 @@ async function handleBuyEvent(
       tokenName: (tokenMeta as any)?.name,
       tokenSymbol: (tokenMeta as any)?.symbol,
       tokenImageUrl: (tokenMeta as any)?.imageUrl ?? undefined,
-      volume24h,
+      volume24h: volume24h ?? undefined,
       trades: updatedToken.trades,
       holders: holdersCount,
     });
@@ -315,37 +319,40 @@ async function handleSellEvent(
       timestamp,
     });
 
-    // Trade insert + bucket upsert run in parallel (independent writes).
+    // Trade insert — critical write. Must complete before anything else.
     const tradeTs = new Date(timestamp * 1000);
     const bucketStart = getMinuteBucketStart(tradeTs);
-    await Promise.all([
-      prisma.trade.create({
-        data: {
-          signature,
-          mint,
-          trader: seller,
-          type: "SELL",
-          solAmount,
-          tokenAmount,
-          price,
-          fee,
-          timestamp: tradeTs,
-        },
-      }),
-      (prisma as any).tradeVolumeBucket.upsert({
+    await prisma.trade.create({
+      data: {
+        signature,
+        mint,
+        trader: seller,
+        type: "SELL",
+        solAmount,
+        tokenAmount,
+        price,
+        fee,
+        timestamp: tradeTs,
+      },
+    });
+
+    // Bucket upsert — isolated so failures never silence broadcastTrade.
+    let volume24h: number | null = null;
+    try {
+      await (prisma as any).tradeVolumeBucket.upsert({
         where: { mint_bucketStart: { mint, bucketStart } },
         update: { volumeLamports: { increment: solAmount }, trades: { increment: 1 } },
         create: { mint, bucketStart, volumeLamports: solAmount, trades: 1 },
-      }),
-    ]);
-
-    // Sum last 24h buckets — ≤1440 rows, indexed, no full table scan.
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
-      where: { mint, bucketStart: { gte: oneDayAgo } },
-      _sum: { volumeLamports: true },
-    });
-    const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
+      });
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
+        where: { mint, bucketStart: { gte: oneDayAgo } },
+        _sum: { volumeLamports: true },
+      });
+      volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
+    } catch (bucketErr) {
+      console.error(`[BUCKET] SELL upsert failed for ${mint.slice(0, 8)}… — volume24h not updated:`, bucketErr);
+    }
 
     // Decrement seller's balance then clean up zero rows.
     await (prisma as any).holder.upsert({
@@ -377,7 +384,7 @@ async function handleSellEvent(
         realSolReserves: realSol,
         realTokenReserves: realTok,
         marketCapSol,
-        volume24h,
+        ...(volume24h !== null ? { volume24h } : {}),
         trades: { increment: 1 },
         holders: holdersCount,
       },
@@ -401,7 +408,7 @@ async function handleSellEvent(
       tokenName: (tokenMeta as any)?.name,
       tokenSymbol: (tokenMeta as any)?.symbol,
       tokenImageUrl: (tokenMeta as any)?.imageUrl ?? undefined,
-      volume24h,
+      volume24h: volume24h ?? undefined,
       trades: updatedToken.trades,
       holders: holdersCount,
     });
@@ -730,9 +737,11 @@ export async function startIndexer(io: Server): Promise<void> {
   setInterval(async () => {
     try {
       const oneDayAgo  = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      // Find tokens that haven't traded in 2+ h but still have non-zero volume24h.
+      // Using a 2h buffer means we start decaying well before the 24h window closes.
       const stale = await prisma.token.findMany({
-        where: { updatedAt: { lt: oneDayAgo }, createdAt: { gte: twoDaysAgo }, isGraduated: false },
+        where: { updatedAt: { lt: twoHoursAgo }, volume24h: { gt: 0 }, isGraduated: false },
         select: { mint: true },
       });
       for (const { mint } of stale) {
@@ -773,4 +782,15 @@ function scheduleReconnect(io: Server): void {
       scheduleReconnect(io);
     }
   }, 10_000);
+}
+
+export function stopIndexer(): void {
+  isRunning = false;
+  if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
+  if (pollTimeout) { clearTimeout(pollTimeout); pollTimeout = null; }
+  if (subscriptionId !== null && connection) {
+    connection.removeOnLogsListener(subscriptionId);
+    subscriptionId = null;
+  }
+  console.log("[INDEXER] Stopped.");
 }

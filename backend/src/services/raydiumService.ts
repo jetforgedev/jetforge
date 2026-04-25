@@ -146,7 +146,14 @@ export async function createRaydiumPool(
     console.log(`[RAYDIUM] Expected LP Mint: ${lpMint.toBase58()}`);
 
     try {
-      const { txId } = await execute({ sendAndConfirm: true });
+      const EXECUTE_TIMEOUT_MS = 120_000;
+      const timeoutErr = new Error(`execute() timed out after ${EXECUTE_TIMEOUT_MS / 1000}s`);
+      const { txId } = await Promise.race([
+        execute({ sendAndConfirm: true }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(timeoutErr), EXECUTE_TIMEOUT_MS)
+        ),
+      ]);
       console.log(`[RAYDIUM] Pool created! Tx: ${Array.isArray(txId) ? txId[0] : txId}`);
     } catch (execErr: any) {
       // execute() can throw a confirmation timeout even when the tx already

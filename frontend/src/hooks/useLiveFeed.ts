@@ -81,7 +81,8 @@ export function useLiveFeed(maxItems = 50) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.emit("subscribe:feed");
+    // Only emit if already connected; handleConnect handles the reconnect case.
+    if (socket.connected) socket.emit("subscribe:feed");
     setIsConnected(socket.connected);
 
     const handleConnect = () => {

@@ -63,58 +63,69 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
       take: limit,
     });
 
-    const results = await Promise.all(
-      creatorTokens.map(async (row, index) => {
-        // Count graduated tokens for this creator
-        const graduated = await prisma.token.count({
-          where: { creator: row.creator, isGraduated: true },
-        });
+    if (creatorTokens.length === 0) return res.json([]);
+    const wallets = creatorTokens.map((r) => r.creator);
 
-        // Latest token
-        const latestToken = await prisma.token.findFirst({
-          where: { creator: row.creator },
-          orderBy: { createdAt: "desc" },
-          select: { name: true, symbol: true, imageUrl: true, mint: true },
-        });
+    // Batch all per-creator lookups into 3 queries instead of 3N.
+    const [graduatedGroups, allCreatorTokens, tradeStats] = await Promise.all([
+      // Graduated count per creator
+      prisma.token.groupBy({
+        by: ["creator"],
+        where: { creator: { in: wallets }, isGraduated: true },
+        _count: { mint: true },
+      }),
+      // All tokens for these creators — pick latest per creator in memory
+      prisma.token.findMany({
+        where: { creator: { in: wallets } },
+        orderBy: { createdAt: "desc" },
+        select: { creator: true, name: true, symbol: true, imageUrl: true, mint: true, createdAt: true },
+      }),
+      // All-time trade volume + count per creator via a single JOIN query
+      prisma.$queryRaw<{ creator: string; total_volume: bigint; trade_count: bigint }[]>`
+        SELECT tk.creator,
+               COALESCE(SUM(tr."solAmount"), 0) AS total_volume,
+               COUNT(tr.id)                     AS trade_count
+        FROM   "Token" tk
+        LEFT JOIN "Trade" tr ON tr.mint = tk.mint
+        WHERE  tk.creator = ANY(${wallets})
+        GROUP  BY tk.creator
+      `,
+    ]);
 
-        // All-time volume from actual trade records
-        const [tradeCount, volumeResult] = await Promise.all([
-          prisma.trade.count({ where: { token: { creator: row.creator } } }),
-          prisma.trade.aggregate({
-            where: { token: { creator: row.creator } },
-            _sum: { solAmount: true },
-          }),
-        ]);
+    const graduatedMap = new Map(graduatedGroups.map((g) => [g.creator, g._count.mint]));
+    const latestTokenMap = new Map<string, typeof allCreatorTokens[0]>();
+    for (const t of allCreatorTokens) {
+      if (!latestTokenMap.has(t.creator)) latestTokenMap.set(t.creator, t);
+    }
+    const tradeMap = new Map(tradeStats.map((s) => [s.creator, s]));
 
-        const tokensLaunched = row._count.mint;
-        const totalVolumeSol = Number(volumeResult._sum.solAmount ?? 0n) / 1e9;
-        const totalRaisedSol = Number(row._sum.realSolReserves ?? 0n) / 1e9;
-        // Creator earns 40% of 1% fee = 0.4% of all volume
-        const estimatedEarningsSol = totalVolumeSol * 0.004;
+    const results = creatorTokens.map((row, index) => {
+      const tokensLaunched = row._count.mint;
+      const graduated      = graduatedMap.get(row.creator) ?? 0;
+      const latestToken    = latestTokenMap.get(row.creator) ?? null;
+      const stats          = tradeMap.get(row.creator);
+      const totalVolumeSol = Number(stats?.total_volume ?? 0n) / 1e9;
+      const totalRaisedSol = Number(row._sum.realSolReserves ?? 0n) / 1e9;
+      const estimatedEarningsSol = totalVolumeSol * 0.004;
+      const badge = getCreatorBadge(tokensLaunched, totalVolumeSol, graduated);
 
-        const badge = getCreatorBadge(tokensLaunched, totalVolumeSol, graduated);
+      return {
+        rank: index + 1,
+        wallet: row.creator,
+        tokensLaunched,
+        totalVolumeSol: totalVolumeSol.toFixed(4),
+        totalRaisedSol: totalRaisedSol.toFixed(4),
+        estimatedEarningsSol: estimatedEarningsSol.toFixed(4),
+        graduatedTokens: graduated,
+        totalTrades: Number(stats?.trade_count ?? 0n),
+        badge: badge.badge,
+        badgeLabel: badge.label,
+        badgeColor: badge.color,
+        latestToken,
+      };
+    });
 
-        return {
-          rank: index + 1,
-          wallet: row.creator,
-          tokensLaunched,
-          totalVolumeSol: totalVolumeSol.toFixed(4),
-          totalRaisedSol: totalRaisedSol.toFixed(4),
-          estimatedEarningsSol: estimatedEarningsSol.toFixed(4),
-          graduatedTokens: graduated,
-          totalTrades: tradeCount,
-          badge: badge.badge,
-          badgeLabel: badge.label,
-          badgeColor: badge.color,
-          latestToken,
-        };
-      })
-    );
-
-    // Re-sort by all-time volume (totalVolumeSol) so the ranking matches the
-    // metric displayed in the UI. The initial groupBy sorts by volume24h as a
-    // fast pre-filter, but the final ordering must be consistent with what the
-    // frontend shows — otherwise rank #1 may have lower all-time volume than #2.
+    // Re-sort by all-time volume so rank matches the displayed metric.
     if (metric !== "tokens") {
       results.sort((a, b) => parseFloat(b.totalVolumeSol) - parseFloat(a.totalVolumeSol));
       results.forEach((r, i) => { r.rank = i + 1; });

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import crypto from "crypto";
 import { prisma } from "../index";
 
 export const metadataRouter = Router();
@@ -42,8 +43,14 @@ metadataRouter.get("/:mint", async (req: Request, res: Response) => {
       collection: null,
     };
 
+    // ETag based on content hash — allows clients/CDNs to skip unchanged metadata
+    const etag = `"${crypto.createHash("md5").update(JSON.stringify({ n: token.name, s: token.symbol, i: token.imageUrl, u: token.updatedAt.getTime() })).digest("hex")}"`;
+    if (req.get("if-none-match") === etag) return res.status(304).end();
+
     // Allow cross-origin so Metaplex validators and explorers can fetch it
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("ETag", etag);
+    res.setHeader("Last-Modified", token.updatedAt.toUTCString());
     res.setHeader("Cache-Control", "public, max-age=60");
     res.json(metadata);
   } catch (error) {

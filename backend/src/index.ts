@@ -10,7 +10,7 @@ import rateLimit from "express-rate-limit";
 import { config } from "./config";
 import { createRouter } from "./api/router";
 import { initWebSocket } from "./websocket/index";
-import { startIndexer } from "./indexer/index";
+import { startIndexer, stopIndexer } from "./indexer/index";
 
 dotenv.config();
 
@@ -67,13 +67,14 @@ const writeLimiter = rateLimit({
 });
 app.use(["/api/tokens", "/api/comments", "/api/upload"], writeLimiter);
 
-// Health check
-app.get("/health", (_req: Request, res: Response) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
-  });
+// Health check — includes DB ping so load balancers can detect DB connectivity loss
+app.get("/health", async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", timestamp: new Date().toISOString(), environment: process.env.NODE_ENV || "development" });
+  } catch {
+    res.status(503).json({ status: "error", detail: "db unreachable" });
+  }
 });
 
 // Serve uploaded images
@@ -138,6 +139,8 @@ const start = async () => {
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   console.log(`\nReceived ${signal}, shutting down gracefully...`);
+
+  stopIndexer();
 
   httpServer.close(() => {
     console.log("HTTP server closed");

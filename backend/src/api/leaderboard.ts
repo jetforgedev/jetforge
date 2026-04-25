@@ -22,9 +22,9 @@ function setLBCache(map: Map<string, LBCacheEntry>, key: string, data: any): voi
   map.set(key, { data, ts: Date.now() });
 }
 
-// Cap trades fetched for PnL computation. Top traders on mainnet may have
-// 10k+ trades; fetching all of them for 20 wallets simultaneously is unsafe.
-const MAX_TRADES_FOR_PNL = 50_000; // across all top-N wallets combined
+// Cap trades fetched per trader for PnL computation. Each wallet is queried
+// independently and in parallel so one whale can't starve everyone else's history.
+const MAX_TRADES_PER_TRADER = 2_500;
 
 export const leaderboardRouter = Router();
 
@@ -145,12 +145,19 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
     // Capped at MAX_TRADES_FOR_PNL total rows to prevent memory exhaustion
     // when top traders have very large trade histories.
     const walletList = traderStats.map((t) => t.trader);
-    const allTrades = await prisma.trade.findMany({
-      where: { trader: { in: walletList } },
-      orderBy: { timestamp: "asc" },
-      take: MAX_TRADES_FOR_PNL,
-      select: { trader: true, mint: true, type: true, solAmount: true, tokenAmount: true },
-    });
+    // Fetch each trader's history in parallel with a per-trader cap so a single
+    // whale with 100k trades can't crowd out everyone else's history.
+    const allTradesNested = await Promise.all(
+      walletList.map((wallet) =>
+        prisma.trade.findMany({
+          where: { trader: wallet },
+          orderBy: { timestamp: "asc" },
+          take: MAX_TRADES_PER_TRADER,
+          select: { trader: true, mint: true, type: true, solAmount: true, tokenAmount: true },
+        })
+      )
+    );
+    const allTrades = allTradesNested.flat();
 
     // Group trades by (wallet → mint → [trades])
     const tradesByWallet = new Map<string, Map<string, typeof allTrades>>();
