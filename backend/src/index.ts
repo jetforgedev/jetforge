@@ -116,10 +116,18 @@ const start = async () => {
       console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
     });
 
-    // Start blockchain indexer
-    startIndexer(io).catch((err) => {
-      console.error("Indexer error:", err);
-    });
+    // Start blockchain indexer only on PM2 instance 0 (or when not in cluster
+    // mode) to avoid duplicate Solana subscriptions and double socket emissions.
+    // All cluster instances share the same HTTP/WebSocket port via Node's
+    // cluster module, so broadcasts from instance 0 reach all connected clients.
+    const instanceId = process.env.NODE_APP_INSTANCE;
+    if (instanceId === undefined || instanceId === "0") {
+      startIndexer(io).catch((err) => {
+        console.error("Indexer error:", err);
+      });
+    } else {
+      console.log(`[Indexer] Skipping on cluster instance ${instanceId} — instance 0 handles indexing`);
+    }
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
