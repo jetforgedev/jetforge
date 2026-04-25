@@ -19,7 +19,11 @@ export function useToken(mint: string) {
       // Poll fast (5s) for active tokens so graduation + trades show quickly.
       // After graduation, slow down to 30s.
       const data = query.state.data as TokenData | undefined;
-      return data?.isGraduated ? 30_000 : 5_000;
+      // If websocket is connected, socket updates already patch the query cache
+      // for reserves/trade count, so we can poll less aggressively.
+      const wsConnected = !!socket?.connected;
+      if (data?.isGraduated) return wsConnected ? 60_000 : 30_000;
+      return wsConnected ? 15_000 : 5_000;
     },
     staleTime: 4_000,
     retry: 60, // Keep retrying (3s interval × 60 = 3 min max)

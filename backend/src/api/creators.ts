@@ -1,12 +1,13 @@
 import { Router, Request, Response } from "express";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { prisma } from "../index";
 import { config } from "../config";
+import { getSolanaConnection } from "../solana/connection";
 
 // Fetch on-chain creator vault balance in SOL (above rent minimum)
 async function getCreatorVaultBalance(mintStr: string): Promise<number> {
   try {
-    const connection = new Connection(config.solana.rpcUrl, "confirmed");
+    const connection = getSolanaConnection();
     const programId = new PublicKey(config.solana.programId);
     const mint = new PublicKey(mintStr);
     const [vault] = PublicKey.findProgramAddressSync(

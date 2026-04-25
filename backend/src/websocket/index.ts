@@ -108,6 +108,7 @@ export function broadcastTrade(io: Server, event: TradeEvent): void {
     type: event.type,
     mint: event.mint,
     trader: event.trader,
+    signature: event.signature,
     solAmount: event.solAmount,
     tokenAmount: event.tokenAmount,
     price: event.price,

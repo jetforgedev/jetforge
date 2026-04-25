@@ -55,6 +55,9 @@ desktop.ini
 .cache/
 *.tgz
 
+# ─── Runtime uploads (should not be versioned) ────────────────────────────────
+backend/uploads/
+
 # ─── Claude Code internals ────────────────────────────────────────────────────
 .claude/
 

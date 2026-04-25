@@ -17,6 +17,7 @@ import {
 import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
 import { holdersCache } from "../holdersCache";
+import { getSolanaConnection } from "../solana/connection";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD);
@@ -540,7 +541,17 @@ function setupLogSubscription(io: Server): void {
 // recent program transactions every 10s and processes any that were missed.
 
 let lastProcessedSignature: string | null = null;
-let pollInterval: ReturnType<typeof setInterval> | null = null;
+let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// Adaptive polling: back off when idle to reduce RPC load.
+const POLL_MIN_MS = 5_000;
+const POLL_MAX_MS = 30_000;
+let pollDelayMs = POLL_MIN_MS;
+
+// Concurrency cap for processing transactions fetched by polling.
+// Keeps a single slow `getTransaction` from stalling the whole tick, without
+// stampeding the RPC provider.
+const POLL_PROCESS_CONCURRENCY = 3;
 
 async function processTransaction(
   signature: string,
@@ -585,43 +596,54 @@ async function processTransaction(
   }
 }
 
-async function pollRecentTransactions(io: Server): Promise<void> {
+async function pollRecentTransactions(io: Server): Promise<number> {
   try {
     const opts: any = { limit: 30, commitment: "confirmed" };
     if (lastProcessedSignature) opts.until = lastProcessedSignature;
 
     const sigs = await connection.getSignaturesForAddress(PROGRAM_ID, opts);
-    if (!sigs.length) return;
+    if (!sigs.length) return 0;
 
     // Process from oldest to newest (reverse order)
-    const toProcess = [...sigs].reverse();
-    for (const sigInfo of toProcess) {
-      if (!sigInfo.err) {
-        await processTransaction(sigInfo.signature, io);
-      }
+    const toProcess = sigs.filter((s) => !s.err).reverse();
+    for (let i = 0; i < toProcess.length; i += POLL_PROCESS_CONCURRENCY) {
+      const batch = toProcess.slice(i, i + POLL_PROCESS_CONCURRENCY);
+      await Promise.allSettled(batch.map((s) => processTransaction(s.signature, io)));
     }
 
     // Remember the newest signature so next poll only fetches newer txs
     lastProcessedSignature = sigs[0].signature;
+    return sigs.length;
   } catch (err: any) {
     console.error("[POLL] Failed to fetch signatures:", err?.message ?? err);
+    return 0;
   }
 }
 
+function scheduleNextPoll(io: Server): void {
+  if (pollTimeout) clearTimeout(pollTimeout);
+  pollTimeout = setTimeout(async () => {
+    const fetched = await pollRecentTransactions(io);
+    // Backoff: if nothing new, increase delay; if activity, reset to min.
+    pollDelayMs = fetched === 0
+      ? Math.min(POLL_MAX_MS, Math.floor(pollDelayMs * 1.5))
+      : POLL_MIN_MS;
+    scheduleNextPoll(io);
+  }, pollDelayMs);
+}
+
 async function connect(io: Server): Promise<void> {
-  connection = new Connection(config.solana.rpcUrl, {
-    wsEndpoint: config.solana.wsUrl,
-    commitment: "confirmed",
-  });
+  connection = getSolanaConnection();
 
   setupLogSubscription(io);
 
-  // Start polling fallback — runs every 10s to catch events the WS missed
-  if (pollInterval) clearInterval(pollInterval);
+  // Start polling fallback — adaptive backoff to reduce RPC load when idle
+  if (pollTimeout) clearTimeout(pollTimeout);
+  pollDelayMs = POLL_MIN_MS;
   // Initial poll to backfill recent history
   await pollRecentTransactions(io);
-  pollInterval = setInterval(() => pollRecentTransactions(io), 3_000);
-  console.log("[POLL] Transaction polling started (3s interval)");
+  scheduleNextPoll(io);
+  console.log(`[POLL] Transaction polling started (${POLL_MIN_MS}–${POLL_MAX_MS}ms adaptive)`);
 
   console.log(`Indexer connected to ${config.solana.rpcUrl}`);
 }
