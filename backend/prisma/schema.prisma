@@ -101,6 +101,21 @@ model Holder {
   @@index([mint, balance])
 }
 
+// Per-mint per-minute volume buckets — maintained by the indexer on every trade.
+// Replaces the expensive per-trade Trade.aggregate(last 24h) scan.
+// 24h of 1-minute buckets = ≤1440 rows per mint (fast, indexed).
+model TradeVolumeBucket {
+  id             Int      @id @default(autoincrement())
+  mint           String
+  bucketStart    DateTime
+  volumeLamports BigInt   @default(0)
+  trades         Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([mint, bucketStart])
+  @@index([mint, bucketStart])
+}
+
 // Social follow graph — wallet-to-wallet, no auth required (wallet IS identity)
 model Follow {
   id          String   @id @default(cuid())
