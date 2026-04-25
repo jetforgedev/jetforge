@@ -12,7 +12,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 /** Returns true when running on a mobile / tablet device (UA sniff). */
 function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  if (/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)) return true;
+  // iPadOS 13+ reports as "Macintosh" — detect by touch support instead.
+  if (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) return true;
+  return false;
 }
 
 // ── No-wallet bottom sheet ────────────────────────────────────────────────────
