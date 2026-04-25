@@ -35,6 +35,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
     staleTime: 30_000,
+    refetchInterval: 30_000,
     retry: false,
   });
 
@@ -42,6 +43,7 @@ export default function CreatorProfilePage({ params }: PageProps) {
     queryKey: ["follow-stats", wallet, viewer],
     queryFn: () => getFollowStats(wallet, viewer),
     staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   const toggleFollow = async () => {
