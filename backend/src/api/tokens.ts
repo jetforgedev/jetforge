@@ -1,8 +1,9 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS, config } from "../config";
+import { getSolanaConnection } from "../solana/connection";
 
 export const tokensRouter = Router();
 
@@ -265,7 +266,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
 
     if (needsChainRead) {
       try {
-        const conn = new Connection(config.solana.rpcUrl, "confirmed");
+        const conn = getSolanaConnection();
         const programId = new PublicKey(config.solana.programId);
         const mintPk = new PublicKey(mint);
         const [bcPDA] = PublicKey.findProgramAddressSync(
@@ -370,7 +371,7 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
     try {
       const mintPk = new PublicKey(data.mint);
       const programId = new PublicKey(config.solana.programId);
-      const connection = new Connection(config.solana.rpcUrl, "confirmed");
+      const connection = getSolanaConnection();
       const [bcPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from("bonding_curve"), mintPk.toBuffer()],
         programId
@@ -504,7 +505,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
     // ── Fallback A: RPC (accurate for tokens that pre-date the Holder table) ──
     try {
       const mintPubkey = new PublicKey(mint);
-      const connection = new Connection(config.solana.rpcUrl, "confirmed");
+      const connection = getSolanaConnection();
       const largest = await connection.getTokenLargestAccounts(mintPubkey);
       const accounts = largest.value.slice(0, 20);
 
@@ -558,15 +559,24 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
     };
     const intervalMs = intervalMap[interval] || intervalMap["5m"];
 
+    // Fetch a recent time window rather than scanning arbitrary historical rows.
+    // We overshoot the window by 2× to ensure we have enough raw trades to
+    // build `limit` candles even for sparse trading periods.
+    const windowMs = Math.max(intervalMs * limit * 2, 60_000); // at least 1 minute
+    const windowStart = new Date(Date.now() - windowMs);
+
     const trades = await prisma.trade.findMany({
-      where: { mint },
-      orderBy: { timestamp: "asc" },
-      take: limit * 10, // Get more raw trades to aggregate
+      where: { mint, timestamp: { gte: windowStart } },
+      orderBy: { timestamp: "desc" },
+      take: limit * 10, // cap raw trades to keep JS aggregation bounded
     });
 
     if (trades.length === 0) {
       return res.json([]);
     }
+
+    // Aggregate in chronological order.
+    trades.reverse();
 
     // Aggregate into OHLCV candles
     const candles = new Map<number, {

@@ -95,7 +95,10 @@ export function useLiveFeed(maxItems = 50) {
 
     const handleFeedTrade = (data: any) => {
       const item: FeedItem = {
-        id: `${data.mint}-${data.timestamp}-${Math.random()}`,
+        // Prefer stable IDs so we can dedupe bursts/reconnect replays.
+        id: data.signature
+          ? `trade-${data.signature}`
+          : `trade-${data.mint}-${data.timestamp}-${data.type}-${data.trader ?? ""}`,
         type: data.type,
         mint: data.mint,
         trader: data.trader,
