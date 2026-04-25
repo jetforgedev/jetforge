@@ -269,6 +269,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
       return "Wallet signing failed — try again";
     if (msg.includes("Failed to fetch") || msg.includes("Network Error") || msg.includes("ECONNREFUSED") || msg.includes("timeout"))
       return "Network error — check your connection";
+    if (msg.includes("Transaction sent but confirmation timed out"))
+      return msg; // already user-friendly, includes signature hint
+    if (msg.includes("Transaction expired"))
+      return "Transaction expired — network was congested. Please try again.";
     if (msg.includes("SlippageExceeded") || msg.includes("6000") || msg.includes("0x1770"))
       return "Slippage exceeded — increase slippage tolerance and retry";
     if (msg.includes("CurveComplete") || msg.includes("AlreadyGraduated") || msg.includes("TokenGraduated") || msg.includes("0x1771") || msg.includes("0x1772"))
@@ -415,7 +419,32 @@ export function TradingPanel({ token }: TradingPanelProps) {
         sig = await sendTransaction(tx, connection, { skipPreflight: true });
       }
 
-      await connection.confirmTransaction(sig, "confirmed");
+      // Use blockhash-based strategy — more reliable than the legacy string form.
+      // The tx already has recentBlockhash + lastValidBlockHeight set by program.ts.
+      // If the block height expires the error is definitive (tx failed), unlike
+      // the old 30s arbitrary timeout which throws "not confirmed" even when the
+      // tx actually succeeded.
+      try {
+        await connection.confirmTransaction(
+          {
+            signature: sig,
+            blockhash: tx.recentBlockhash!,
+            lastValidBlockHeight: tx.lastValidBlockHeight!,
+          },
+          "confirmed"
+        );
+      } catch (confirmErr: any) {
+        const msg: string = confirmErr?.message ?? "";
+        // TransactionExpiredBlockheightExceededError = tx definitively failed
+        if (msg.includes("block height exceeded") || msg.includes("BlockheightExceeded")) {
+          throw new Error("Transaction expired — the network was congested. Please try again.");
+        }
+        // Any other confirmation error: tx was sent but status is uncertain.
+        // Show the signature so the user can verify on explorer.
+        throw new Error(
+          `Transaction sent but confirmation timed out. Check the signature on explorer: ${sig.slice(0, 20)}…`
+        );
+      }
 
       // Invalidate trades + OHLCV so chart shows the new trade marker immediately
       queryClient.invalidateQueries({ queryKey: ["trades-markers", token.mint] });
