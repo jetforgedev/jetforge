@@ -146,7 +146,20 @@ export async function computeWalletPortfolio(wallet: string) {
     .filter(([, pos]) => pos.tokenBalance > 0n)
     .map(([mint]) => mint);
 
-  const tokenRecords = openMints.length > 0
+  type TokenInfo = {
+    mint: string;
+    name: string;
+    symbol: string;
+    imageUrl: string | null;
+    isGraduated: boolean;
+    raydiumPoolId?: string | null;
+    virtualSolReserves?: bigint;
+    virtualTokenReserves?: bigint;
+    marketCapSol?: number;
+    priceUsd?: number;
+  };
+
+  const tokenRecords: TokenInfo[] = openMints.length > 0
     ? await prisma.token.findMany({
         where: { mint: { in: openMints } },
         select: {
@@ -164,7 +177,7 @@ export async function computeWalletPortfolio(wallet: string) {
       })
     : [];
 
-  const tokenMap = new Map(tokenRecords.map((t) => [t.mint, t]));
+  const tokenMap = new Map<string, TokenInfo>(tokenRecords.map((t) => [t.mint, t]));
 
   // 4b. Pre-fetch live Raydium prices for all open graduated positions in parallel.
   //     Results land in the price cache; subsequent getRaydiumPrice() calls below
@@ -176,13 +189,13 @@ export async function computeWalletPortfolio(wallet: string) {
 
   // Also batch-fetch names for closed positions (for display)
   const closedMints = [...positions.keys()].filter((m) => !openMints.includes(m));
-  const closedTokenRecords = closedMints.length > 0
+  const closedTokenRecords: TokenInfo[] = closedMints.length > 0
     ? await prisma.token.findMany({
         where: { mint: { in: closedMints } },
         select: { mint: true, name: true, symbol: true, imageUrl: true, isGraduated: true },
       })
     : [];
-  for (const t of closedTokenRecords) tokenMap.set(t.mint, t as any);
+  for (const t of closedTokenRecords) tokenMap.set(t.mint, t);
 
   // 5. Build holdings array + roll up global totals
   let globalRealizedPnl = 0n;
