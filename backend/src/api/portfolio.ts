@@ -19,7 +19,12 @@ function getPortfolioCache(wallet: string): any | null {
 }
 
 function setPortfolioCache(wallet: string, data: any): void {
-  portfolioCache.set(wallet, { data, ts: Date.now() });
+  // Prune all stale entries on every write to prevent unbounded growth.
+  const now = Date.now();
+  for (const [k, v] of portfolioCache) {
+    if (now - v.ts >= PORTFOLIO_CACHE_TTL_MS) portfolioCache.delete(k);
+  }
+  portfolioCache.set(wallet, { data, ts: now });
 }
 
 // Hard cap on trades fetched per wallet — protects against memory exhaustion

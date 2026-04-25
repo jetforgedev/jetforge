@@ -101,7 +101,16 @@ const IDL: any = {
 // ─── In-memory token metadata cache ──────────────────────────────────────────
 // Token name/symbol/imageUrl never change after creation — cache them so we
 // don't query the DB on every trade just to populate broadcastTrade's fields.
+// Capped at 20k entries: evict oldest when full (FIFO approximation via Map insertion order).
+const TOKEN_META_CACHE_MAX = 20_000;
 const tokenMetaCache = new Map<string, { name: string; symbol: string; imageUrl?: string }>();
+
+function setTokenMetaCache(mint: string, meta: { name: string; symbol: string; imageUrl?: string }): void {
+  if (tokenMetaCache.size >= TOKEN_META_CACHE_MAX) {
+    tokenMetaCache.delete(tokenMetaCache.keys().next().value!);
+  }
+  tokenMetaCache.set(mint, meta);
+}
 
 // Build the EventParser once
 let eventParser: EventParser;
@@ -214,7 +223,7 @@ async function handleBuyEvent(
             select: { name: true, symbol: true, imageUrl: true, creator: true },
           }),
     ]);
-    if (tokenMeta && !cachedMeta) tokenMetaCache.set(mint, tokenMeta as any);
+    if (tokenMeta && !cachedMeta) setTokenMetaCache(mint, tokenMeta as any);
 
     const updatedToken = await prisma.token.update({
       where: { mint },
@@ -374,7 +383,7 @@ async function handleSellEvent(
             select: { name: true, symbol: true, imageUrl: true },
           }),
     ]);
-    if (tokenMeta && !cachedMeta) tokenMetaCache.set(mint, tokenMeta as any);
+    if (tokenMeta && !cachedMeta) setTokenMetaCache(mint, tokenMeta as any);
 
     const updatedToken = await prisma.token.update({
       where: { mint },

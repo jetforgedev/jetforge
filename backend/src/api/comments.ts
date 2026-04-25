@@ -15,6 +15,14 @@ const PAGE_SIZE = 20;
 const commentCooldown = new Map<string, number>();
 const COMMENT_COOLDOWN_MS = 60_000;
 
+// Prune expired cooldown entries every 5 minutes to prevent unbounded growth.
+setInterval(() => {
+  const cutoff = Date.now() - COMMENT_COOLDOWN_MS;
+  for (const [key, ts] of commentCooldown) {
+    if (ts < cutoff) commentCooldown.delete(key);
+  }
+}, 5 * 60_000).unref();
+
 // Validates a base58 Solana public key
 function isValidSolanaAddress(addr: string): boolean {
   try {
