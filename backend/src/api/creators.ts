@@ -92,8 +92,10 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
       ` as Promise<Array<{ creator: string; total_volume: bigint; trade_count: bigint }>>,
     ]);
 
-    // Prisma groupBy _count may narrow to a non-number type in some versions — cast explicitly.
-    const graduatedMap = new Map(graduatedGroups.map((g) => [g.creator, Number(g._count.mint)]));
+    // Prisma groupBy _count may narrow to {} in some TS/Prisma versions — type tuple explicitly.
+    const graduatedMap = new Map<string, number>(
+      graduatedGroups.map((g): [string, number] => [g.creator, Number(g._count.mint)])
+    );
     const latestTokenMap = new Map<string, typeof allCreatorTokens[0]>();
     for (const t of allCreatorTokens) {
       if (!latestTokenMap.has(t.creator)) latestTokenMap.set(t.creator, t);
