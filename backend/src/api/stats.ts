@@ -8,23 +8,23 @@ statsRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [totalTokens, vol24hResult, trades24hResult] = await Promise.all([
+    // Sum TradeVolumeBucket instead of scanning all Trade rows — bounded at
+    // 1440 × active_mints rows vs potentially millions of individual trades.
+    const [totalTokens, bucketSum] = await Promise.all([
       prisma.token.count(),
-      prisma.trade.aggregate({
-        where: { timestamp: { gte: oneDayAgo } },
-        _sum: { solAmount: true },
-      }),
-      prisma.trade.count({
-        where: { timestamp: { gte: oneDayAgo } },
+      (prisma as any).tradeVolumeBucket.aggregate({
+        where: { bucketStart: { gte: oneDayAgo } },
+        _sum: { volumeLamports: true, trades: true },
       }),
     ]);
 
-    const volume24hSol = Number(vol24hResult._sum.solAmount ?? 0n) / 1e9;
+    const volume24hSol = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
+    const trades24h    = Number(bucketSum._sum.trades ?? 0);
 
     res.json({
       totalTokens,
       volume24hSol: parseFloat(volume24hSol.toFixed(2)),
-      trades24h: trades24hResult,
+      trades24h,
     });
   } catch (error) {
     console.error("GET /stats error:", error);

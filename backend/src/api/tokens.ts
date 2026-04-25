@@ -313,18 +313,12 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       }
     }
 
-    // Get 24h volume + holder count in parallel
-    // Holder count: use the indexed Holder table (O(log n), < 5 ms) instead of
-    // trade.groupBy which scans every trade row for the token (O(n), slow).
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [recentTrades, holdersCount] = await Promise.all([
-      prisma.trade.aggregate({
-        where: { mint, timestamp: { gte: oneDayAgo } },
-        _sum: { solAmount: true },
-        _count: true,
-      }),
-      (prisma as any).holder.count({ where: { mint, balance: { gt: 0n } } }),
-    ]);
+    // Holder count via indexed Holder table (O(log n), < 5 ms).
+    // volume24h is kept up to date by the indexer via TradeVolumeBucket — no
+    // per-request Trade scan needed.
+    const holdersCount = await (prisma as any).holder.count({
+      where: { mint, balance: { gt: 0n } },
+    });
 
     const marketCapSol = computeMarketCap(
       liveVirtualSol,
@@ -341,9 +335,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       realTokenReserves: liveRealTokens.toString(),
       totalSupply: token.totalSupply.toString(),
       marketCapSol,
-      volume24h: recentTrades._sum.solAmount
-        ? Number(recentTrades._sum.solAmount) / 1e9
-        : Number(liveTotalVolumeSol) / 1e9,
+      volume24h: token.volume24h,
       holders: holdersCount,
       trades: _count.tradeHistory || Number(liveTotalTrades),
       totalTrades: _count.tradeHistory || Number(liveTotalTrades),
