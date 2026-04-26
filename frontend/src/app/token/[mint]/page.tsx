@@ -7,7 +7,7 @@ import { TradingPanel } from "@/components/TradingPanel";
 import { PriceChart } from "@/components/PriceChart";
 import { GraduationBar } from "@/components/GraduationBar";
 import { TradesList } from "@/components/TradesList";
-import { truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
+import { truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator, formatTokenAmount } from "@/lib/api";
 import { formatSol, GRADUATION_THRESHOLD } from "@/lib/bondingCurve";
 import { useSolPrice } from "@/hooks/useSolPrice";
 import BN from "bn.js";
@@ -173,7 +173,10 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
                     {h.pct.toFixed(2)}%
                   </div>
                   <div className="text-[#555] text-[10px] font-mono">
-                    {h.amount.toLocaleString()}
+                    {/* h.amount is already in display token units (backend divides raw
+                        balance by 1e6 before sending), so pass decimals=0 to skip
+                        any further division and just apply the K/M/B suffix. */}
+                    {formatTokenAmount(h.amount, 0)}
                   </div>
                 </div>
               </div>

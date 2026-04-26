@@ -440,6 +440,35 @@ export async function getPortfolio(
 }
 
 /**
+ * Formats a token amount into a compact human-readable string with K/M/B suffix.
+ *
+ * @param rawAmount - The amount to format. Pass the value as-is from the API;
+ *                    use `decimals` to control any on-the-fly base-unit division.
+ * @param decimals  - Decimal places embedded in `rawAmount` (default 6 = SPL raw units).
+ *                    Pass 0 when the value is already in display (UI) units, which is
+ *                    the case for `h.amount` from GET /tokens/:mint/holders — the
+ *                    backend already divides by 1e6 before sending.
+ *
+ * Examples with decimals = 6 (raw SPL units):
+ *   17_871_321_983  →  "17.87K"   (17,871 display tokens)
+ *
+ * Examples with decimals = 0 (already display units):
+ *   17_871_321      →  "17.87M"
+ *   42_500          →  "42.50K"
+ *   999             →  "999"
+ *   0               →  "0"
+ */
+export function formatTokenAmount(rawAmount: number, decimals = 6): string {
+  if (!isFinite(rawAmount) || isNaN(rawAmount) || rawAmount < 0) return "0";
+  const display = rawAmount / Math.pow(10, decimals);
+  if (display >= 1_000_000_000) return `${(display / 1_000_000_000).toFixed(2)}B`;
+  if (display >= 1_000_000)     return `${(display / 1_000_000).toFixed(2)}M`;
+  if (display >= 1_000)         return `${(display / 1_000).toFixed(2)}K`;
+  // Small amounts: up to 2 decimal places, no trailing fractional zeros
+  return display % 1 === 0 ? display.toFixed(0) : display.toFixed(2);
+}
+
+/**
  * Adaptive SOL-per-token price formatter.
  *
  * Scales decimal places to magnitude so there are always ≥ 2 significant
