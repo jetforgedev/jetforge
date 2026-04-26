@@ -26,6 +26,7 @@ const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD
 let connection: Connection;
 let subscriptionId: number | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let decayInterval: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 
 // ─── Minimal IDL for Anchor EventParser ────────────────────────────────────────
@@ -743,7 +744,8 @@ export async function startIndexer(io: Server): Promise<void> {
   // Tokens stop receiving indexer updates after trading stops, so Token.volume24h
   // never resets on its own. This job recomputes it from the bucket table for any
   // token whose last trade was in the 24-48h window (i.e. sliding out of the window).
-  setInterval(async () => {
+  // Store the reference so stopIndexer() can cancel it before prisma.$disconnect().
+  decayInterval = setInterval(async () => {
     try {
       const oneDayAgo  = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -797,6 +799,7 @@ export function stopIndexer(): void {
   isRunning = false;
   if (reconnectTimeout) { clearTimeout(reconnectTimeout); reconnectTimeout = null; }
   if (pollTimeout) { clearTimeout(pollTimeout); pollTimeout = null; }
+  if (decayInterval) { clearInterval(decayInterval); decayInterval = null; }
   if (subscriptionId !== null && connection) {
     connection.removeOnLogsListener(subscriptionId);
     subscriptionId = null;

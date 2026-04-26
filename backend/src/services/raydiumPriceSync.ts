@@ -64,6 +64,11 @@ async function getRaydiumInstance(): Promise<any> {
     _raydiumInitPromise = null;
     console.log(`[RAYDIUM_PRICE] SDK ready on ${cluster}`);
     return r;
+  }).catch((err: any) => {
+    // Clear so the next call retries instead of returning a permanently-rejected promise.
+    _raydiumInitPromise = null;
+    console.warn("[RAYDIUM_PRICE] SDK init failed:", err?.message ?? err);
+    throw err;
   });
 
   return _raydiumInitPromise;
