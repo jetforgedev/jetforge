@@ -185,17 +185,19 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
 
-  // True when running on a mobile/tablet with no supported wallet injected.
+  // True only when running on mobile AND the adapter has zero usable wallets
+  // (neither Installed nor Loadable). Loadable wallets (e.g. Phantom/Solflare
+  // on regular Safari/Chrome) are handled natively by WalletMultiButton via
+  // deep links — we must NOT intercept those with our sheet.
   const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
     if (!isMobileDevice()) return;
-    // Only count Installed — Loadable means deep-link capable but app not present.
-    // On iPad/mobile the adapter marks many wallets as Loadable even when no
-    // wallet app is installed, which bypasses our install sheet incorrectly.
-    const installed = wallets.some(
-      (w) => w.readyState === WalletReadyState.Installed
+    const hasAny = wallets.some(
+      (w) =>
+        w.readyState === WalletReadyState.Installed ||
+        w.readyState === WalletReadyState.Loadable
     );
-    setNoWalletOnMobile(!installed);
+    setNoWalletOnMobile(!hasAny);
   }, [wallets]);
 
   useEffect(() => {
