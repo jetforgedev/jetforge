@@ -29,7 +29,11 @@ const WALLETS = [
     color: "#9945ff",
     bg: "rgba(153,69,255,0.12)",
     border: "rgba(153,69,255,0.28)",
-    href: "https://phantom.app/download",
+    installHref: "https://phantom.app/download",
+    // Universal link: opens current URL inside Phantom's built-in browser.
+    // If Phantom is installed → launches app. If not → falls back to App Store.
+    deepLink: (url: string) =>
+      `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   },
   {
     name: "Solflare",
@@ -38,7 +42,9 @@ const WALLETS = [
     color: "#FC7227",
     bg: "rgba(252,114,39,0.10)",
     border: "rgba(252,114,39,0.25)",
-    href: "https://solflare.com/download",
+    installHref: "https://solflare.com/download",
+    deepLink: (url: string) =>
+      `https://solflare.com/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   },
 ] as const;
 
@@ -93,53 +99,69 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
 
-        {/* Icon + heading */}
+        {/* Heading */}
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">
           🔌
         </div>
-
-        <h3 className="mb-1.5 text-[17px] font-bold tracking-tight text-white">
-          No Solana Wallet Detected
+        <h3 className="mb-1 text-[17px] font-bold tracking-tight text-white">
+          Connect Your Wallet
         </h3>
-        <p className="mb-5 text-sm leading-6 text-white/52">
-          Install Phantom or Solflare to connect your wallet and start trading.
-          After installing, reopen this page inside the wallet's built-in browser.
+        <p className="mb-5 text-sm leading-6 text-white/50">
+          Use the buttons below to open JetForge inside your wallet's browser,
+          or install a wallet if you don't have one yet.
         </p>
 
-        {/* Wallet options */}
-        <div className="space-y-2.5 mb-5">
+        {/* ── Section 1: Open in wallet browser (deep link) ── */}
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">
+          Already have a wallet?
+        </p>
+        <div className="space-y-2 mb-5">
+          {WALLETS.map((w) => {
+            const currentUrl = typeof window !== "undefined" ? window.location.href : "https://app.jetforge.io";
+            return (
+              <a
+                key={`open-${w.name}`}
+                href={w.deepLink(currentUrl)}
+                className="flex items-center gap-3 rounded-2xl border px-4 py-3 transition-opacity active:opacity-70"
+                style={{ background: w.bg, borderColor: w.border }}
+              >
+                <span className="text-xl">{w.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Open in {w.name}</div>
+                  <div className="text-[11px] text-white/45">Launches {w.name}'s built-in browser</div>
+                </div>
+                <span className="shrink-0 text-xs font-bold" style={{ color: w.color }}>
+                  Open →
+                </span>
+              </a>
+            );
+          })}
+        </div>
+
+        {/* ── Section 2: Install wallet ── */}
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-white/30">
+          Don't have a wallet?
+        </p>
+        <div className="space-y-2 mb-5">
           {WALLETS.map((w) => (
             <a
-              key={w.name}
-              href={w.href}
+              key={`install-${w.name}`}
+              href={w.installHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-70"
-              style={{ background: w.bg, borderColor: w.border }}
+              className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 transition-opacity active:opacity-70"
             >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
-                style={{ background: w.bg }}
-              >
-                {w.icon}
-              </div>
+              <span className="text-xl">{w.icon}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white">{w.name}</div>
-                <div className="text-xs text-white/45">{w.tagline}</div>
+                <div className="text-sm font-semibold text-white/80">Install {w.name}</div>
+                <div className="text-[11px] text-white/35">{w.tagline}</div>
               </div>
-              <span className="shrink-0 text-xs font-bold" style={{ color: w.color }}>
-                Install ↗
+              <span className="shrink-0 text-xs font-semibold text-white/40">
+                Download ↗
               </span>
             </a>
           ))}
         </div>
-
-        <p className="mb-3 text-center text-[11px] leading-5 text-white/30">
-          Already have a wallet?{" "}
-          <span className="text-white/50">
-            Open this page inside its browser tab.
-          </span>
-        </p>
 
         <button
           onClick={handleClose}
@@ -341,20 +363,35 @@ export function Header() {
                   <p className="text-xs text-[#ffcc44]/90 font-medium mb-1">
                     No Solana wallet detected
                   </p>
-                  <p className="text-[11px] text-white/50 mb-3">
-                    Install Phantom or Solflare to connect.
+                  <p className="text-[11px] text-white/50 mb-2">
+                    Already have the app? Open JetForge inside your wallet's browser:
                   </p>
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {WALLETS.map((w) => {
+                      const currentUrl = typeof window !== "undefined" ? window.location.href : "https://app.jetforge.io";
+                      return (
+                        <a
+                          key={`menu-open-${w.name}`}
+                          href={w.deepLink(currentUrl)}
+                          className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
+                          style={{ background: w.color }}
+                        >
+                          {w.icon} Open in {w.name}
+                        </a>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-white/35 mb-1.5">Don't have a wallet yet?</p>
                   <div className="flex gap-2 flex-wrap">
                     {WALLETS.map((w) => (
                       <a
-                        key={w.name}
-                        href={w.href}
+                        key={`menu-install-${w.name}`}
+                        href={w.installHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
-                        style={{ background: w.color }}
+                        className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white/60 border border-white/10 bg-white/5"
                       >
-                        {w.name} ↗
+                        Install {w.name} ↗
                       </a>
                     ))}
                   </div>
