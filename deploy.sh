@@ -18,7 +18,10 @@ deploy_backend() {
   echo "=== Backend deploy ==="
   cd "$BACKEND_DIR"
   git pull origin "$BRANCH"
-  npm ci                   # clean install (postinstall runs prisma generate)
+  # Use `npm install` (not `npm ci`) so the backend keeps its own node_modules.
+  # `npm ci` deletes node_modules before reinstalling; when the frontend's npm ci
+  # runs next it wipes any shared/hoisted packages, breaking the backend on next boot.
+  npm install              # installs/updates deps; postinstall runs prisma generate
   npm run build            # tsc — fails fast if there are type errors
   pm2 restart jetforge-backend --update-env
   echo "=== Backend done ==="
@@ -28,7 +31,7 @@ deploy_frontend() {
   echo "=== Frontend deploy ==="
   cd "$FRONTEND_DIR"
   git pull origin "$BRANCH"
-  npm ci
+  npm install              # keep consistent with backend — avoids cross-wipe of node_modules
   npm run build            # next build — fails fast on errors
   pm2 restart jetforge-frontend --update-env
   echo "=== Frontend done ==="
