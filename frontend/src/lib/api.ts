@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+// Strip any accidental trailing slash so URLs never get a double-slash like
+// "https://api.jetforge.io//api/tokens".
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api").replace(/\/$/, "");
 
 // Base URL of the backend (strips trailing /api).
 // Used to rewrite image URLs that were stored with a localhost host.

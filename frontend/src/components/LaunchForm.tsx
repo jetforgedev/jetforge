@@ -193,15 +193,28 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         console.warn("Simulation skipped (network issue):", simErr.message);
       }
 
+      // Fetch the latest blockhash just before sending — used for the
+      // non-deprecated confirmTransaction overload (blockhash + lastValidBlockHeight).
+      // Must be fetched before sendTransaction so the blockhash matches the tx.
+      const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+
       const sig = await sendTransaction(transaction, connection, {
         signers: [mintKeypair],
         skipPreflight: false,
       });
 
       toast.loading("Confirming...", { id: loadingToast });
-      // Confirmation is best-effort — tx is already submitted to the network
+      // Confirmation is best-effort — tx is already submitted to the network.
+      // Uses the blockhash strategy (non-deprecated) so RPC nodes don't reject the call.
       try {
-        await connection.confirmTransaction(sig, "confirmed");
+        await connection.confirmTransaction(
+          {
+            signature: sig,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "confirmed",
+        );
       } catch (confirmErr: any) {
         const msg: string = confirmErr?.message ?? "";
         if (msg.includes("NetworkError") || msg.includes("Failed to fetch") || msg.includes("fetch")) {

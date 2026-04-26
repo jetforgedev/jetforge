@@ -129,6 +129,13 @@ export function getSellAmount(
 
 /**
  * Calculate market cap in SOL
+ *
+ * Overflow-safe: avoids calling .toNumber() on the intermediate product
+ * virtualSol × totalSupply (≈ 30e9 × 1e15 = 3e25, exceeds MAX_SAFE_INTEGER).
+ *
+ * Strategy: compute price per display-unit token in lamports using BN arithmetic
+ * (result is ~28 at devnet start — tiny), then multiply by display supply.
+ * Both intermediate values are well within Number.MAX_SAFE_INTEGER.
  */
 export function getMarketCap(
   virtualSol: BN,
@@ -136,11 +143,15 @@ export function getMarketCap(
   totalSupply: BN
 ): number {
   if (virtualTokens.isZero()) return 0;
-  // marketCap = (virtualSol / virtualTokens) * totalSupply
-  // In SOL: divide lamports by 1e9
-  const marketCapLamports =
-    (virtualSol.toNumber() * totalSupply.toNumber()) / virtualTokens.toNumber();
-  return marketCapLamports / 1e9;
+  // Price per 1 display token in lamports:
+  //   virtualSol(lamports) × 1_000_000 / virtualTokens(base units)
+  // At devnet init: 30e9 × 1e6 / 1.07e15 ≈ 28 lamports — safe for .toNumber()
+  const pricePerDisplayTokenLamports = virtualSol.muln(1_000_000).div(virtualTokens);
+  // Total display-unit tokens (6 decimals → divide base units by 1e6)
+  const displaySupply = totalSupply.divn(1_000_000);
+  // marketCap in lamports: ~28 × 1e9 = 28e9 — within Number.MAX_SAFE_INTEGER
+  const marketCapLamports = pricePerDisplayTokenLamports.mul(displaySupply);
+  return marketCapLamports.toNumber() / 1e9; // lamports → SOL
 }
 
 /**

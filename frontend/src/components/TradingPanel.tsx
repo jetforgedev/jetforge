@@ -349,6 +349,17 @@ export function TradingPanel({ token }: TradingPanelProps) {
       return;
     }
 
+    // Hard block: >50% price impact almost guarantees a sandwich attack or a
+    // trade that wipes most of the bonding curve. User must split into smaller
+    // trades. (Warnings at >2% and >5% are shown in the UI; this is the hard stop.)
+    if (calculation.priceImpact > 50) {
+      toast.error(
+        `Price impact is ${calculation.priceImpact.toFixed(1)}% — reduce the amount and split into smaller trades.`,
+        { duration: 5000 },
+      );
+      return;
+    }
+
     // Pre-flight balance checks
     if (tab === "buy") {
       const solNeeded = parseFloat(inputAmount) * 1.015;

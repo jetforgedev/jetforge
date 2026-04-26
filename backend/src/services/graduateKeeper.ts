@@ -26,6 +26,10 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { config } from "../config";
+// NOTE: circular import is intentional and safe — prisma is accessed only inside
+// function bodies (never at module-init time), so by the time callGraduateInstruction
+// runs, index.ts has fully executed and prisma is initialised on the exports object.
+import { prisma } from "../index";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const TREASURY_PUBKEY = new PublicKey(config.solana.treasuryAddress);
@@ -89,6 +93,25 @@ async function fetchCreatorFromChain(
  * Safe to call multiple times — deduplicates in-flight calls.
  */
 export async function callGraduateInstruction(mintStr: string): Promise<void> {
+  // ── DB-level dedup: survives process restarts (unlike the in-memory inFlight Set) ──
+  // If the indexer already marked this token graduated in the DB, skip entirely.
+  // This prevents re-running graduation (and wasting 0.01 SOL on ephemeral funding)
+  // if the backend restarts while a graduation transaction is in-flight.
+  try {
+    const existing = await prisma.token.findUnique({
+      where: { mint: mintStr },
+      select: { isGraduated: true },
+    });
+    if (existing?.isGraduated) {
+      console.log(`[KEEPER] ${mintStr.slice(0, 8)}… already graduated in DB — skipping`);
+      return;
+    }
+  } catch (dbErr: any) {
+    // Fail open: if the DB check itself fails, proceed with graduation rather than
+    // silently blocking it. The on-chain AlreadyGraduated error is the final guard.
+    console.warn(`[KEEPER] DB pre-check failed for ${mintStr.slice(0, 8)}…:`, dbErr?.message);
+  }
+
   if (inFlight.has(mintStr)) {
     console.log(`[KEEPER] Graduate already in-flight for ${mintStr.slice(0, 8)}…`);
     return;
@@ -172,6 +195,17 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     });
 
     console.log(`[KEEPER] Graduate tx confirmed: ${sig}`);
+
+    // Mark graduated in DB immediately so a concurrent or post-restart call
+    // is blocked by the DB pre-check above. The indexer will also set this flag
+    // when it processes the on-chain graduation event — both writes are idempotent.
+    await prisma.token.update({
+      where: { mint: mintStr },
+      data: { isGraduated: true },
+    }).catch((e: any) => {
+      // Non-fatal: the indexer will update the flag when it processes the event
+      console.warn(`[KEEPER] Could not mark ${mintStr.slice(0, 8)}… graduated in DB:`, e?.message);
+    });
   } catch (err: any) {
     const msg = err?.message ?? String(err);
     const logs: string[] = err?.logs ?? [];

@@ -80,10 +80,10 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
         orderBy: { createdAt: "desc" },
         select: { creator: true, name: true, symbol: true, imageUrl: true, mint: true, createdAt: true },
       }),
-      // All-time trade volume + count per creator via a single JOIN query
-      // Generic on $queryRaw<T> is the correct way to type raw results; the old
-      // `as Promise<Array<T>>` suffix was incorrect inside Promise.all.
-      prisma.$queryRaw<Array<{ creator: string; total_volume: bigint; trade_count: bigint }>>`
+      // All-time trade volume + count per creator via a single JOIN query.
+      // Cast via `unknown` because Prisma's $queryRaw generic is erased by
+      // TypeScript 5.9 strict inference when used inside Promise.all.
+      prisma.$queryRaw`
         SELECT tk.creator,
                COALESCE(SUM(tr."solAmount"), 0) AS total_volume,
                COUNT(tr.id)                     AS trade_count
@@ -91,7 +91,7 @@ creatorsRouter.get("/", async (req: Request, res: Response) => {
         LEFT JOIN "Trade" tr ON tr.mint = tk.mint
         WHERE  tk.creator = ANY(${wallets})
         GROUP  BY tk.creator
-      `,
+      ` as unknown as Promise<Array<{ creator: string; total_volume: bigint; trade_count: bigint }>>,
     ]);
 
     // Prisma groupBy _count may narrow to {} in some TS/Prisma versions — type tuple explicitly.

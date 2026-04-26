@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { createServer } from "http";
 import dotenv from "dotenv";
 import path from "path";
@@ -20,6 +21,18 @@ const httpServer = createServer(app);
 // Trust the first proxy hop (nginx). "1" avoids express-rate-limit's
 // ERR_ERL_PERMISSIVE_TRUST_PROXY validation error thrown when set to true.
 app.set("trust proxy", 1);
+
+// Security headers — removes X-Powered-By, adds X-Frame-Options, X-Content-Type-Options, etc.
+// crossOriginResourcePolicy is set to "cross-origin" so uploaded images load in the
+// frontend (different origin). All other helmet defaults remain.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    // Content-Security-Policy is omitted — this is a pure JSON API; the frontend
+    // sets its own CSP via Next.js headers config.
+    contentSecurityPolicy: false,
+  }),
+);
 
 // Initialize Prisma
 export const prisma = new PrismaClient({
