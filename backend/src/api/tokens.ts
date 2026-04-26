@@ -551,16 +551,14 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
     };
     const intervalMs = intervalMap[interval] || intervalMap["5m"];
 
-    // Fetch a recent time window rather than scanning arbitrary historical rows.
-    // We overshoot the window by 2× to ensure we have enough raw trades to
-    // build `limit` candles even for sparse trading periods.
-    const windowMs = Math.max(intervalMs * limit * 2, 60_000); // at least 1 minute
-    const windowStart = new Date(Date.now() - windowMs);
-
+    // Fetch the most recent trades — no time-window filter so tokens that haven't
+    // traded recently (or ever traded) still get chart data from their history.
+    // `limit * 10` caps raw rows so JS aggregation stays bounded regardless of
+    // trade count. The final `.slice(-limit)` trims to the requested candle count.
     const trades = await prisma.trade.findMany({
-      where: { mint, timestamp: { gte: windowStart } },
+      where: { mint },
       orderBy: { timestamp: "desc" },
-      take: limit * 10, // cap raw trades to keep JS aggregation bounded
+      take: limit * 10,
     });
 
     if (trades.length === 0) {
