@@ -29,7 +29,9 @@ function validateMagicBytes(filePath: string, mimetype: string): boolean {
 export const uploadRouter = Router();
 
 // ─── Upload directory ─────────────────────────────────────────────────────────
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+// Use __dirname (dist/api/) so the path is always relative to the compiled
+// file, not process.cwd() which PM2 may set to /root in cluster mode.
+const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }

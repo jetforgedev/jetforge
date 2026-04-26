@@ -77,8 +77,9 @@ app.get("/health", async (_req: Request, res: Response) => {
   }
 });
 
-// Serve uploaded images
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
+// Serve uploaded images — __dirname (dist/) is reliable in PM2 cluster mode;
+// process.cwd() returns /root when exec_cwd is not set, causing 404s.
+const UPLOAD_DIR = path.join(__dirname, "../uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 app.use("/uploads", express.static(UPLOAD_DIR));
 

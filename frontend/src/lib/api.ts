@@ -14,22 +14,35 @@ const BACKEND_BASE = API_URL.replace(/\/api\/?$/, "");
  *    (Express returned http:// because X-Forwarded-Proto wasn't trusted).
  *    Upgrade to https:// so iPad/Safari doesn't block it as mixed content.
  */
+// Derive the canonical backend origin (e.g. "https://app.jetforge.io")
+// so we can compare it against stored image URLs.
+let _backendOrigin = "";
+try {
+  _backendOrigin = new URL(BACKEND_BASE).origin;
+} catch {
+  _backendOrigin = BACKEND_BASE;
+}
+
+/**
+ * Rewrites a stored imageUrl so it always resolves correctly in production.
+ *
+ * All three legacy mis-storage patterns are handled in one pass:
+ * 1. localhost / 127.0.0.1 host  — VPS was misconfigured with SITE_URL=localhost
+ * 2. Raw IP host (e.g. 187.77.143.74) — SITE_URL not set, Express used req.host
+ * 3. http:// scheme — stored before trust-proxy fix (Safari/iPad mixed-content)
+ *
+ * For any /uploads/ URL whose origin doesn't match the configured BACKEND_BASE,
+ * we rewrite the whole origin to BACKEND_BASE and ensure https://.
+ */
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
   try {
     const parsed = new URL(url);
-    const isLocalhost =
-      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
-
-    // Case 1: localhost → rewrite to production backend
-    if (parsed.pathname.startsWith("/uploads/") && isLocalhost) {
-      return `${BACKEND_BASE}${parsed.pathname}`;
-    }
-
-    // Case 2: http:// on our own uploads → upgrade to https://
-    if (parsed.protocol === "http:" && parsed.pathname.startsWith("/uploads/")) {
-      parsed.protocol = "https:";
-      return parsed.toString();
+    if (parsed.pathname.startsWith("/uploads/")) {
+      // Rewrite if origin differs from canonical backend OR protocol is http
+      if (parsed.origin !== _backendOrigin || parsed.protocol === "http:") {
+        return `${_backendOrigin}${parsed.pathname}`;
+      }
     }
   } catch {
     // Not a valid absolute URL — return as-is (relative path)
