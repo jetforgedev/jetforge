@@ -5,13 +5,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const BACKEND_BASE = API_URL.replace(/\/api\/?$/, "");
 
 /**
- * Rewrites a stored imageUrl so it always points to the currently-configured
- * backend host.
+ * Rewrites a stored imageUrl so it always resolves correctly in production.
  *
- * Only rewrites when the stored URL has a localhost/127.0.0.1 host — this
- * means the VPS backend was started with SITE_URL=http://localhost:4000 (a
- * common dev-config mistake). Production-domain URLs are returned unchanged
- * so a correct SITE_URL setting is never corrupted by a wrong NEXT_PUBLIC_API_URL.
+ * Two cases handled:
+ * 1. localhost/127.0.0.1 host — VPS was misconfigured with SITE_URL=localhost.
+ *    Rewrite to the current BACKEND_BASE so the public URL is used.
+ * 2. http:// on an /uploads/ path — image was stored before trust-proxy fix
+ *    (Express returned http:// because X-Forwarded-Proto wasn't trusted).
+ *    Upgrade to https:// so iPad/Safari doesn't block it as mixed content.
  */
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
@@ -19,8 +20,16 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
     const parsed = new URL(url);
     const isLocalhost =
       parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+
+    // Case 1: localhost → rewrite to production backend
     if (parsed.pathname.startsWith("/uploads/") && isLocalhost) {
       return `${BACKEND_BASE}${parsed.pathname}`;
+    }
+
+    // Case 2: http:// on our own uploads → upgrade to https://
+    if (parsed.protocol === "http:" && parsed.pathname.startsWith("/uploads/")) {
+      parsed.protocol = "https:";
+      return parsed.toString();
     }
   } catch {
     // Not a valid absolute URL — return as-is (relative path)

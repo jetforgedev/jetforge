@@ -13,7 +13,8 @@ const nextConfig = {
       { protocol: "https", hostname: "api.dicebear.com" },
       { protocol: "https", hostname: "raw.githubusercontent.com" },
       { protocol: "https", hostname: "api.jetforge.io" },
-      { protocol: "http", hostname: "localhost" },
+      { protocol: "https", hostname: "app.jetforge.io" },
+      { protocol: "http",  hostname: "localhost" },
     ],
   },
   turbopack: {
