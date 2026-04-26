@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -42,28 +43,52 @@ const WALLETS = [
 ] as const;
 
 function NoWalletSheet({ onClose }: { onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Delay so CSS transition fires after mount
+    const t = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 300); // wait for slide-out
+  };
+
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && handleClose();
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
+  if (!mounted) return null;
+
+  // Portal onto document.body so the fixed sheet is never clipped by the
+  // header's stacking context (backdrop-blur creates a new one on Safari/iPad).
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        style={{ zIndex: 9998, opacity: visible ? 1 : 0 }}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
-      {/* Bottom sheet */}
+      {/* Bottom sheet — slides up from below the viewport */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Install a Solana wallet"
-        className="fixed inset-x-0 bottom-0 z-[70] rounded-t-[28px] border-t border-white/10 bg-[#0a1510] px-5 pb-safe-bottom pb-8 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]"
+        className="fixed inset-x-0 bottom-0 rounded-t-[28px] border-t border-white/10 bg-[#0a1510] px-5 pb-8 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out"
+        style={{
+          zIndex: 9999,
+          transform: visible ? "translateY(0)" : "translateY(100%)",
+        }}
       >
         {/* Drag handle */}
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
@@ -117,13 +142,14 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
         </p>
 
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-sm font-semibold text-white/55 transition-colors hover:bg-white/[0.07] active:bg-white/[0.10]"
         >
           Dismiss
         </button>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -141,10 +167,11 @@ export function Header() {
   const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
     if (!isMobileDevice()) return;
+    // Only count Installed — Loadable means deep-link capable but app not present.
+    // On iPad/mobile the adapter marks many wallets as Loadable even when no
+    // wallet app is installed, which bypasses our install sheet incorrectly.
     const installed = wallets.some(
-      (w) =>
-        w.readyState === WalletReadyState.Installed ||
-        w.readyState === WalletReadyState.Loadable
+      (w) => w.readyState === WalletReadyState.Installed
     );
     setNoWalletOnMobile(!installed);
   }, [wallets]);
