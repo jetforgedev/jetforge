@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-const BASE_URL = "https://jetforge.io";
+const BASE_URL = "https://app.jetforge.io";
 
 interface Props {
   params: Promise<{ mint: string }>;
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
 
     const title = `${token.name} (${token.symbol}) — Trade on JetForge`;
     const description = `Trade ${token.name} ($${token.symbol}) on JetForge. Market cap: ${Number(token.marketCapSol).toFixed(2)} SOL. ${token.isGraduated ? "Graduated to DEX." : `Bonding curve ${Math.min(100, token.graduationProgress).toFixed(1)}% complete.`} ${token.description ? token.description.slice(0, 120) : ""}`.trim();
-    const image = token.imageUrl || "/og-image.png";
+    const image = token.imageUrl || "/opengraph-image";
 
     return {
       title,
@@ -62,7 +62,7 @@ export default async function TokenLayout({ children, params }: Props) {
         name: `${token.name} (${token.symbol})`,
         description: token.description || `${token.name} is a Solana token trading on JetForge bonding curve.`,
         url: `${BASE_URL}/token/${mint}`,
-        image: token.imageUrl || `${BASE_URL}/og-image.png`,
+        image: token.imageUrl || `${BASE_URL}/opengraph-image`,
         brand: { "@type": "Brand", name: "JetForge" },
         offers: {
           "@type": "Offer",

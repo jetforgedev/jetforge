@@ -1,10 +1,11 @@
 import { MetadataRoute } from "next";
 
-const BASE_URL = "https://jetforge.io";
+const BASE_URL = "https://app.jetforge.io";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
 async function fetchTokenMints(): Promise<string[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/tokens?sort=new&limit=200&page=1`, {
+    const res = await fetch(`${API_URL}/tokens?sort=new&limit=200&page=1`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];

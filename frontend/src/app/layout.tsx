@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 
-const BASE_URL = "https://jetforge.io";
+const BASE_URL = "https://app.jetforge.io";
 const DEFAULT_TITLE = "JetForge — Fair-Launch Token Platform on Solana";
 const DEFAULT_DESCRIPTION =
   "Launch and trade tokens on Solana's most transparent bonding curve launchpad. No presales, no team allocations. 100% fair launch.";
@@ -52,13 +52,13 @@ export const metadata: Metadata = {
     siteName: "JetForge",
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "JetForge — Solana fair-launch platform" }],
+    // og:image is injected automatically from app/opengraph-image.tsx
   },
   twitter: {
     card: "summary_large_image",
     title: DEFAULT_TITLE,
     description: DEFAULT_DESCRIPTION,
-    images: ["/og-image.png"],
+    // twitter:image is injected automatically from app/opengraph-image.tsx
     creator: "@jetforgeDev",
   },
   alternates: {
