@@ -540,7 +540,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
             <div className="text-[#666] text-xs mb-2">This token no longer trades on the bonding curve.</div>
           </div>
           <a
-            href={`https://raydium.io/swap/?inputMint=sol&outputMint=${token.mint}`}
+            href={`${process.env.NEXT_PUBLIC_NETWORK !== "mainnet" ? "https://devnet.raydium.io" : "https://raydium.io"}/swap/?inputMint=sol&outputMint=${token.mint}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#7c3aed50] bg-[#7c3aed20] py-3 text-sm font-semibold text-[#c4b5fd] transition-colors hover:bg-[#7c3aed35]"

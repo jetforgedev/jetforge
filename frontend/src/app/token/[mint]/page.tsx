@@ -735,7 +735,7 @@ export default function TokenPage({ params }: PageProps) {
               <a
                 href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
                   `Just found $${token.symbol} on JetForge! 🚀\n\nMarket cap: ${marketCapUsdt}\n\nTrade it here 👇`
-                )}&url=${encodeURIComponent(`https://jetforge.io/token/${mint}`)}`}
+                )}&url=${encodeURIComponent(`${typeof window !== "undefined" ? window.location.origin : "https://jetforge.io"}/token/${mint}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 rounded-xl border border-[#1d9bf030] bg-[#1d9bf010] px-3 py-1.5 text-xs font-medium text-[#1d9bf0] transition-colors hover:bg-[#1d9bf020]"
