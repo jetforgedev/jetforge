@@ -21,9 +21,11 @@ export default async function OGImage() {
   ];
 
   const tokens = [
-    { symbol: "PEPE2", name: "Pepe 2.0",    pct: 94, color: "#ff6b6b" },
-    { symbol: "MOON",  name: "MoonShot",    pct: 67, color: "#ffaa00" },
-    { symbol: "DOGE3", name: "Doge The 3rd", pct: 38, color: "#00ccff" },
+    { symbol: "PEPE2", name: "Pepe 2.0",      pct: 94, sol: "28.4",  color: "#ff6b6b" },
+    { symbol: "MOON",  name: "MoonShot",       pct: 78, sol: "23.1",  color: "#ffaa00" },
+    { symbol: "DOGE3", name: "Doge The 3rd",   pct: 61, sol: "18.3",  color: "#00ccff" },
+    { symbol: "BONK2", name: "Bonk 2.0",       pct: 45, sol: "13.5",  color: "#a78bfa" },
+    { symbol: "WIF2",  name: "Dogwifhat 2",    pct: 29, sol: "8.7",   color: "#00ff88" },
   ];
 
   return new ImageResponse(
@@ -202,37 +204,42 @@ export default async function OGImage() {
             </div>
 
             {/* Token rows */}
-            <div style={{ display: "flex", flexDirection: "column", padding: "6px 0" }}>
+            <div style={{ display: "flex", flexDirection: "column", padding: "4px 0" }}>
               {tokens.map((tk, i) => (
                 <div key={tk.symbol} style={{
                   display: "flex", alignItems: "center",
-                  padding: "10px 18px", gap: "14px",
-                  background: i === 0 ? "rgba(255,255,255,0.025)" : "transparent",
+                  padding: "7px 18px", gap: "12px",
+                  background: i % 2 === 0 ? "rgba(255,255,255,0.018)" : "transparent",
                 }}>
-                  {/* Color dot */}
+                  {/* Avatar */}
                   <div style={{
-                    width: "34px", height: "34px", borderRadius: "50%",
-                    background: `${tk.color}22`, border: `1.5px solid ${tk.color}55`,
+                    width: "30px", height: "30px", borderRadius: "50%",
+                    background: `${tk.color}20`, border: `1.5px solid ${tk.color}50`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "14px", color: tk.color, fontWeight: 800,
-                    flexShrink: 0,
+                    fontSize: "13px", color: tk.color, fontWeight: 800, flexShrink: 0,
                   }}>
                     {tk.symbol[0]}
                   </div>
 
-                  {/* Name + symbol */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
-                    <span style={{ fontSize: "14px", fontWeight: 700, color: "#fff", display: "flex" }}>{tk.name}</span>
-                    <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", display: "flex" }}>${tk.symbol}</span>
+                  {/* Name */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1px", width: "110px" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#fff", display: "flex" }}>{tk.name}</span>
+                    <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.32)", display: "flex" }}>${tk.symbol}</span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px", width: "110px" }}>
+                  {/* SOL raised */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1px", width: "62px" }}>
+                    <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.30)", display: "flex" }}>RAISED</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "rgba(255,255,255,0.80)", display: "flex" }}>{tk.sol} SOL</span>
+                  </div>
+
+                  {/* Progress bar + % */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flex: 1 }}>
                     <span style={{ fontSize: "12px", fontWeight: 700, color: tk.color, display: "flex" }}>
-                      {tk.pct}% filled
+                      {tk.pct}%
                     </span>
                     <div style={{
-                      width: "110px", height: "5px", borderRadius: "999px",
+                      width: "100%", height: "4px", borderRadius: "999px",
                       background: "rgba(255,255,255,0.08)", display: "flex", overflow: "hidden",
                     }}>
                       <div style={{
