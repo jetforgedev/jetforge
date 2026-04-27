@@ -93,23 +93,28 @@ async function fetchCreatorFromChain(
  * Safe to call multiple times — deduplicates in-flight calls.
  */
 export async function callGraduateInstruction(mintStr: string): Promise<void> {
-  // ── DB-level dedup: survives process restarts (unlike the in-memory inFlight Set) ──
-  // If the indexer already marked this token graduated in the DB, skip entirely.
-  // This prevents re-running graduation (and wasting 0.01 SOL on ephemeral funding)
-  // if the backend restarts while a graduation transaction is in-flight.
+  // ── On-chain dedup: read real_sol_reserves directly from the bonding curve ──
+  // DO NOT use the DB isGraduated flag here — the BuyEvent handler sets that flag
+  // before the keeper runs, causing the keeper to skip and leave the on-chain
+  // graduate instruction uncalled (the graduation SOL never distributed).
+  // Instead, check real_sol_reserves: if already 0 the instruction already ran.
   try {
-    const existing = await prisma.token.findUnique({
-      where: { mint: mintStr },
-      select: { isGraduated: true },
-    });
-    if (existing?.isGraduated) {
-      console.log(`[KEEPER] ${mintStr.slice(0, 8)}… already graduated in DB — skipping`);
-      return;
+    const connection = new Connection(config.solana.rpcUrl, "confirmed");
+    const mint = new PublicKey(mintStr);
+    const bondingCurvePDA = getBondingCurvePDA(mint);
+    const bcInfo = await connection.getAccountInfo(bondingCurvePDA);
+    if (bcInfo && bcInfo.data.length >= 96) {
+      // BondingCurveState layout: 8 disc + 32 mint + 32 creator + 8 vSol + 8 vTok + 8 realSol
+      // real_sol_reserves is at byte offset 88
+      const realSolReserves = bcInfo.data.readBigUInt64LE(88);
+      if (realSolReserves === 0n) {
+        console.log(`[KEEPER] ${mintStr.slice(0, 8)}… already graduated on-chain (realSol=0) — skipping`);
+        return;
+      }
     }
-  } catch (dbErr: any) {
-    // Fail open: if the DB check itself fails, proceed with graduation rather than
-    // silently blocking it. The on-chain AlreadyGraduated error is the final guard.
-    console.warn(`[KEEPER] DB pre-check failed for ${mintStr.slice(0, 8)}…:`, dbErr?.message);
+  } catch (chainErr: any) {
+    // Fail open: if the on-chain check fails, proceed — the on-chain error is the final guard.
+    console.warn(`[KEEPER] On-chain pre-check failed for ${mintStr.slice(0, 8)}…:`, chainErr?.message);
   }
 
   if (inFlight.has(mintStr)) {
