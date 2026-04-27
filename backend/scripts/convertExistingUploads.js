@@ -25,7 +25,7 @@ const DRY_RUN = process.argv.includes("--dry-run");
 // ── Locate uploads dir ────────────────────────────────────────────────────────
 // Matches the path used in upload.ts (relative to dist/api/ compiled output).
 // From scripts/ we resolve it relative to backend root.
-const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+const UPLOAD_DIR = path.join(__dirname, "../uploads");
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   console.error(`uploads dir not found at ${UPLOAD_DIR}`);
