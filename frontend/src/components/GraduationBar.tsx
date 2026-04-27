@@ -76,17 +76,11 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
   const nextMilestone = getNextMilestone(progress, solTarget);
 
   if (isGraduated) {
-    // Use devnet.raydium.io on devnet — raydium.io only shows mainnet pools.
-    const isDevnet = process.env.NEXT_PUBLIC_NETWORK !== "mainnet";
-    const raydiumBase = isDevnet ? "https://devnet.raydium.io" : "https://raydium.io";
     const raydiumSwapUrl = mint
-      ? `${raydiumBase}/swap/?inputMint=sol&outputMint=${mint}`
-      : raydiumBase;
-    // Pool link: Raydium pool page on mainnet; Solscan account on devnet (no pool UI)
+      ? `https://raydium.io/swap/?inputMint=sol&outputMint=${mint}`
+      : "https://raydium.io";
     const raydiumPoolUrl = raydiumPoolId
-      ? isDevnet
-        ? `https://solscan.io/account/${raydiumPoolId}?cluster=devnet`
-        : `${raydiumBase}/liquidity/pool/${raydiumPoolId}`
+      ? `https://raydium.io/liquidity/pool/${raydiumPoolId}`
       : raydiumSwapUrl;
 
     return (
@@ -121,7 +115,7 @@ export function GraduationBar({ realSolReserves, isGraduated, mint, raydiumPoolI
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2.5 sm:py-3 text-sm font-semibold text-white/72 transition-colors hover:bg-white/[0.08]"
             >
-              {isDevnet ? "Pool (Solscan) ↗" : "Pool ↗"}
+              Pool ↗
             </a>
           )}
         </div>
