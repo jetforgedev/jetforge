@@ -113,18 +113,41 @@ export default async function OGImage() {
             </div>
           </div>
 
-          {/* Bottom: stat pills */}
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            {["🔒 No Presales", "📊 Bonding Curve AMM", "🎓 Auto-grad to DEX"].map((t) => (
-              <div key={t} style={{
-                padding: "7px 16px", borderRadius: "999px",
-                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
-                color: "rgba(255,255,255,0.65)", fontSize: "14px", fontWeight: 500,
+          {/* Bottom: pills + CTA */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              {["🔒 No Presales", "📊 Bonding Curve AMM", "🎓 Auto-grad to DEX"].map((t) => (
+                <div key={t} style={{
+                  padding: "7px 16px", borderRadius: "999px",
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.65)", fontSize: "14px", fontWeight: 500,
+                  display: "flex",
+                }}>
+                  {t}
+                </div>
+              ))}
+            </div>
+            {/* CTA button */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "10px",
+            }}>
+              <div style={{
+                padding: "13px 28px", borderRadius: "14px",
+                background: "linear-gradient(135deg, #00ff88, #00cc77)",
+                color: "#04110c", fontSize: "17px", fontWeight: 800,
+                letterSpacing: "-0.2px", display: "flex",
+              }}>
+                Launch Your Token →
+              </div>
+              <div style={{
+                padding: "13px 22px", borderRadius: "14px",
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.70)", fontSize: "17px", fontWeight: 600,
                 display: "flex",
               }}>
-                {t}
+                Start Trading
               </div>
-            ))}
+            </div>
           </div>
         </div>
 

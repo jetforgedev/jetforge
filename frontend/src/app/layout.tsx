@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 
 const BASE_URL = "https://app.jetforge.io";
-const DEFAULT_TITLE = "JetForge — Fair-Launch Token Platform on Solana";
+const DEFAULT_TITLE = "JetForge — The Fair-Launch Token Platform on Solana";
 const DEFAULT_DESCRIPTION =
   "Launch and trade tokens on Solana's most transparent bonding curve launchpad. No presales, no team allocations. 100% fair launch.";
 
