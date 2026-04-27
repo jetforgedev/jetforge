@@ -2,16 +2,6 @@
   "name": "token-dex-frontend",
   "version": "0.1.0",
   "private": true,
-  "browserslist": [
-    ">0.5%",
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions",
-    "not dead",
-    "not IE 11",
-    "not op_mini all"
-  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
