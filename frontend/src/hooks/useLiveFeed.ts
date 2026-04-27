@@ -14,7 +14,7 @@ let globalSocket: Socket | null = null;
 export function getGlobalSocket(): Socket {
   if (!globalSocket || !globalSocket.connected) {
     globalSocket = io(WS_URL, {
-      transports: ["polling", "websocket"], // polling first — more reliable through proxies
+      transports: ["websocket", "polling"], // websocket first — polling causes slowness through Cloudflare
       reconnection: true,
       reconnectionAttempts: 10,            // stop spamming after 10 tries
       reconnectionDelay: 2000,
