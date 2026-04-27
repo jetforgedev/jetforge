@@ -86,6 +86,18 @@ export async function createRaydiumPool(
       blockhashCommitment: "finalized",
     });
 
+    // Ensure treasury has a WSOL ATA — Raydium SDK requires it to exist before
+    // building the createPool transaction (throws "you don't has some token account"
+    // if the WSOL ATA is absent, even when useSOLBalance: true is set).
+    const wsolMintPk = new PublicKey(WSOL_MINT);
+    await getOrCreateAssociatedTokenAccount(
+      connection,
+      treasuryKeypair,           // payer
+      wsolMintPk,
+      treasuryKeypair.publicKey, // owner
+    );
+    console.log(`[RAYDIUM] WSOL ATA ensured for treasury`);
+
     // Fetch AMM fee configs for CPMM — use the first (lowest fee, 0.25%) config
     const ammConfigs = await raydium.api.getCpmmConfigs();
     if (!ammConfigs?.length) {
@@ -95,9 +107,8 @@ export async function createRaydiumPool(
     console.log(`[RAYDIUM] Using fee config: index=${feeConfig.index} tradeFee=${feeConfig.tradeFeeRate} createFee=${Number(feeConfig.createPoolFee)/1e9}SOL`);
 
     // Raydium CPMM requires mint0 < mint1 (lexicographic pubkey order)
-    const wsolPubkey = new PublicKey(WSOL_MINT);
     const tokenPubkey = new PublicKey(mint);
-    const wsolFirst = Buffer.compare(wsolPubkey.toBuffer(), tokenPubkey.toBuffer()) < 0;
+    const wsolFirst = Buffer.compare(wsolMintPk.toBuffer(), tokenPubkey.toBuffer()) < 0;
 
     const mintA = {
       address: wsolFirst ? WSOL_MINT : mint,
