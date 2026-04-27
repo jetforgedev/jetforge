@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import sharp from "sharp";
 
 // Magic bytes for allowed image types
 const MAGIC_BYTES: Record<string, number[][]> = {
@@ -59,7 +60,7 @@ const upload = multer({
 });
 
 // POST /api/upload/image
-uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: Response) => {
+uploadRouter.post("/image", upload.single("image") as any, async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ error: "No image file provided" });
   }
@@ -69,6 +70,31 @@ uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: R
     fs.unlink(req.file.path, () => {});
     return res.status(400).json({ error: "File content does not match declared image type" });
   }
+
+  // ── Optimise: resize to max 400px and convert to WebP ──────────────────────
+  // Images are displayed at 74×74 on the homepage (400px = 5× headroom for
+  // retina + token detail page). WebP cuts file size by ~80% vs raw PNG.
+  const originalPath = req.file.path;
+  const webpFilename  = `${path.basename(req.file.filename, path.extname(req.file.filename))}.webp`;
+  const webpPath      = path.join(UPLOAD_DIR, webpFilename);
+
+  try {
+    await sharp(originalPath)
+      .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toFile(webpPath);
+
+    // Delete the original now that WebP is saved
+    fs.unlink(originalPath, () => {});
+  } catch (err) {
+    // If sharp fails (corrupt file etc.) fall back to serving the original
+    console.error("[UPLOAD] sharp processing failed, serving original:", err);
+    const siteUrl = process.env.SITE_URL ?? "";
+    const isLocalhost = siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1");
+    const baseUrl = siteUrl && !isLocalhost ? siteUrl : `${req.protocol}://${req.get("host")}`;
+    return res.json({ url: `${baseUrl}/uploads/${req.file.filename}` });
+  }
+  // ───────────────────────────────────────────────────────────────────────────
 
   // Prefer SITE_URL env var, but ONLY when it points to a real host.
   // If it is localhost/127.0.0.1 (e.g. left over from dev config on the VPS)
@@ -81,6 +107,5 @@ uploadRouter.post("/image", upload.single("image") as any, (req: Request, res: R
     ? siteUrl
     : `${req.protocol}://${req.get("host")}`;
 
-  const url = `${baseUrl}/uploads/${req.file.filename}`;
-  return res.json({ url });
+  return res.json({ url: `${baseUrl}/uploads/${webpFilename}` });
 });
