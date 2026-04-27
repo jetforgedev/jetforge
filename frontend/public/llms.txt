@@ -37,7 +37,7 @@ JetForge lets anyone launch a Solana SPL token in seconds using a bonding curve 
 
 ## API
 
-Public REST API available at `https://jetforge.io/api`:
+Public REST API available at `https://app.jetforge.io/api`:
 
 - `GET /api/tokens` — list tokens (sort: new, trending, graduating, graduated)
 - `GET /api/tokens/:mint` — single token details
@@ -49,6 +49,7 @@ Public REST API available at `https://jetforge.io/api`:
 
 ## Links
 
-- Website: https://jetforge.io
-- Launch a token: https://jetforge.io/launch
-- Leaderboard: https://jetforge.io/leaderboard
+- App: https://app.jetforge.io
+- Launch a token: https://app.jetforge.io/launch
+- Leaderboard: https://app.jetforge.io/leaderboard
+- FAQ: https://app.jetforge.io/faq

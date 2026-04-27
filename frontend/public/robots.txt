@@ -14,4 +14,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://jetforge.io/sitemap.xml
+Sitemap: https://app.jetforge.io/sitemap.xml
