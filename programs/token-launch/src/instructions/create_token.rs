@@ -135,7 +135,12 @@ pub fn create_token(
         &SPL_TOKEN_PROGRAM_ID,
     )?;
 
-    // ── 3. Initialize mint (authority = bonding_curve PDA) ───────────────────
+    // ── 3. Initialize mint (authority = bonding_curve PDA, NO freeze authority) ──
+    // freeze_authority is set to None — Raydium and other DEXes flag tokens that
+    // have a freeze authority with a "hasFreeze" tag, hiding the name/image and
+    // discouraging trading. For a permissionless launchpad token this is a security
+    // anti-feature: any holder of the freeze key could freeze user accounts.
+    // Standard practice (pump.fun, moonshot, etc) is to omit freeze authority.
     let bc_seeds: &[&[u8]] = &[b"bonding_curve", mint_key.as_ref(), &[bc_bump]];
     initialize_mint2(
         CpiContext::new(
@@ -146,7 +151,7 @@ pub fn create_token(
         ),
         6,
         &bonding_curve_key,
-        Some(&bonding_curve_key),
+        None,
     )?;
 
     // ── 4. Create bonding curve PDA account ──────────────────────────────────
