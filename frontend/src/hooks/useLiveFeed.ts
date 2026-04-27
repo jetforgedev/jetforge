@@ -14,11 +14,11 @@ let globalSocket: Socket | null = null;
 export function getGlobalSocket(): Socket {
   if (!globalSocket || !globalSocket.connected) {
     globalSocket = io(WS_URL, {
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"], // polling first — more reliable through proxies
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,            // stop spamming after 10 tries
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 30000,
     });
   }
   return globalSocket;
