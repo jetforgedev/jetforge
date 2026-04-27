@@ -40,6 +40,9 @@ export const metadata: Metadata = {
   creator: "JetForge",
   publisher: "JetForge",
   category: "Finance",
+  verification: {
+    google: "qjR6nw1wpX7JF53x3mseMZVH-GgjhZNAsBUVyQlvtpA",
+  },
   robots: {
     index: true,
     follow: true,
