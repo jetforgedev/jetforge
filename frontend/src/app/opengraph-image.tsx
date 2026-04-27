@@ -6,6 +6,13 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OGImage() {
+  // Fetch the brand mark so next/og can embed it
+  const logoSrc = await fetch(
+    new URL("/brand/jetforge-mark.png", "https://app.jetforge.io").toString()
+  )
+    .then((r) => r.arrayBuffer())
+    .catch(() => null);
+
   return new ImageResponse(
     (
       <div
@@ -50,16 +57,20 @@ export default async function OGImage() {
           }}
         />
 
-        {/* Rocket icon */}
-        <div
-          style={{
-            fontSize: "80px",
-            marginBottom: "24px",
-            lineHeight: 1,
-            display: "flex",
-          }}
-        >
-          🚀
+        {/* Logo mark */}
+        <div style={{ display: "flex", marginBottom: "24px" }}>
+          {logoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`data:image/png;base64,${Buffer.from(logoSrc).toString("base64")}`}
+              width={96}
+              height={96}
+              alt="JetForge logo"
+              style={{ objectFit: "contain" }}
+            />
+          ) : (
+            <div style={{ fontSize: "80px", lineHeight: 1, display: "flex" }}>🚀</div>
+          )}
         </div>
 
         {/* Wordmark */}
