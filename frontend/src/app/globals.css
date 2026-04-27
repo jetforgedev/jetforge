@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,7 +35,7 @@ body {
     radial-gradient(circle at top right, rgba(0, 204, 255, 0.12), transparent 26%),
     linear-gradient(180deg, #081311 0%, #07110f 38%, #050908 100%);
   color: var(--text-primary);
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -139,9 +137,8 @@ a {
 }
 
 @keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.82; }
 }
 
 .animate-flash-green {
@@ -177,8 +174,8 @@ a {
 }
 
 .animate-gradient-shift {
-  background-size: 200% 200%;
   animation: gradientShift 5s ease infinite;
+  will-change: opacity;
 }
 
 .live-dot {
@@ -347,7 +344,7 @@ a {
 .wallet-adapter-button {
   background: linear-gradient(90deg, #00ff88 0%, #00e5ff 100%) !important;
   color: #02110d !important;
-  font-family: "Plus Jakarta Sans", sans-serif !important;
+  font-family: var(--font-sans), sans-serif !important;
   font-weight: 800 !important;
   border-radius: 14px !important;
   height: 42px !important;
@@ -363,7 +360,7 @@ a {
 }
 
 .font-mono {
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono), "Fira Code", monospace;
 }
 
 @media (max-width: 640px) {
