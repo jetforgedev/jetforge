@@ -264,12 +264,9 @@ export function Header() {
   const noWalletButton = (
     <button
       onClick={() => setShowNoWalletSheet(true)}
-      className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
+      className="flex h-9 sm:h-10 items-center justify-center rounded-xl sm:rounded-[14px] px-3 sm:px-4 text-[12px] sm:text-[13px] font-extrabold text-[#03110d]"
       style={{
-        height: "40px",
-        padding: "0 14px",
         background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-        minWidth: "80px",
       }}
       aria-label="Connect wallet"
     >
@@ -280,7 +277,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07110f]/70 backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(0,255,136,0.45),rgba(0,204,255,0.35),transparent)]" />
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-5 lg:px-6">
+      <div className="mx-auto flex h-14 sm:h-16 max-w-[1440px] items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 lg:px-6">
         <Link href="/" className="group flex shrink-0 items-center gap-3">
           <BrandLogo markClassName="transition-transform duration-200 group-hover:scale-[1.04]" />
         </Link>
@@ -322,23 +319,15 @@ export function Header() {
 
           {/* Connect — swap for install sheet on mobile when no wallet detected */}
           {noWalletOnMobile && !publicKey ? noWalletButton : (
-            <WalletMultiButton
-              style={{
-                height: "40px",
-                fontSize: "13px",
-                padding: "0 14px",
-                borderRadius: "14px",
-                background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-                color: "#03110d",
-                fontWeight: 800,
-              }}
-            />
+            <div className="wallet-multi-button-wrapper">
+              <WalletMultiButton />
+            </div>
           )}
 
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="flex h-10 w-10 flex-col items-center justify-center gap-[5px] rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
+            className="flex h-9 w-9 sm:h-10 sm:w-10 flex-col items-center justify-center gap-[5px] rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
             aria-label="Toggle menu"
           >
             <span
