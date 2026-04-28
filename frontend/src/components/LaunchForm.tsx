@@ -53,7 +53,7 @@ interface LaunchFormProps {
 }
 
 export function LaunchForm({ onSuccess }: LaunchFormProps) {
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey, sendTransaction, signTransaction } = useWallet();
   const anchorWallet = useAnchorWallet();
   const { connection } = useConnection();
   const [step, setStep] = useState<Step>(1);
@@ -198,16 +198,28 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // Must be fetched before sendTransaction so the blockhash matches the tx.
       const latestBlockhash = await connection.getLatestBlockhash("confirmed");
 
-      // Pre-sign with mintKeypair so mobile wallets work correctly.
-      // The `signers` option in sendTransaction is not supported by all mobile
-      // wallet adapters (Phantom mobile, WalletConnect), causing "Missing signature"
-      // errors. Partial-signing here ensures the mint signature is always present
-      // before the user's wallet adds the final signature.
-      transaction.partialSign(mintKeypair);
-
-      const sig = await sendTransaction(transaction, connection, {
-        skipPreflight: false,
-      });
+      // Multi-signer approach for maximum mobile wallet compatibility.
+      // Solflare mobile, Phantom mobile and WalletConnect-based wallets often
+      // strip pre-existing partial signatures from the transaction bytes.
+      // Solution: let the wallet sign first via signTransaction, then add
+      // the mintKeypair signature ourselves, then broadcast manually.
+      // Falls back to sendTransaction+partialSign for wallets without signTransaction.
+      let sig: string;
+      if (signTransaction) {
+        // User's wallet signs the transaction
+        const signedTx = await signTransaction(transaction);
+        // Add mintKeypair signature after — this is preserved because we control the broadcast
+        signedTx.partialSign(mintKeypair);
+        const rawTx = signedTx.serialize();
+        sig = await connection.sendRawTransaction(rawTx, {
+          skipPreflight: false,
+          preflightCommitment: "confirmed",
+        });
+      } else {
+        // Fallback for wallets that only expose sendTransaction
+        transaction.partialSign(mintKeypair);
+        sig = await sendTransaction(transaction, connection, { skipPreflight: false });
+      }
 
       toast.loading("Confirming...", { id: loadingToast });
       // Confirmation is best-effort — tx is already submitted to the network.
