@@ -93,11 +93,11 @@ export default function LeaderboardPage() {
   ];
 
   return (
-    <div className="max-w-[1200px] mx-auto py-10 space-y-10 px-4">
+    <div className="max-w-[1200px] mx-auto py-4 sm:py-10 space-y-6 sm:space-y-10 px-3 sm:px-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Leaderboard</h1>
-        <p className="text-[#555] text-sm">Top tokens and traders on JetForge</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">Leaderboard</h1>
+        <p className="text-[#555] text-xs sm:text-sm">Top tokens and traders on JetForge</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -122,7 +122,57 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl">
+          {/* Mobile card list */}
+          <div className="sm:hidden bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+            {loadingTokens ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 border-b border-[#111] last:border-0 animate-pulse">
+                  <div className="w-5 h-4 bg-[#1a1a1a] rounded shrink-0" />
+                  <div className="w-8 h-8 bg-[#1a1a1a] rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <div className="w-24 h-3 bg-[#1a1a1a] rounded" />
+                    <div className="w-16 h-2 bg-[#111] rounded" />
+                  </div>
+                  <div className="w-14 h-3 bg-[#1a1a1a] rounded" />
+                </div>
+              ))
+            ) : !tokens || tokens.length === 0 ? (
+              <div className="py-12 text-center text-[#444] text-sm">No tokens yet</div>
+            ) : tokens.map((token) => (
+              <Link
+                key={token.mint}
+                href={`/token/${token.mint}`}
+                className="flex items-center gap-2.5 px-3 py-2.5 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors"
+              >
+                <div className="w-5 shrink-0 flex items-center justify-center">
+                  <TokenRankBadge rank={(token as any).rank ?? 0} />
+                </div>
+                {resolveImageUrl(token.imageUrl) ? (
+                  <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] shrink-0">
+                    {token.symbol?.[0] ?? "?"}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-white text-[11px] font-semibold truncate">{token.name}</span>
+                    {token.isGraduated && (
+                      <span className="shrink-0 px-1 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[8px] font-bold leading-4">GRAD</span>
+                    )}
+                  </div>
+                  <div className="text-[#555] text-[10px]">${token.symbol}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-white text-[11px] font-mono">{fmtVol(Number(token.marketCapSol))} <span className="text-[#555] text-[9px]">SOL</span></div>
+                  <GradProgress pct={token.graduationProgress ?? 0} />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl">
             <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[420px]">
               {/* Table header */}
               <div className="grid grid-cols-[28px_1fr_72px_72px_90px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
@@ -228,7 +278,44 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl">
+          {/* Mobile card list */}
+          <div className="sm:hidden bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+            {loadingTraders ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 border-b border-[#111] last:border-0 animate-pulse">
+                  <div className="w-5 h-4 bg-[#1a1a1a] rounded shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <div className="w-28 h-3 bg-[#1a1a1a] rounded" />
+                    <div className="w-16 h-2 bg-[#111] rounded" />
+                  </div>
+                  <div className="w-16 h-3 bg-[#1a1a1a] rounded" />
+                </div>
+              ))
+            ) : !traders || traders.length === 0 ? (
+              <div className="py-12 text-center text-[#444] text-sm">No traders yet</div>
+            ) : traders.map((trader) => (
+              <Link
+                key={trader.wallet}
+                href={`/portfolio/${trader.wallet}`}
+                className="flex items-center gap-2.5 px-3 py-2.5 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors"
+              >
+                <div className="w-5 shrink-0 flex items-center justify-center">
+                  <TokenRankBadge rank={trader.rank} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white text-[11px] font-mono truncate">{truncateAddress(trader.wallet, 6)}</div>
+                  <div className="text-[#444] text-[10px]">{trader.totalTrades} trades</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-[#888] text-[11px] font-mono">{trader.totalVolumeSol} <span className="text-[#555] text-[9px]">SOL</span></div>
+                  <PnlBadge value={trader.realizedPnlSol} />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl">
             <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[380px]">
               {/* Table header */}
               <div className="grid grid-cols-[32px_1fr_80px_70px_80px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
@@ -298,20 +385,14 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {[
           { label: "Total Tokens", value: tokens?.length ?? "—", sub: "on JetForge" },
-          {
-            label: "Graduated",
-            value: tokens?.filter((t) => t.isGraduated).length ?? "—",
-            sub: "to DEX",
-          },
-          { label: "Top Traders", value: traders?.length ?? "—", sub: "ranked" },
+          { label: "Graduated",    value: tokens?.filter((t) => t.isGraduated).length ?? "—", sub: "to DEX" },
+          { label: "Top Traders",  value: traders?.length ?? "—", sub: "ranked" },
           {
             label: "Total Volume",
-            value: traders
-              ? traders.reduce((acc, t) => acc + parseFloat(t.totalVolumeSol), 0).toFixed(1) + " SOL"
-              : "—",
+            value: traders ? traders.reduce((acc, t) => acc + parseFloat(t.totalVolumeSol), 0).toFixed(1) + " SOL" : "—",
             sub: (() => {
               if (!traders) return "all time";
               const vol = traders.reduce((acc, t) => acc + parseFloat(t.totalVolumeSol), 0);
@@ -319,10 +400,10 @@ export default function LeaderboardPage() {
             })(),
           },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
-            <div className="text-[#555] text-xs mb-1">{stat.label}</div>
-            <div className="text-white font-bold text-lg">{stat.value}</div>
-            <div className="text-[#333] text-xs">{stat.sub}</div>
+          <div key={stat.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 sm:p-4">
+            <div className="text-[#555] text-[10px] sm:text-xs mb-1">{stat.label}</div>
+            <div className="text-white font-bold text-base sm:text-lg truncate">{stat.value}</div>
+            <div className="text-[#333] text-[10px] sm:text-xs">{stat.sub}</div>
           </div>
         ))}
       </div>

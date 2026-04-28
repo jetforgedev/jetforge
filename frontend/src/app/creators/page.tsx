@@ -226,15 +226,30 @@ export default function CreatorsPage() {
       </div>
 
       {/* Badge legend */}
-      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
-        <div className="text-white text-sm font-semibold mb-4">Reputation Badges</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 sm:p-5">
+        <div className="text-white text-sm font-semibold mb-3">Reputation Badges</div>
+        {/* Mobile: horizontal rows; Desktop: grid cards */}
+        <div className="flex flex-col gap-2 sm:hidden">
           {[
             { badge: "🚀", label: "Rocket Creator", color: "#00ff88", desc: "3+ graduated or 500+ SOL volume" },
-            { badge: "⭐", label: "Rising Star", color: "#FFD700", desc: "1+ graduated or 100+ SOL volume" },
-            { badge: "🔥", label: "Hot Creator", color: "#ff6b35", desc: "5+ tokens or 20+ SOL volume" },
-            { badge: "💎", label: "Builder", color: "#7b68ee", desc: "2+ tokens or 5+ SOL volume" },
-            { badge: "🌱", label: "Newcomer", color: "#888", desc: "Just getting started" },
+            { badge: "⭐", label: "Rising Star",    color: "#FFD700", desc: "1+ graduated or 100+ SOL volume" },
+            { badge: "🔥", label: "Hot Creator",    color: "#ff6b35", desc: "5+ tokens or 20+ SOL volume" },
+            { badge: "💎", label: "Builder",        color: "#7b68ee", desc: "2+ tokens or 5+ SOL volume" },
+            { badge: "🌱", label: "Newcomer",       color: "#888",    desc: "Just getting started" },
+          ].map((b) => (
+            <div key={b.label} className="flex items-center gap-3 bg-[#111] border border-[#1a1a1a] rounded-lg px-3 py-2">
+              <ReputationBadge badge={b.badge} label={b.label} color={b.color} />
+              <p className="text-[#444] text-[10px] leading-tight flex-1">{b.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:grid grid-cols-3 md:grid-cols-5 gap-3">
+          {[
+            { badge: "🚀", label: "Rocket Creator", color: "#00ff88", desc: "3+ graduated or 500+ SOL volume" },
+            { badge: "⭐", label: "Rising Star",    color: "#FFD700", desc: "1+ graduated or 100+ SOL volume" },
+            { badge: "🔥", label: "Hot Creator",    color: "#ff6b35", desc: "5+ tokens or 20+ SOL volume" },
+            { badge: "💎", label: "Builder",        color: "#7b68ee", desc: "2+ tokens or 5+ SOL volume" },
+            { badge: "🌱", label: "Newcomer",       color: "#888",    desc: "Just getting started" },
           ].map((b) => (
             <div key={b.label} className="bg-[#111] border border-[#1a1a1a] rounded-lg p-3">
               <ReputationBadge badge={b.badge} label={b.label} color={b.color} />

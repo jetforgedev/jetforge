@@ -40,40 +40,25 @@ export default function LaunchPage() {
         ))}
       </div>
 
-      <div className="glass-panel mb-4 sm:mb-8 rounded-2xl sm:rounded-[28px] p-4 sm:p-6">
-        <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">How It Works</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="glass-panel mb-4 sm:mb-8 rounded-2xl sm:rounded-[28px] p-3 sm:p-6">
+        <div className="mb-3 sm:mb-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">How It Works</div>
+        <div className="grid grid-cols-1 gap-2 sm:gap-4 sm:grid-cols-3">
           {[
-            {
-              step: "1",
-              title: "Launch",
-              desc: "Fill in your token details and deploy to Solana",
-              icon: "🚀",
-            },
-            {
-              step: "2",
-              title: "Trade",
-              desc: "Anyone can buy and sell using the bonding curve",
-              icon: "💱",
-            },
-            {
-              step: "3",
-              title: "Graduate",
-              desc: "At 0.5 SOL raised, liquidity moves to a DEX permanently",
-              icon: "🎓",
-            },
+            { step: "1", title: "Launch",   desc: "Fill in your token details and deploy to Solana",          icon: "🚀" },
+            { step: "2", title: "Trade",    desc: "Anyone can buy and sell using the bonding curve",          icon: "💱" },
+            { step: "3", title: "Graduate", desc: "At 0.5 SOL raised, liquidity moves to a DEX permanently", icon: "🎓" },
           ].map((item) => (
-            <div key={item.step} className="rounded-[24px] border border-white/8 bg-white/[0.04] p-4">
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#00ff88]/15 bg-[#00ff88]/10 text-lg">
-                  {item.icon}
-                </div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8dffc9]">
-                  Step {item.step}
-                </div>
+            <div key={item.step} className="rounded-2xl sm:rounded-[24px] border border-white/8 bg-white/[0.04] p-3 sm:p-4 flex sm:flex-col items-center sm:items-start gap-3">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-[#00ff88]/15 bg-[#00ff88]/10 text-base sm:text-lg">
+                {item.icon}
               </div>
-              <div className="text-white text-sm font-semibold">{item.title}</div>
-              <div className="mt-1 text-xs leading-6 text-white/48">{item.desc}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8dffc9] sm:mb-1">
+                  Step {item.step} · {item.title}
+                </div>
+                <div className="hidden sm:block text-white text-sm font-semibold">{item.title}</div>
+                <div className="text-[11px] sm:text-xs leading-4 sm:leading-5 text-white/48 mt-0.5 sm:mt-1">{item.desc}</div>
+              </div>
             </div>
           ))}
         </div>
