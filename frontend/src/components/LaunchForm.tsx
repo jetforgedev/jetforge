@@ -317,19 +317,19 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   return (
     <div className="mx-auto max-w-xl">
       {/* Step indicator */}
-      <div className="mb-8 flex items-center gap-2">
+      <div className="mb-4 sm:mb-7 flex items-center gap-2">
         {stepLabels.map((label, i) => {
           const s = (i + 1) as Step;
           return (
             <React.Fragment key={s}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div
                   className={clsx(
-                    "flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all",
+                    "flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full text-[10px] sm:text-xs font-bold transition-all",
                     step > s
-                      ? "bg-[#00ff88] text-black shadow-[0_0_26px_rgba(0,255,136,0.3)]"
+                      ? "bg-[#00ff88] text-black shadow-[0_0_20px_rgba(0,255,136,0.3)]"
                       : step === s
-                      ? "border border-[#00ff88]/55 bg-[#00ff88]/15 text-[#00ff88] shadow-[0_0_30px_rgba(0,255,136,0.18)]"
+                      ? "border border-[#00ff88]/55 bg-[#00ff88]/15 text-[#00ff88]"
                       : "border border-white/10 bg-white/[0.04] text-white/35"
                   )}
                 >
@@ -354,9 +354,9 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       {/* Step 1: Token Details */}
       {step === 1 && (
-        <div className="space-y-4 sm:space-y-5 animate-fade-in">
+        <div className="space-y-3 sm:space-y-5 animate-fade-in">
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Token Name <span className="text-[#ff4444]">*</span>
             </label>
             <input
@@ -367,11 +367,11 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               maxLength={32}
               className="input-field"
             />
-            <div className="text-[#444] text-xs mt-1 text-right">{form.name.length}/32</div>
+            <div className="text-[#444] text-[10px] sm:text-xs mt-0.5 text-right">{form.name.length}/32</div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Symbol <span className="text-[#ff4444]">*</span>
             </label>
             <input
@@ -382,11 +382,11 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               maxLength={10}
               className="input-field"
             />
-            <div className="text-[#444] text-xs mt-1 text-right">{form.symbol.length}/10</div>
+            <div className="text-[#444] text-[10px] sm:text-xs mt-0.5 text-right">{form.symbol.length}/10</div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Description <span className="text-[#ff4444]">*</span>
             </label>
             <textarea
@@ -394,53 +394,53 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               onChange={(e) => update("description", e.target.value)}
               placeholder="Describe your token..."
               maxLength={500}
-              rows={4}
+              rows={3}
               className="input-field resize-none"
             />
-            <div className="text-[#444] text-xs mt-1 text-right">{form.description.length}/500</div>
+            <div className="text-[#444] text-[10px] sm:text-xs mt-0.5 text-right">{form.description.length}/500</div>
           </div>
 
           {/* Token info preview */}
-          <div className="glass-panel rounded-[24px] p-4">
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">Token Properties</div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="glass-panel rounded-2xl sm:rounded-[24px] p-3 sm:p-4">
+            <div className="mb-2 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">Token Properties</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
               <div>
-                <div className="mb-1 text-white/35">Total Supply</div>
-                <div className="text-white font-mono">1,000,000,000</div>
+                <div className="text-[10px] text-white/35 mb-0.5">Total Supply</div>
+                <div className="text-white font-mono text-[11px] sm:text-xs">1,000,000,000</div>
               </div>
               <div>
-                <div className="mb-1 text-white/35">Decimals</div>
-                <div className="text-white font-mono">6</div>
+                <div className="text-[10px] text-white/35 mb-0.5">Decimals</div>
+                <div className="text-white font-mono text-[11px] sm:text-xs">6</div>
               </div>
               <div>
-                <div className="mb-1 text-white/35">Initial Price</div>
-                <div className="text-white font-mono">~0.000028 SOL</div>
+                <div className="text-[10px] text-white/35 mb-0.5">Initial Price</div>
+                <div className="text-white font-mono text-[11px] sm:text-xs">~0.000028 SOL</div>
               </div>
               <div>
-                <div className="mb-1 text-white/35">Graduation at</div>
-                <div className="text-white font-mono">0.5 SOL</div>
+                <div className="text-[10px] text-white/35 mb-0.5">Graduation at</div>
+                <div className="text-white font-mono text-[11px] sm:text-xs">0.5 SOL</div>
               </div>
             </div>
           </div>
 
           {/* Graduation reward preview */}
-          <div className="rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-4">
-            <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 0.5 SOL)</div>
-            <div className="space-y-1.5 text-xs">
+          <div className="rounded-2xl sm:rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-3 sm:p-4">
+            <div className="text-[#00ff88] text-[11px] sm:text-xs font-semibold mb-1.5">🎓 Graduation Rewards (at 0.5 SOL)</div>
+            <div className="space-y-1 text-xs">
               <div className="flex justify-between">
-                <span className="text-white/50">Your reward (5%)</span>
-                <span className="text-[#00ff88] font-mono font-semibold">~0.025 SOL</span>
+                <span className="text-white/50 text-[11px]">Your reward (5%)</span>
+                <span className="text-[#00ff88] font-mono font-semibold text-[11px]">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/50">Platform cut (5%)</span>
-                <span className="text-white font-mono">~0.025 SOL</span>
+                <span className="text-white/50 text-[11px]">Platform cut (5%)</span>
+                <span className="text-white font-mono text-[11px]">~0.025 SOL</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/50">DEX liquidity (90%)</span>
-                <span className="text-white font-mono">~0.45 SOL</span>
+                <span className="text-white/50 text-[11px]">DEX liquidity (90%)</span>
+                <span className="text-white font-mono text-[11px]">~0.45 SOL</span>
               </div>
-              <div className="mt-1 border-t border-[#00ff88]/18 pt-1.5 text-white/42">
-                Plus ongoing 1% trading fee: 40% to you, 40% to platform, 20% buyback-and-burn
+              <div className="mt-1 border-t border-[#00ff88]/18 pt-1 text-[10px] text-white/42">
+                Plus ongoing 1% trading fee: 40% to you, 40% platform, 20% buyback-and-burn
               </div>
             </div>
           </div>
@@ -449,10 +449,10 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       {/* Step 2: Media & Links */}
       {step === 2 && (
-        <div className="space-y-4 sm:space-y-5 animate-fade-in">
+        <div className="space-y-3 sm:space-y-5 animate-fade-in">
           {/* Image upload */}
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Token Image
             </label>
             <input
@@ -531,7 +531,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Website
             </label>
             <input
@@ -544,7 +544,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Twitter / X
             </label>
             <input
@@ -557,7 +557,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#888] mb-2">
+            <label className="block text-[12px] sm:text-sm font-medium text-[#888] mb-1 sm:mb-2">
               Telegram
             </label>
             <input
@@ -573,8 +573,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       {/* Step 3: Review */}
       {step === 3 && (
-        <div className="space-y-5 animate-fade-in">
-          <div className="glass-panel rounded-[24px] p-5">
+        <div className="space-y-3 sm:space-y-5 animate-fade-in">
+          <div className="glass-panel rounded-2xl sm:rounded-[24px] p-3 sm:p-5">
             <div className="flex items-start gap-4">
               {form.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -598,8 +598,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           {/* Cost breakdown */}
-          <div className="glass-panel rounded-[24px] p-4 space-y-2">
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">LAUNCH COST ESTIMATE</div>
+          <div className="glass-panel rounded-2xl sm:rounded-[24px] p-3 sm:p-4 space-y-1.5 sm:space-y-2">
+            <div className="mb-2 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">LAUNCH COST ESTIMATE</div>
             {[
               ["Create mint account", "~0.002 SOL"],
               ["Initialize bonding curve", "~0.003 SOL"],
@@ -619,7 +619,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           </div>
 
           {/* Anti-rug info */}
-          <div className="rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-4">
+          <div className="rounded-2xl sm:rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-3 sm:p-4">
             <div className="flex items-start gap-3">
               <span className="text-xl mt-0.5">🛡️</span>
               <div>
@@ -639,7 +639,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       )}
 
       {/* Navigation buttons */}
-      <div className="mt-6 sm:mt-8 flex gap-2.5 sm:gap-3">
+      <div className="mt-4 sm:mt-7 flex gap-2.5 sm:gap-3">
         {step > 1 && (
           <button
             onClick={() => setStep((s) => (s - 1) as Step)}
