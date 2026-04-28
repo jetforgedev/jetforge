@@ -414,6 +414,11 @@ a {
   }
 }
 
+/* iOS safe-area — extend footer background into home-indicator zone */
+footer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Extra-narrow (≤360px, e.g. folded Galaxy Z Fold) — even tighter */
 @media (max-width: 360px) {
   .wallet-adapter-button {

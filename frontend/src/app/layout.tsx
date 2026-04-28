@@ -10,6 +10,12 @@ const DEFAULT_TITLE = "JetForge — The Fair-Launch Token Platform on Solana";
 const DEFAULT_DESCRIPTION =
   "Launch and trade tokens on Solana's most transparent bonding curve launchpad. No presales, no team allocations. 100% fair launch.";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // iOS edge-to-edge — lets us fill the safe-area-inset-bottom
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
