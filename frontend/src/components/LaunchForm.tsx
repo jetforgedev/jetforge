@@ -198,8 +198,14 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // Must be fetched before sendTransaction so the blockhash matches the tx.
       const latestBlockhash = await connection.getLatestBlockhash("confirmed");
 
+      // Pre-sign with mintKeypair so mobile wallets work correctly.
+      // The `signers` option in sendTransaction is not supported by all mobile
+      // wallet adapters (Phantom mobile, WalletConnect), causing "Missing signature"
+      // errors. Partial-signing here ensures the mint signature is always present
+      // before the user's wallet adds the final signature.
+      transaction.partialSign(mintKeypair);
+
       const sig = await sendTransaction(transaction, connection, {
-        signers: [mintKeypair],
         skipPreflight: false,
       });
 

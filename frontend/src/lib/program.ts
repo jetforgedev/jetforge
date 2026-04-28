@@ -432,9 +432,8 @@ export async function buildCreateTokenTransaction(
   tx.recentBlockhash = blockhash;
   tx.lastValidBlockHeight = lastValidBlockHeight;
   tx.feePayer = wallet.publicKey;
-  // Do NOT pre-sign with mintKeypair here — pass it via sendTransaction's signers option
-  // so the wallet adapter applies it in the correct order (before Phantom signs).
-
+  // Return unsigned — caller must call transaction.partialSign(mintKeypair) before
+  // sendTransaction so mobile wallets (which ignore the signers option) work correctly.
   return { transaction: tx, mintKeypair };
 }
 
