@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -16,6 +15,23 @@ function isMobileDevice(): boolean {
   if (/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)) return true;
   // iPadOS 13+ reports as "Macintosh" — detect by touch support instead.
   if (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1) return true;
+  return false;
+}
+
+/** Returns true when the current page is loaded inside a wallet's in-app browser
+ * (Phantom, Solflare, etc). These wallets inject globals into window when they
+ * load a dApp inside their built-in browser, which is the only reliable signal
+ * since the wallet-adapter's "Installed" state is unreliable on mobile. */
+function isInsideWalletBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as any;
+  if (w.solana?.isPhantom) return true;
+  if (w.solflare?.isSolflare) return true;
+  if (w.phantom?.solana?.isPhantom) return true;
+  if (w.solana || w.solflare) return true;
+  // User agent hint — Phantom's in-app browser sets a custom UA segment.
+  if (/Phantom/i.test(navigator.userAgent)) return true;
+  if (/Solflare/i.test(navigator.userAgent)) return true;
   return false;
 }
 
@@ -186,19 +202,25 @@ export function Header() {
   const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
 
   // True when on mobile AND not already inside a wallet's in-app browser.
-  // Only "Installed" reliably means we're inside a wallet's in-app browser
-  // (window.solana / window.solflare is injected). "Loadable" on Android Chrome
-  // routes to WalletConnect which mangles multi-signer transactions, so we
-  // intercept and show our custom sheet that deep-links to the wallet's app
-  // browser instead. The sheet handles both "Open in wallet" (deep link) and
-  // "Install wallet" cases.
+  // We detect the wallet browser via window.solana / window.solflare globals
+  // directly, since the wallet-adapter's "Installed" state is unreliable on
+  // mobile (sometimes reports Loadable even inside wallet browsers).
+  // When this is true, clicking Connect opens our deep-link sheet instead
+  // of WalletMultiButton (which routes to the broken WalletConnect bridge).
   const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
     if (!isMobileDevice()) return;
-    const inWalletBrowser = wallets.some(
-      (w) => w.readyState === WalletReadyState.Installed
-    );
-    setNoWalletOnMobile(!inWalletBrowser);
+    if (isInsideWalletBrowser()) {
+      setNoWalletOnMobile(false);
+      return;
+    }
+    setNoWalletOnMobile(true);
+    // Re-check after a tick — wallet-adapter / wallet-standard injects async,
+    // so the very first render may not yet reflect window.solana availability.
+    const t = setTimeout(() => {
+      setNoWalletOnMobile(!isInsideWalletBrowser());
+    }, 500);
+    return () => clearTimeout(t);
   }, [wallets]);
 
   useEffect(() => {
