@@ -304,11 +304,20 @@ a {
   background: linear-gradient(90deg, #00ff88 0%, #00e5ff 100%);
   color: #02110d;
   font-weight: 800;
-  border-radius: 16px;
-  padding: 12px 20px;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.2;
   transition: transform 0.15s ease, box-shadow 0.18s ease, filter 0.18s ease;
   cursor: pointer;
   box-shadow: 0 12px 32px rgba(0, 255, 136, 0.22);
+}
+@media (min-width: 640px) {
+  .btn-primary {
+    border-radius: 16px;
+    padding: 12px 20px;
+    font-size: 15px;
+  }
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -331,11 +340,20 @@ a {
   background: rgba(255, 255, 255, 0.045);
   color: var(--text-primary);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 12px 20px;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.2;
   transition: all 0.15s ease;
   cursor: pointer;
   backdrop-filter: blur(12px);
+}
+@media (min-width: 640px) {
+  .btn-secondary {
+    border-radius: 16px;
+    padding: 12px 20px;
+    font-size: 15px;
+  }
 }
 
 .btn-secondary:hover:not(:disabled) {

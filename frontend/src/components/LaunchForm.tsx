@@ -639,24 +639,24 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       )}
 
       {/* Navigation buttons */}
-      <div className="mt-8 flex gap-3">
+      <div className="mt-6 sm:mt-8 flex gap-2.5 sm:gap-3">
         {step > 1 && (
           <button
             onClick={() => setStep((s) => (s - 1) as Step)}
-            className="btn-secondary flex-1"
+            className="btn-secondary flex-1 whitespace-nowrap"
           >
             Back
           </button>
         )}
         {step < 3 ? (
-          <button onClick={handleNextStep} className="btn-primary animate-gradient-shift flex-1 py-4 text-base">
+          <button onClick={handleNextStep} className="btn-primary animate-gradient-shift flex-1 whitespace-nowrap">
             Continue →
           </button>
         ) : (
           <button
             onClick={handleLaunch}
             disabled={isLaunching || !publicKey}
-            className="btn-primary animate-gradient-shift flex-1 py-4 text-base shadow-[0_18px_40px_rgba(0,255,136,0.24)]"
+            className="btn-primary animate-gradient-shift flex-1 whitespace-nowrap shadow-[0_18px_40px_rgba(0,255,136,0.24)]"
           >
             {isLaunching ? (
               <span className="flex items-center justify-center gap-2">

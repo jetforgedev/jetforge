@@ -116,9 +116,9 @@ export function TradesList({ mint, symbol }: TradesListProps) {
         </div>
       )}
 
-      {/* Column headers */}
+      {/* Column headers — mobile drops the ACCOUNT column to fit */}
       {trades.length > 0 && (
-        <div className="grid grid-cols-[1fr_60px_70px_70px_60px] px-3 py-1.5 sm:px-4 sm:py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
+        <div className="hidden sm:grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2 text-[#444] text-[10px] border-b border-[#0f0f0f]">
           <span>ACCOUNT</span>
           <span>TYPE</span>
           <span className="text-right">SOL</span>
@@ -145,30 +145,70 @@ export function TradesList({ mint, symbol }: TradesListProps) {
             return (
               <div
                 key={trade.id}
-                className={clsx(
-                  "grid grid-cols-[1fr_60px_70px_70px_60px] px-3 py-2 sm:px-4 sm:py-2.5 border-b border-[#0a0a0a] text-xs",
-                  "hover:bg-[#0f0f0f] transition-colors animate-slide-in"
-                )}
+                className="border-b border-[#0a0a0a] hover:bg-[#0f0f0f] transition-colors animate-slide-in"
               >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[#666] font-mono truncate">
-                    {truncateAddress(trade.trader, 4)}
-                  </span>
-                  {tag && (
-                    <span
-                      className="shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
-                      style={{ color: tag.color, borderColor: tag.color + "40", background: tag.color + "15" }}
-                    >
-                      {tag.label}
+                {/* ── Mobile layout (< sm): two-row stacked design that doesn't crush the data */}
+                <div className="sm:hidden px-3 py-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className={clsx(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold",
+                          isBuy
+                            ? "bg-[#00ff88]/15 text-[#00ff88]"
+                            : "bg-[#ff4444]/15 text-[#ff4444]"
+                        )}
+                      >
+                        {isBuy ? "BUY" : "SELL"}
+                      </span>
+                      <span className="text-[#666] font-mono text-[11px] truncate">
+                        {truncateAddress(trade.trader, 4)}
+                      </span>
+                      {tag && (
+                        <span
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ color: tag.color, borderColor: tag.color + "40", background: tag.color + "15" }}
+                        >
+                          {tag.label}
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-[10px] text-[#555]">{timeAgo(trade.timestamp)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-[11px] font-mono">
+                    <span className="text-white">
+                      <span className="text-[#555]">SOL </span>
+                      {solAmt}
                     </span>
-                  )}
+                    <span className="text-[#888]">
+                      <span className="text-[#555]">{symbol} </span>
+                      {parseInt(tokenAmt).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <span className={clsx("font-semibold", isBuy ? "text-[#00ff88]" : "text-[#ff4444]")}>
-                  {isBuy ? "BUY" : "SELL"}
-                </span>
-                <span className="text-right font-mono text-white">{solAmt}</span>
-                <span className="text-right font-mono text-[#888]">{parseInt(tokenAmt).toLocaleString()}</span>
-                <span className="text-right text-[#444]">{timeAgo(trade.timestamp)}</span>
+
+                {/* ── Desktop layout (≥ sm): existing 5-col grid */}
+                <div className="hidden sm:grid grid-cols-[1fr_60px_70px_70px_60px] px-4 py-2.5 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[#666] font-mono truncate">
+                      {truncateAddress(trade.trader, 4)}
+                    </span>
+                    {tag && (
+                      <span
+                        className="shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
+                        style={{ color: tag.color, borderColor: tag.color + "40", background: tag.color + "15" }}
+                      >
+                        {tag.label}
+                      </span>
+                    )}
+                  </div>
+                  <span className={clsx("font-semibold", isBuy ? "text-[#00ff88]" : "text-[#ff4444]")}>
+                    {isBuy ? "BUY" : "SELL"}
+                  </span>
+                  <span className="text-right font-mono text-white">{solAmt}</span>
+                  <span className="text-right font-mono text-[#888]">{parseInt(tokenAmt).toLocaleString()}</span>
+                  <span className="text-right text-[#444]">{timeAgo(trade.timestamp)}</span>
+                </div>
               </div>
             );
           })
