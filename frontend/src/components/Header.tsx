@@ -18,6 +18,15 @@ function isMobileDevice(): boolean {
   return false;
 }
 
+/** Returns true on Android specifically. iOS WalletMultiButton handles deep
+ * links natively (clicking it opens the wallet app), but on Android Chrome the
+ * wallet adapter routes to WalletConnect which mangles multi-signer txs. So we
+ * only intercept Connect with our sheet on Android. */
+function isAndroid(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
 /** Returns true when the current page is loaded inside a wallet's in-app browser
  * (Phantom, Solflare, etc). These wallets inject globals into window when they
  * load a dApp inside their built-in browser, which is the only reliable signal
@@ -201,15 +210,14 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
 
-  // True when on mobile AND not already inside a wallet's in-app browser.
-  // We detect the wallet browser via window.solana / window.solflare globals
-  // directly, since the wallet-adapter's "Installed" state is unreliable on
-  // mobile (sometimes reports Loadable even inside wallet browsers).
-  // When this is true, clicking Connect opens our deep-link sheet instead
-  // of WalletMultiButton (which routes to the broken WalletConnect bridge).
+  // Show our deep-link sheet only on Android (outside a wallet browser).
+  // iOS WalletMultiButton handles wallet deep-linking natively and works well —
+  // intercepting it there regresses the auto-detect UX iPhone users already had.
+  // Android Chrome's WalletMultiButton instead routes to WalletConnect which
+  // mangles multi-signer transactions, so we replace it with our sheet.
   const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
-    if (!isMobileDevice()) return;
+    if (!isAndroid()) return;
     if (isInsideWalletBrowser()) {
       setNoWalletOnMobile(false);
       return;
