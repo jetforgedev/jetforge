@@ -9,38 +9,38 @@ export default function LaunchPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="relative mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(255,255,255,0.03)_35%,rgba(0,204,255,0.10))] px-6 py-10 text-center shadow-[0_28px_70px_rgba(0,0,0,0.26)] sm:px-10">
+      <div className="relative mb-4 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(255,255,255,0.03)_35%,rgba(0,204,255,0.10))] px-4 py-5 sm:px-10 sm:py-10 text-center shadow-[0_28px_70px_rgba(0,0,0,0.26)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_38%),radial-gradient(circle_at_80%_20%,rgba(0,255,136,0.18),transparent_28%)]" />
         <div className="relative">
-          <div className="mb-4 text-5xl animate-float">🚀</div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#00ff88]/18 bg-[#00ff88]/8 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8dffc9]">
+          <div className="mb-2 sm:mb-4 text-3xl sm:text-5xl animate-float">🚀</div>
+          <div className="mb-2 sm:mb-3 inline-flex items-center gap-2 rounded-full border border-[#00ff88]/18 bg-[#00ff88]/8 px-3 py-1 sm:px-4 sm:py-2 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-[#8dffc9]">
             Creator Wizard
           </div>
-          <h1 className="text-4xl font-extrabold tracking-[-0.04em] text-white sm:text-5xl">Launch Your Token</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/62 sm:text-base">
-            Create a token, wire it into JetForge&apos;s bonding curve, and start trading instantly. No presale, no team allocation, just pure fair-launch energy.
+          <h1 className="text-2xl sm:text-5xl font-extrabold tracking-[-0.04em] text-white">Launch Your Token</h1>
+          <p className="mx-auto mt-2 sm:mt-4 max-w-2xl text-[12px] sm:text-base leading-5 sm:leading-7 text-white/62">
+            Create a token, deploy to Solana, and start trading instantly. No presale, no team allocation.
           </p>
         </div>
       </div>
 
-      <div className="mb-8 flex flex-wrap justify-center gap-2.5">
+      <div className="mb-4 sm:mb-8 flex flex-wrap justify-center gap-1.5 sm:gap-2.5">
         {[
-          "🛡️ Anti-rug by design",
-          "📈 Constant product curve",
+          "🛡️ Anti-rug",
+          "📈 Constant curve",
           "⚡ Instant liquidity",
-          "🎓 Auto DEX graduation",
-          "💰 1% trade fee",
+          "🎓 Auto graduation",
+          "💰 1% fee",
         ].map((feature) => (
           <span
             key={feature}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-medium text-white/58 backdrop-blur-sm"
+            className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-medium text-white/58 backdrop-blur-sm whitespace-nowrap"
           >
             {feature}
           </span>
         ))}
       </div>
 
-      <div className="glass-panel mb-8 rounded-[28px] p-6">
+      <div className="glass-panel mb-4 sm:mb-8 rounded-2xl sm:rounded-[28px] p-4 sm:p-6">
         <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">How It Works</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
@@ -79,12 +79,12 @@ export default function LaunchPage() {
         </div>
       </div>
 
-      <div className="glass-panel-dark rounded-[30px] p-4 sm:p-6">
+      <div className="glass-panel-dark rounded-2xl sm:rounded-[30px] p-3 sm:p-6">
         <LaunchForm onSuccess={(mint) => router.push(`/token/${mint}`)} />
       </div>
 
-      <p className="mt-6 text-center text-xs text-white/30">
-        By launching a token you agree that this is purely for experimentation. This is not financial advice. Trade responsibly.
+      <p className="mt-4 sm:mt-6 text-center text-[11px] sm:text-xs leading-5 text-white/30">
+        By launching a token you agree this is purely for experimentation. Not financial advice. Trade responsibly.
       </p>
     </div>
   );

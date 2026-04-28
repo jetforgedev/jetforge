@@ -238,13 +238,14 @@ function KingOfTheHill() {
             </div>
 
             <div className="min-w-0 flex-1">
-              {/* Status badge row */}
+              {/* Status badge row — whitespace-nowrap so 'King of the Hill' never
+                  wraps to two lines on narrow phones */}
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffcf5a]">King of the Hill</span>
-                <span className="rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ backgroundColor: urgencyColor + "22", color: urgencyColor }}>{urgency}</span>
+                <span className="whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.1em] text-[#ffcf5a]">👑 King of the Hill</span>
+                <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold" style={{ backgroundColor: urgencyColor + "22", color: urgencyColor }}>{urgency}</span>
               </div>
               {/* Token name — big & punchy */}
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex items-baseline gap-1.5 min-w-0">
                 <span className="truncate text-[16px] font-extrabold leading-tight tracking-tight text-white">{king.name}</span>
                 <span className="shrink-0 text-[10px] font-mono text-white/45">${king.symbol}</span>
               </div>
@@ -253,19 +254,19 @@ function KingOfTheHill() {
                 <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
                   <div className="h-full rounded-full transition-all" style={{ width: `${gradPct}%`, background: `linear-gradient(90deg, #00ff88, ${urgencyColor})` }} />
                 </div>
-                <span className="text-[8px] font-mono font-semibold" style={{ color: urgencyColor }}>{gradPct.toFixed(0)}% to grad</span>
+                <span className="shrink-0 text-[8px] font-mono font-semibold" style={{ color: urgencyColor }}>{gradPct.toFixed(0)}%</span>
               </div>
-              {/* Countdown */}
+              {/* Countdown — kept short so it doesn't wrap */}
               <div className="mt-0.5 flex items-center gap-1 text-[8px] text-white/30">
-                <span>⏱ Next rotation <span className="font-mono text-[#ffcf5a]/70">{countdown}</span></span>
+                <span className="whitespace-nowrap">⏱ <span className="font-mono text-[#ffcf5a]/70">{countdown}</span></span>
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats — narrower so the middle column has more room */}
             <div className="shrink-0 text-right">
-              <div className="text-[8px] uppercase tracking-[0.1em] text-white/35">Vol 24H</div>
-              <div className="text-[14px] font-bold text-white">{king.volume24h.toFixed(0)} SOL</div>
-              <div className="text-[8px] uppercase tracking-[0.1em] text-[#ffcf5a]/60">Trades</div>
+              <div className="text-[8px] uppercase tracking-[0.1em] text-white/35 whitespace-nowrap">Vol 24h</div>
+              <div className="text-[13px] font-bold text-white whitespace-nowrap">{king.volume24h.toFixed(1)} SOL</div>
+              <div className="mt-0.5 text-[8px] uppercase tracking-[0.1em] text-[#ffcf5a]/60">Trades</div>
               <div className="text-[12px] font-bold text-[#fff1c2]">{king.trades}</div>
             </div>
           </div>
@@ -490,27 +491,28 @@ export default function HomePage() {
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-5">
         <div className="min-w-0 space-y-4 sm:space-y-6">
 
-          {/* Mobile hero — hidden at sm and above */}
-          <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:hidden">
+          {/* Mobile hero — hidden at sm and above. Tightened spacing so it
+              doesn't dominate the viewport on a 6.7" phone. */}
+          <div className="rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(0,255,136,0.08),rgba(255,255,255,0.02)_42%,rgba(0,204,255,0.06))] px-3.5 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] sm:hidden">
             <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#86ffc4]">
               Live Market
             </div>
-            <div className="mt-1.5 text-[1.85rem] font-extrabold leading-[0.98] tracking-tight text-white">
+            <div className="mt-1 text-[1.4rem] font-extrabold leading-[1.05] tracking-tight text-white">
               Trade what&apos;s moving
             </div>
-            <div className="mt-1.5 text-[13px] leading-5 text-white/58">
-              Scan activity, check the leader, and jump into the market fast.
+            <div className="mt-1 text-[12px] leading-[1.4] text-white/58">
+              Scan activity, check the leader, jump in fast.
             </div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-2.5 grid grid-cols-2 gap-2">
               <Link
                 href="#market"
-                className="flex-1 rounded-[16px] border border-white/12 bg-white/[0.04] px-4 py-2.5 text-center text-sm font-semibold text-white"
+                className="rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2 text-center text-[13px] font-semibold text-white whitespace-nowrap"
               >
                 View Market
               </Link>
               <Link
                 href="/launch"
-                className="flex-1 rounded-[16px] bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2.5 text-center text-sm font-extrabold text-[#03110d]"
+                className="rounded-xl bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-3 py-2 text-center text-[13px] font-extrabold text-[#03110d] whitespace-nowrap"
               >
                 Launch
               </Link>

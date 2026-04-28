@@ -354,7 +354,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       {/* Step 1: Token Details */}
       {step === 1 && (
-        <div className="space-y-5 animate-fade-in">
+        <div className="space-y-4 sm:space-y-5 animate-fade-in">
           <div>
             <label className="block text-sm font-medium text-[#888] mb-2">
               Token Name <span className="text-[#ff4444]">*</span>
@@ -449,7 +449,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       {/* Step 2: Media & Links */}
       {step === 2 && (
-        <div className="space-y-5 animate-fade-in">
+        <div className="space-y-4 sm:space-y-5 animate-fade-in">
           {/* Image upload */}
           <div>
             <label className="block text-sm font-medium text-[#888] mb-2">
@@ -513,17 +513,17 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
                   if (file) handleImageFile(file);
                 }}
                 className={clsx(
-                  "cursor-pointer rounded-[24px] border-2 border-dashed p-8 text-center transition-all",
+                  "cursor-pointer rounded-2xl sm:rounded-[24px] border-2 border-dashed p-5 sm:p-8 text-center transition-all",
                   isDragging
                     ? "border-[#00ff88] bg-[#00ff88]/10 shadow-[0_0_30px_rgba(0,255,136,0.12)]"
                     : "border-white/12 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
                 )}
               >
-                <div className="text-3xl mb-2">🖼️</div>
-                <div className="text-white text-sm font-medium mb-1">
-                  Drop image here or click to browse
+                <div className="text-2xl sm:text-3xl mb-1.5 sm:mb-2">🖼️</div>
+                <div className="text-white text-[13px] sm:text-sm font-medium mb-1">
+                  Drop image or tap to browse
                 </div>
-                <div className="text-[#555] text-xs">
+                <div className="text-[#555] text-[11px] sm:text-xs">
                   JPEG, PNG, GIF, WebP — max 5 MB
                 </div>
               </div>
