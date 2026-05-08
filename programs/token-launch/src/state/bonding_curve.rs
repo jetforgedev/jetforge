@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::errors::TokenLaunchError;
 
 /// Initial virtual SOL reserves (30 SOL in lamports)
 pub const INITIAL_VIRTUAL_SOL: u64 = 30_000_000_000;
@@ -148,16 +149,16 @@ impl BondingCurveState {
     pub fn apply_buy(&mut self, sol_in_after_fee: u64, tokens_out: u64) -> Result<()> {
         self.virtual_sol_reserves = self.virtual_sol_reserves
             .checked_add(sol_in_after_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.virtual_token_reserves = self.virtual_token_reserves
             .checked_sub(tokens_out)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_sol_reserves = self.real_sol_reserves
             .checked_add(sol_in_after_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_token_reserves = self.real_token_reserves
             .checked_sub(tokens_out)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         Ok(())
     }
 
@@ -167,16 +168,16 @@ impl BondingCurveState {
     pub fn apply_sell(&mut self, tokens_in: u64, sol_out_before_fee: u64) -> Result<()> {
         self.virtual_token_reserves = self.virtual_token_reserves
             .checked_add(tokens_in)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.virtual_sol_reserves = self.virtual_sol_reserves
             .checked_sub(sol_out_before_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_token_reserves = self.real_token_reserves
             .checked_add(tokens_in)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_sol_reserves = self.real_sol_reserves
             .checked_sub(sol_out_before_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         Ok(())
     }
 
