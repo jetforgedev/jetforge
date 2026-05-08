@@ -18,9 +18,9 @@ pub const REAL_TOKEN_RESERVES_INIT: u64 = 700_000_000_000_000;
 pub const RESERVE_TOKEN_AMOUNT: u64 = 300_000_000_000_000;
 
 /// Graduation threshold in lamports.
-/// DEVNET-TEST: 0.5 SOL for rapid flow testing.
-/// BEFORE MAINNET: recompile with 85_000_000_000 (85 SOL) and redeploy program.
-pub const GRADUATION_THRESHOLD: u64 = 500_000_000;
+/// PRE-MAINNET: 10 SOL for final devnet validation before going live.
+/// MAINNET: recompile with 85_000_000_000 (85 SOL) and redeploy program.
+pub const GRADUATION_THRESHOLD: u64 = 10_000_000_000;
 
 /// Fee in basis points (1%)
 pub const FEE_BPS: u64 = 100;

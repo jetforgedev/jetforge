@@ -59,7 +59,7 @@ export default function LaunchPage() {
             {
               step: "3",
               title: "Graduate",
-              desc: "At 0.5 SOL raised, liquidity moves to a DEX permanently",
+              desc: "At 10 SOL raised, liquidity moves to a DEX permanently",
               icon: "🎓",
             },
           ].map((item) => (

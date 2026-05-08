@@ -47,7 +47,7 @@ const INITIAL_VIRTUAL_TOKENS = new BN("1073000191000000");
 const REAL_TOKEN_RESERVES_INIT = new BN("700000000000000"); // 70% to trading vault (bonding curve)
 const RESERVE_TOKEN_AMOUNT   = new BN("300000000000000"); // 30% to reserve vault (Raydium pool)
 const TOTAL_SUPPLY           = new BN("1000000000000000");
-const GRADUATION_THRESHOLD   = new BN("500000000");         // 0.5 SOL (devnet/localnet test value)
+const GRADUATION_THRESHOLD   = new BN("10000000000");        // 10 SOL (pre-mainnet devnet value)
 const FEE_BPS   = 100;
 const BPS_DENOM = 10_000;
 

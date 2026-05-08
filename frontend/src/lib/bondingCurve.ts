@@ -7,9 +7,9 @@ export const INITIAL_VIRTUAL_TOKENS = new BN("1073000191000000");
 export const REAL_TOKEN_RESERVES_INIT = new BN("700000000000000");  // 70% — curve supply
 export const RESERVE_TOKEN_AMOUNT = new BN("300000000000000");       // 30% — Raydium reserve
 export const TOTAL_SUPPLY = new BN("1000000000000000");
-// DEVNET-TEST: 0.5 SOL threshold matches the current on-chain program constant.
-// BEFORE MAINNET: update to match recompiled program value (85_000_000_000 = 85 SOL).
-export const GRADUATION_THRESHOLD = new BN("500000000");
+// PRE-MAINNET: 10 SOL threshold — matches recompiled on-chain program constant.
+// MAINNET: update to match mainnet program value (85_000_000_000 = 85 SOL).
+export const GRADUATION_THRESHOLD = new BN("10000000000");
 export const FEE_BPS = 100; // 1%
 export const BPS_DENOMINATOR = 10_000;
 

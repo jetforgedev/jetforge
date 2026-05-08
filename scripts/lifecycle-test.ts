@@ -4,7 +4,7 @@
  *            buy until graduation → graduate → withdraw_creator_fees
  *
  * Targets the currently deployed devnet program (7rXDkm…) with real constants:
- *   GRADUATION_THRESHOLD = 0.5 SOL  (devnet test value)
+ *   GRADUATION_THRESHOLD = 10 SOL  (pre-mainnet devnet value)
  *   BUYBACK_THRESHOLD    = 0.1 SOL
  */
 
@@ -15,7 +15,7 @@ import BN from "bn.js";
 import * as fs from "fs";
 import idlFile from "../target/idl/token_launch.json";
 
-// Use the currently-deployed devnet program (70/30 tokenomics, 0.5 SOL graduation threshold)
+// Use the currently-deployed devnet program (70/30 tokenomics, 10 SOL graduation threshold)
 const DEPLOYED_PROGRAM_ID          = "7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk";
 
 // The built IDL is stale — it's missing `metadata` and `token_metadata_program` from
@@ -56,7 +56,7 @@ const TREASURY                      = new PublicKey("13DWuEycYuJvGpo2EwPMgaiBDfR
 const FEE_BPS                       = 100;
 const BPS_DENOM                     = 10_000;
 // Match bonding_curve.rs constants exactly
-const GRADUATION_THRESHOLD_LAMPORTS = 500_000_000;    // 0.5 SOL
+const GRADUATION_THRESHOLD_LAMPORTS = 10_000_000_000;  // 10 SOL
 const BUYBACK_THRESHOLD_LAMPORTS    = 100_000_000;    // 0.1 SOL
 
 interface Step { step: string; tx?: string; note?: string; data?: any }
