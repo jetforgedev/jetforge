@@ -10,6 +10,7 @@ import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
 
+// ── Wallet data ───────────────────────────────────────────────────────────────
 const WALLETS = [
   {
     name: "Phantom",
@@ -18,7 +19,10 @@ const WALLETS = [
     color: "#9945ff",
     bg: "rgba(153,69,255,0.12)",
     border: "rgba(153,69,255,0.28)",
-    href: "https://phantom.app/download",
+    installHref: "https://phantom.app/download",
+    // Universal link: opens Phantom app and loads the current URL inside it
+    mobileHref: (url: string) =>
+      `https://phantom.app/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   },
   {
     name: "Solflare",
@@ -27,149 +31,181 @@ const WALLETS = [
     color: "#FC7227",
     bg: "rgba(252,114,39,0.10)",
     border: "rgba(252,114,39,0.25)",
-    href: "https://solflare.com/download",
+    installHref: "https://solflare.com/download",
+    // Universal link: opens Solflare app and loads the current URL inside it
+    mobileHref: (url: string) =>
+      `https://solflare.com/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   },
 ] as const;
 
-// ── NoWalletSheet ─────────────────────────────────────────────────────────────
-// Rendered via createPortal into document.body so the header's backdrop-filter
-// does not affect position:fixed.
-// Positioning is set in JS (not CSS media queries) to avoid inline-style
-// specificity conflicts.
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function isMobileUA() {
+  if (typeof navigator === "undefined") return false;
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+}
 
-function NoWalletSheet({ onClose }: { onClose: () => void }) {
+function hasSolanaExtension() {
+  if (typeof window === "undefined") return false;
+  return (
+    !!(window as any).phantom?.solana ||
+    !!(window as any).solflare ||
+    !!(window as any).solana
+  );
+}
+
+// ── Desktop install sheet (portal, centered on desktop / bottom sheet mobile) ─
+function InstallSheet({ onClose }: { onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // ESC to close
   useEffect(() => {
     const fn = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, [onClose]);
 
-  // After mount: apply desktop-centered or mobile-bottom position via JS
   useEffect(() => {
     const el = panelRef.current;
     if (!el) return;
     if (window.innerWidth >= 640) {
-      // Desktop — centered modal
       Object.assign(el.style, {
-        bottom:       "auto",
-        left:         "50%",
-        right:        "auto",
-        top:          "50%",
-        transform:    "translate(-50%, -50%)",
-        width:        "440px",
-        maxHeight:    "90vh",
-        overflowY:    "auto",
-        borderRadius: "28px",
-        border:       "1px solid rgba(255,255,255,0.10)",
-        paddingBottom:"24px",
+        bottom: "auto", left: "50%", right: "auto", top: "50%",
+        transform: "translate(-50%, -50%)", width: "440px",
+        maxHeight: "90vh", overflowY: "auto", borderRadius: "28px",
+        border: "1px solid rgba(255,255,255,0.10)", paddingBottom: "24px",
       });
     } else {
-      // Mobile — bottom sheet
       Object.assign(el.style, {
-        bottom:       "0",
-        left:         "0",
-        right:        "0",
-        top:          "auto",
-        transform:    "none",
-        width:        "100%",
-        maxHeight:    "85vh",
-        overflowY:    "auto",
-        borderRadius: "28px 28px 0 0",
-        borderTop:    "1px solid rgba(255,255,255,0.10)",
-        paddingBottom:"env(safe-area-inset-bottom, 32px)",
+        bottom: "0", left: "0", right: "0", top: "auto",
+        transform: "none", width: "100%", maxHeight: "85vh",
+        overflowY: "auto", borderRadius: "28px 28px 0 0",
+        borderTop: "1px solid rgba(255,255,255,0.10)",
+        paddingBottom: "env(safe-area-inset-bottom, 32px)",
       });
     }
   }, []);
 
   const content = (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Panel — base fixed position, JS applies the real position after mount */}
+      <div className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Install a Solana wallet"
+        role="dialog" aria-modal="true" aria-label="Install a Solana wallet"
         className="fixed z-[9999] bg-[#0a1510] px-6 pt-6"
-        style={{
-          // Start hidden until JS adjusts position (avoids flash)
-          bottom: 0, left: 0, right: 0,
-          borderRadius: "28px 28px 0 0",
-          boxShadow: "0 -20px 80px rgba(0,0,0,0.7)",
-        }}
+        style={{ bottom: 0, left: 0, right: 0, borderRadius: "28px 28px 0 0", boxShadow: "0 -20px 80px rgba(0,0,0,0.7)" }}
       >
-        {/* Drag handle — mobile only (hidden on desktop by display:none via JS below) */}
-        <div
-          className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15"
-          style={{ display: typeof window !== "undefined" && window.innerWidth >= 640 ? "none" : "block" }}
-        />
-
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">
-          🔌
-        </div>
-
-        <h3 className="mb-1.5 text-[17px] font-bold tracking-tight text-white">
-          No Wallet Detected
-        </h3>
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15 sm:hidden" />
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">🔌</div>
+        <h3 className="mb-1.5 text-[17px] font-bold text-white">No Wallet Detected</h3>
         <p className="mb-5 text-sm leading-relaxed text-white/50">
-          You need a Solana browser wallet extension to connect.
-          Choose one to install — it only takes a minute.
+          Install a Solana browser extension to connect.
+        </p>
+        <div className="space-y-3 mb-5">
+          {WALLETS.map((w) => (
+            <a key={w.name} href={w.installHref} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity hover:opacity-80 active:opacity-60"
+              style={{ background: w.bg, borderColor: w.border }}>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: w.bg }}>{w.icon}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-white">Install {w.name}</div>
+                <div className="text-xs text-white/45">{w.tagline}</div>
+              </div>
+              <span className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white" style={{ background: w.color }}>Install ↗</span>
+            </a>
+          ))}
+        </div>
+        <p className="mb-3 text-center text-[11px] text-white/35">
+          Already installed? <span className="text-white/55 font-medium">Refresh after installing.</span>
+        </p>
+        <button onClick={onClose}
+          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 mb-2 text-sm font-semibold text-white/50 hover:bg-white/[0.08]">
+          Dismiss
+        </button>
+      </div>
+    </>
+  );
+  if (typeof document === "undefined") return null;
+  return createPortal(content, document.body);
+}
+
+// ── Mobile "Open in wallet" sheet ─────────────────────────────────────────────
+// Shown on mobile browsers (not inside a wallet's built-in browser).
+// Clicking opens the wallet app and loads the current page inside it.
+// The wallet then injects window.phantom.solana / window.solflare and the
+// user can connect normally.
+function MobileWalletSheet({ onClose }: { onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pageUrl, setPageUrl] = useState("");
+
+  useEffect(() => {
+    setPageUrl(window.location.href);
+    const fn = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [onClose]);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    // Always bottom sheet on mobile
+    Object.assign(el.style, {
+      bottom: "0", left: "0", right: "0", top: "auto",
+      transform: "none", width: "100%",
+      borderRadius: "28px 28px 0 0",
+      borderTop: "1px solid rgba(255,255,255,0.10)",
+      paddingBottom: "env(safe-area-inset-bottom, 32px)",
+    });
+  }, []);
+
+  const content = (
+    <>
+      <div className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        role="dialog" aria-modal="true"
+        className="fixed z-[9999] bg-[#0a1510] px-6 pt-6"
+        style={{ bottom: 0, left: 0, right: 0, borderRadius: "28px 28px 0 0", boxShadow: "0 -24px 80px rgba(0,0,0,0.7)" }}
+      >
+        {/* Drag handle */}
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
+
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#00ff88]/20 bg-[#00ff88]/8 text-2xl">👛</div>
+        <h3 className="mb-1.5 text-[17px] font-bold text-white">Connect Wallet</h3>
+        <p className="mb-5 text-sm leading-relaxed text-white/50">
+          Open this page inside your wallet app to connect. The app will return you here automatically.
         </p>
 
         <div className="space-y-3 mb-5">
           {WALLETS.map((w) => (
             <a
               key={w.name}
-              href={w.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity hover:opacity-80 active:opacity-60"
+              href={pageUrl ? w.mobileHref(pageUrl) : w.installHref}
+              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-60"
               style={{ background: w.bg, borderColor: w.border }}
             >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
-                style={{ background: w.bg }}
-              >
-                {w.icon}
-              </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: w.bg }}>{w.icon}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-white">Install {w.name}</div>
+                <div className="text-sm font-bold text-white">Open in {w.name}</div>
                 <div className="text-xs text-white/45">{w.tagline}</div>
               </div>
-              <span
-                className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white"
-                style={{ background: w.color }}
-              >
-                Install ↗
-              </span>
+              <span className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white" style={{ background: w.color }}>Open ↗</span>
             </a>
           ))}
         </div>
 
-        <p className="mb-3 text-center text-[11px] leading-5 text-white/35">
-          Already installed?{" "}
-          <span className="text-white/55 font-medium">Refresh after installing.</span>
+        <p className="mb-3 text-center text-[11px] text-white/35">
+          Don't have a wallet?{" "}
+          <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" className="text-white/55 font-medium underline underline-offset-2">
+            Get Phantom
+          </a>
         </p>
 
-        <button
-          onClick={onClose}
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 mb-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/[0.08]"
-        >
+        <button onClick={onClose}
+          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 mb-2 text-sm font-semibold text-white/50 hover:bg-white/[0.08]">
           Dismiss
         </button>
       </div>
     </>
   );
-
   if (typeof document === "undefined") return null;
   return createPortal(content, document.body);
 }
@@ -182,115 +218,123 @@ export function Header() {
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
-  const [noWalletDetected, setNoWalletDetected] = useState(true);
+  const [showInstallSheet, setShowInstallSheet] = useState(false);
+  const [showMobileSheet, setShowMobileSheet] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Three states we care about (computed once after mount):
+  // - isMobile: phone/tablet user agent
+  // - inWalletBrowser: page opened INSIDE Phantom/Solflare built-in browser
+  // - hasSolanaExt: desktop Solana browser extension present
+  const [isMobile, setIsMobile] = useState(false);
+  const [inWalletBrowser, setInWalletBrowser] = useState(false);
+  const [hasSolanaExt, setHasSolanaExt] = useState(false);
 
-  // Detect wallet availability.
-  // MOBILE: WalletMultiButton handles deep-linking to wallet apps automatically.
-  //   window.phantom?.solana is only set when INSIDE the wallet's browser,
-  //   so we must NOT use that check on mobile — it would always show the
-  //   install sheet and break the deep-link flow.
-  // DESKTOP: check window globals — only real Solana extensions set them.
-  //   MetaMask (Ethereum) does NOT set window.phantom?.solana or window.solflare.
   useEffect(() => {
-    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
-    if (mobile) {
-      // On mobile let WalletMultiButton handle everything
-      setNoWalletDetected(false);
-      return;
+    setMounted(true);
+    const mobile = isMobileUA();
+    setIsMobile(mobile);
+    const inWallet = hasSolanaExtension();
+    setInWalletBrowser(inWallet);
+    if (!mobile) {
+      setHasSolanaExt(inWallet); // on desktop, same check
     }
-    // Desktop: check for Solana browser extension via window globals
-    const check = () => {
-      const has =
-        !!(window as any).phantom?.solana ||
-        !!(window as any).solflare ||
-        !!(window as any).solana;
-      setNoWalletDetected(!has);
-    };
-    check();
-    const t = setTimeout(check, 800);
+    // Re-check after extensions may have loaded
+    const t = setTimeout(() => {
+      const ext = hasSolanaExtension();
+      setInWalletBrowser(ext);
+      if (!mobile) setHasSolanaExt(ext);
+    }, 800);
     return () => clearTimeout(t);
-  }, [wallets]);
+  }, []);
 
-  // Handle wallet selection when extension not installed.
-  // On mobile: do NOT interfere — Loadable state means the adapter will deep-link
-  //   to the wallet app (Phantom / Solflare open site inside their browser).
-  // On desktop: if a wallet is selected but not installed as a browser extension,
-  //   redirect Solflare picks to solflare.com/download and deselect to reset button.
+  // On desktop: deselect non-installed adapters + redirect Solflare to install
   useEffect(() => {
-    if (!wallet) return;
-    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
-    if (mobile) return; // let wallet-adapter handle deep-linking on mobile
+    if (!wallet || isMobile) return;
     if (wallet.readyState !== WalletReadyState.Installed) {
-      if (
-        wallet.adapter?.name === "Solflare" ||
-        (wallet as any).name === "Solflare"
-      ) {
+      const name = (wallet.adapter as any)?.name ?? (wallet as any).name ?? "";
+      if (name === "Solflare") {
         window.open("https://solflare.com/download", "_blank", "noopener,noreferrer");
       }
       select(null as any);
     }
-  }, [wallet, select]);
+  }, [wallet, select, isMobile]);
 
-  // Balance fetch
+  // Balance
   useEffect(() => {
     if (!publicKey) { setWalletBalance(null); return; }
-    const fetch = async () => {
-      try {
-        const lamports = await connection.getBalance(publicKey);
-        setWalletBalance(lamports / 1e9);
-      } catch { /* ignore */ }
+    const go = async () => {
+      try { setWalletBalance((await connection.getBalance(publicKey)) / 1e9); } catch { /* ignore */ }
     };
-    fetch();
-    const id = setInterval(fetch, 15_000);
+    go();
+    const id = setInterval(go, 15_000);
     return () => clearInterval(id);
   }, [publicKey, connection]);
-
-  // Safety-net: on desktop, intercept WalletMultiButton click when no
-  // Solana extension is detected and redirect to our install sheet.
-  // On mobile we skip this — WalletMultiButton handles deep-linking.
-  const interceptClick = (e: React.MouseEvent) => {
-    if (publicKey) return;
-    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
-    if (mobile) return; // let WalletMultiButton deep-link to wallet app
-    const has =
-      !!(window as any).phantom?.solana ||
-      !!(window as any).solflare ||
-      !!(window as any).solana;
-    if (!has) {
-      e.stopPropagation();
-      e.preventDefault();
-      setShowNoWalletSheet(true);
-    }
-  };
 
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/launch", label: "Launch" },
     { href: "/leaderboard", label: "Leaderboard" },
     { href: "/creators", label: "Creators" },
-    ...(publicKey
-      ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }]
-      : []),
+    ...(publicKey ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }] : []),
   ];
 
-  const connectBtn = (
-    <button
-      onClick={() => setShowNoWalletSheet(true)}
-      className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
-      style={{
-        height: "40px",
-        padding: "0 14px",
-        background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-        minWidth: "80px",
-      }}
-    >
-      Connect
-    </button>
-  );
+  // ── Wallet button logic ───────────────────────────────────────────────────
+  // We render different things depending on device + wallet state.
+  // Rule: NEVER wrap WalletMultiButton in a click-interceptor when connected
+  //       (causes iOS touch issues on the connected-state dropdown).
+  const walletBtnStyle = {
+    height: "40px", fontSize: "13px", padding: "0 14px",
+    borderRadius: "14px",
+    background: "linear-gradient(90deg,#00ff88,#00e5ff)",
+    color: "#03110d", fontWeight: 800,
+  };
+
+  let walletArea: React.ReactNode = null;
+
+  if (!mounted) {
+    // SSR / before hydration — show placeholder matching WalletMultiButton size
+    walletArea = (
+      <div style={{ height: 40, width: 80, borderRadius: 14, background: "linear-gradient(90deg,#00ff88,#00e5ff)" }} />
+    );
+  } else if (publicKey) {
+    // ── Connected: always plain WalletMultiButton, no wrapper ──────────────
+    // Wrapping it caused iOS tap events on the connected-state button to be
+    // swallowed, preventing the disconnect/change-wallet modal from opening.
+    walletArea = <WalletMultiButton style={walletBtnStyle} />;
+
+  } else if (isMobile && !inWalletBrowser) {
+    // ── Mobile, regular browser (Chrome/Safari) ────────────────────────────
+    // PhantomWalletAdapter is NotDetected here — clicking Phantom in the picker
+    // does nothing on Android. Show our own button that deep-links to the
+    // wallet app (universal link loads the current page inside the wallet browser).
+    walletArea = (
+      <button
+        onClick={() => setShowMobileSheet(true)}
+        className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
+        style={{ height: 40, padding: "0 14px", background: "linear-gradient(90deg,#00ff88,#00e5ff)", minWidth: 80 }}
+      >
+        Connect
+      </button>
+    );
+
+  } else if (!isMobile && !hasSolanaExt) {
+    // ── Desktop, no Solana extension ──────────────────────────────────────
+    walletArea = (
+      <button
+        onClick={() => setShowInstallSheet(true)}
+        className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
+        style={{ height: 40, padding: "0 14px", background: "linear-gradient(90deg,#00ff88,#00e5ff)", minWidth: 80 }}
+      >
+        Connect
+      </button>
+    );
+
+  } else {
+    // ── Desktop with extension OR inside wallet browser ────────────────────
+    // WalletMultiButton detects extensions correctly and connects directly.
+    walletArea = <WalletMultiButton style={walletBtnStyle} />;
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[#07110f]/70 backdrop-blur-xl">
@@ -302,16 +346,11 @@ export function Header() {
 
         <nav className="hidden items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] p-1 backdrop-blur-sm md:flex">
           {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={clsx(
-                "rounded-full px-4 py-2 text-sm font-semibold transition-all",
+            <Link key={link.href} href={link.href}
+              className={clsx("rounded-full px-4 py-2 text-sm font-semibold transition-all",
                 pathname === link.href
                   ? "bg-white/[0.08] text-white shadow-[inset_0_-2px_0_0_#00ff88]"
-                  : "text-white/48 hover:text-white hover:bg-white/[0.05]"
-              )}
-            >
+                  : "text-white/48 hover:text-white hover:bg-white/[0.05]")}>
               {link.label}
             </Link>
           ))}
@@ -325,36 +364,16 @@ export function Header() {
             </div>
           )}
 
-          <Link
-            href="/launch"
-            className="hidden rounded-full bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2 text-sm font-extrabold text-[#03110d] shadow-[0_12px_32px_rgba(0,255,136,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,255,136,0.25)] sm:inline-flex"
-          >
+          <Link href="/launch"
+            className="hidden rounded-full bg-[linear-gradient(90deg,#00ff88,#00e5ff)] px-4 py-2 text-sm font-extrabold text-[#03110d] shadow-[0_12px_32px_rgba(0,255,136,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(0,255,136,0.25)] sm:inline-flex">
             Launch Token
           </Link>
 
-          {mounted && noWalletDetected && !publicKey ? (
-            connectBtn
-          ) : (
-            <div onClick={interceptClick} style={{ display: "contents" }}>
-              <WalletMultiButton
-                style={{
-                  height: "40px",
-                  fontSize: "13px",
-                  padding: "0 14px",
-                  borderRadius: "14px",
-                  background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-                  color: "#03110d",
-                  fontWeight: 800,
-                }}
-              />
-            </div>
-          )}
+          {walletArea}
 
-          <button
-            onClick={() => setMobileMenuOpen((v) => !v)}
+          <button onClick={() => setMobileMenuOpen((v) => !v)}
             className="flex h-10 w-10 flex-col items-center justify-center gap-[5px] rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
-            aria-label="Toggle menu"
-          >
+            aria-label="Toggle menu">
             <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "translate-y-[7px] rotate-45")} />
             <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "opacity-0")} />
             <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "-translate-y-[7px] -rotate-45")} />
@@ -368,42 +387,27 @@ export function Header() {
           <div className="absolute inset-x-0 top-full z-50 border-b border-white/8 bg-[#07110f]/95 backdrop-blur-xl md:hidden">
             <nav className="mx-auto max-w-[1440px] flex flex-col gap-1 px-4 py-3">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={clsx(
-                    "flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition-all",
+                <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}
+                  className={clsx("flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition-all",
                     pathname === link.href
                       ? "bg-white/[0.08] text-white border-l-2 border-[#00ff88]"
-                      : "text-white/60 hover:text-white hover:bg-white/[0.05]"
-                  )}
-                >
+                      : "text-white/60 hover:text-white hover:bg-white/[0.05]")}>
                   {link.label}
                 </Link>
               ))}
-              {noWalletDetected && !publicKey && (
-                <div className="mt-2 rounded-xl border border-[#ffcc44]/20 bg-[#ffcc44]/5 px-4 py-3">
-                  <p className="text-xs text-[#ffcc44]/90 font-semibold mb-1">No wallet detected</p>
-                  <p className="text-[11px] text-white/50 mb-3">Install a Solana extension to trade.</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {WALLETS.map((w) => (
-                      <a key={w.name} href={w.href} target="_blank" rel="noopener noreferrer"
-                        className="rounded-lg px-3 py-1.5 text-[11px] font-bold text-white"
-                        style={{ background: w.color }}>
-                        {w.name} ↗
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
             </nav>
           </div>
         </>
       )}
 
-      {mounted && showNoWalletSheet && (
-        <NoWalletSheet onClose={() => setShowNoWalletSheet(false)} />
+      {/* Desktop install sheet */}
+      {mounted && showInstallSheet && (
+        <InstallSheet onClose={() => setShowInstallSheet(false)} />
+      )}
+
+      {/* Mobile "open in wallet" sheet */}
+      {mounted && showMobileSheet && (
+        <MobileWalletSheet onClose={() => setShowMobileSheet(false)} />
       )}
     </header>
   );
