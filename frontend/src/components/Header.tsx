@@ -146,10 +146,18 @@ export function Header() {
   // Solflare returns Loadable without its extension (it has a web wallet),
   // so checking Loadable would suppress the install sheet on a fresh browser.
   useEffect(() => {
-    const hasExtension = wallets.some(
-      (w) => w.readyState === WalletReadyState.Installed
-    );
-    setNoWalletDetected(!hasExtension);
+    // Detect actual Solana wallet extensions via window globals.
+    // MetaMask (Ethereum) registers via Wallet Standard as readyState.Installed
+    // but has no window.phantom?.solana / window.solflare / window.solana,
+    // so it is correctly excluded here.
+    const hasSolanaWallet =
+      typeof window !== "undefined" &&
+      (
+        !!(window as any).phantom?.solana ||
+        !!(window as any).solflare ||
+        !!(window as any).solana
+      );
+    setNoWalletDetected(!hasSolanaWallet);
   }, [wallets]);
 
   // ── Deselect adapter if no extension found ───────────────────────────────
@@ -180,18 +188,15 @@ export function Header() {
   // This is the safety net in case noWalletDetected state is stale on first render.
   const interceptClick = (e: React.MouseEvent) => {
     if (publicKey) return;
-    // Same Solana-aware check used in the useEffect above.
+    // Safety net: if noWalletDetected state is stale, catch the click here.
+    // MetaMask (Ethereum) is excluded because window.phantom?.solana /
+    // window.solflare / window.solana are only set by real Solana extensions.
     const hasSolanaWallet =
       typeof window !== "undefined" &&
       (
         !!(window as any).phantom?.solana ||
         !!(window as any).solflare ||
-        !!(window as any).solana ||
-        wallets.some(
-          (w) =>
-            w.readyState === WalletReadyState.Installed &&
-            ["Phantom", "Solflare", "Backpack", "Glow", "Slope", "Exodus"].includes(w.name)
-        )
+        !!(window as any).solana
       );
     if (!hasSolanaWallet) {
       e.stopPropagation();
