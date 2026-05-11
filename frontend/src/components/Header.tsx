@@ -181,36 +181,16 @@ function MobileWalletSheet({ onClose }: { onClose: () => void }) {
 
         <div className="space-y-3 mb-5">
           {WALLETS.map((w) => {
-            // Build the href for this wallet:
-            // - Phantom: uses phantom:// custom scheme (more reliable on iOS than
-            //   Universal Links which sometimes open the app without the URL).
-            // - Solflare: uses https://solflare.com/ul/v1/browse/ Universal Link.
+            // Use mobileHref when we have the page URL, fallback to installHref.
+            // DO NOT use e.preventDefault() + window.location.href for custom
+            // schemes — iOS Safari blocks programmatic navigation to custom
+            // schemes from inside a click handler. Native <a> tag clicks are
+            // allowed through. Let the browser handle the link.
             const href = pageUrl ? w.mobileHref(pageUrl) : w.installHref;
-            const isCustomScheme = href.startsWith("phantom://") || href.startsWith("solflare://");
-
-            const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-              if (!isCustomScheme || !pageUrl) return;
-              // For custom schemes: use window.location to trigger the scheme.
-              // Then start a timeout — if the app opens, the page loses focus
-              // (visibilitychange / blur fires) and we cancel. If focus stays
-              // (app not installed), redirect to fallback (App Store).
-              e.preventDefault();
-              const fallback = (w as any).fallbackHref || w.installHref;
-              let redirected = false;
-              const timer = setTimeout(() => {
-                if (!redirected) window.location.href = fallback;
-              }, 1500);
-              const cancel = () => { redirected = true; clearTimeout(timer); };
-              document.addEventListener("visibilitychange", cancel, { once: true });
-              window.addEventListener("blur", cancel, { once: true });
-              window.location.href = href;
-            };
-
             return (
               <a
                 key={w.name}
                 href={href}
-                onClick={handleClick}
                 className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-60"
                 style={{ background: w.bg, borderColor: w.border }}
               >
