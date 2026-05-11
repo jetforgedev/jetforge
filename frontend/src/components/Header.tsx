@@ -188,8 +188,21 @@ export function Header() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Detect real Solana wallet extensions via window globals
+  // Detect wallet availability.
+  // MOBILE: WalletMultiButton handles deep-linking to wallet apps automatically.
+  //   window.phantom?.solana is only set when INSIDE the wallet's browser,
+  //   so we must NOT use that check on mobile — it would always show the
+  //   install sheet and break the deep-link flow.
+  // DESKTOP: check window globals — only real Solana extensions set them.
+  //   MetaMask (Ethereum) does NOT set window.phantom?.solana or window.solflare.
   useEffect(() => {
+    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+    if (mobile) {
+      // On mobile let WalletMultiButton handle everything
+      setNoWalletDetected(false);
+      return;
+    }
+    // Desktop: check for Solana browser extension via window globals
     const check = () => {
       const has =
         !!(window as any).phantom?.solana ||
@@ -202,17 +215,22 @@ export function Header() {
     return () => clearTimeout(t);
   }, [wallets]);
 
-  // Handle wallet selection when extension not installed
+  // Handle wallet selection when extension not installed.
+  // On mobile: do NOT interfere — Loadable state means the adapter will deep-link
+  //   to the wallet app (Phantom / Solflare open site inside their browser).
+  // On desktop: if a wallet is selected but not installed as a browser extension,
+  //   redirect Solflare picks to solflare.com/download and deselect to reset button.
   useEffect(() => {
     if (!wallet) return;
+    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+    if (mobile) return; // let wallet-adapter handle deep-linking on mobile
     if (wallet.readyState !== WalletReadyState.Installed) {
-      // If user picked Solflare but the extension isn't installed,
-      // redirect them to the install page and deselect so button resets.
-      if (wallet.adapter?.name === "Solflare" ||
-          (wallet as any).name === "Solflare") {
+      if (
+        wallet.adapter?.name === "Solflare" ||
+        (wallet as any).name === "Solflare"
+      ) {
         window.open("https://solflare.com/download", "_blank", "noopener,noreferrer");
       }
-      // For any non-installed wallet (incl. Phantom not installed), deselect.
       select(null as any);
     }
   }, [wallet, select]);
@@ -231,9 +249,13 @@ export function Header() {
     return () => clearInterval(id);
   }, [publicKey, connection]);
 
-  // Safety-net click interceptor
+  // Safety-net: on desktop, intercept WalletMultiButton click when no
+  // Solana extension is detected and redirect to our install sheet.
+  // On mobile we skip this — WalletMultiButton handles deep-linking.
   const interceptClick = (e: React.MouseEvent) => {
     if (publicKey) return;
+    const mobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+    if (mobile) return; // let WalletMultiButton deep-link to wallet app
     const has =
       !!(window as any).phantom?.solana ||
       !!(window as any).solflare ||
