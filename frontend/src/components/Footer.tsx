@@ -6,7 +6,7 @@ const YEAR = new Date().getFullYear();
 const communityLinks = [
   ["https://x.com/jetforgeDev", "X", "Twitter"],
   ["https://t.me/jetforgechat", "TG", "Telegram"],
-  ["https://github.com/jetforge", "GH", "GitHub"],
+  ["https://github.com/jetforgedev/jetforge", "GH", "GitHub"],
 ] as const;
 
 export function Footer() {
