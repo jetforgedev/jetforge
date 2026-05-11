@@ -19,9 +19,9 @@ pub const REAL_TOKEN_RESERVES_INIT: u64 = 700_000_000_000_000;
 pub const RESERVE_TOKEN_AMOUNT: u64 = 300_000_000_000_000;
 
 /// Graduation threshold in lamports.
-/// PRE-MAINNET: 10 SOL for final devnet validation before going live.
-/// MAINNET: recompile with 85_000_000_000 (85 SOL) and redeploy program.
-pub const GRADUATION_THRESHOLD: u64 = 10_000_000_000;
+/// MAINNET-READY: 85 SOL graduation threshold.
+/// Matches pump.fun economics — tokens graduate after raising 85 SOL on the bonding curve.
+pub const GRADUATION_THRESHOLD: u64 = 85_000_000_000;
 
 /// Fee in basis points (1%)
 pub const FEE_BPS: u64 = 100;
@@ -39,8 +39,7 @@ pub const TREASURY_FEE_SHARE: u64 = 40;
 pub const BUYBACK_FEE_SHARE: u64 = 20;
 
 /// Minimum SOL accumulated before a buyback-and-burn is triggered.
-/// DEVNET-TEST: 0.1 SOL for rapid flow testing.
-/// BEFORE MAINNET: recompile with a production value (e.g. 1_000_000_000 = 1 SOL) and redeploy.
+/// MAINNET-READY: 1 SOL buyback threshold.
 pub const BUYBACK_THRESHOLD: u64 = 100_000_000;
 
 /// Fee share denominator

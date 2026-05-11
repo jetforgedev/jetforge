@@ -18,7 +18,7 @@ const app = express();
 const httpServer = createServer(app);
 
 // Trust reverse proxy (nginx) so req.protocol reflects X-Forwarded-Proto
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // Initialize Prisma
 export const prisma = new PrismaClient({
