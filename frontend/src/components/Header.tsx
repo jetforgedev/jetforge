@@ -128,34 +128,31 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
 
 export function Header() {
   const pathname = usePathname();
-  const { publicKey, wallets, wallet, disconnect } = useWallet();
+  const { publicKey, wallets, wallet, select, disconnect } = useWallet();
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
 
   // True when running on a mobile/tablet with no supported wallet injected.
-  const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
+  const [noWalletOnMobile, setNoWalletOnMobile] = useState(true);
   useEffect(() => {
-    const installed = wallets.some(
-      (w) =>
-        w.readyState === WalletReadyState.Installed ||
-        w.readyState === WalletReadyState.Loadable
+    // Only treat as "wallet installed" if readyState === Installed.
+    // Solflare returns Loadable (has web-wallet) even without browser extension,
+    // so checking Loadable here would suppress the install sheet on desktop.
+    const hasExtension = wallets.some(
+      (w) => w.readyState === WalletReadyState.Installed
     );
-    // Show install sheet on BOTH desktop and mobile when no wallet detected
-    setNoWalletOnMobile(!installed);
+    setNoWalletOnMobile(!hasExtension);
   }, [wallets]);
 
-  // Reset selected wallet if not installed (avoids stuck button on desktop)
+  // Deselect wallet if it has no browser extension installed.
+  // Must use select(null) — disconnect() leaves the adapter selected → stuck button.
   useEffect(() => {
-    if (
-      wallet &&
-      wallet.readyState !== WalletReadyState.Installed &&
-      wallet.readyState !== WalletReadyState.Loadable
-    ) {
-      disconnect().catch(() => {});
+    if (wallet && wallet.readyState !== WalletReadyState.Installed) {
+      select(null as any);
     }
-  }, [wallet, disconnect]);
+  }, [wallet, select]);
 
   useEffect(() => {
     if (!publicKey) {
