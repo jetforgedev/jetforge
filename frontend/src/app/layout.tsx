@@ -85,7 +85,7 @@ const orgJsonLd = {
   "@type": "Organization",
   name: "JetForge",
   url: BASE_URL,
-  logo: `${BASE_URL}/icon.png`,
+  logo: `${BASE_URL}/brand/jetforge-favicon.png`,
   sameAs: [],
 };
 

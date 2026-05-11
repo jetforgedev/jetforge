@@ -1,8 +1,14 @@
 {
   "name": "JetForge",
-  "icon": "https://jetforge.io/icon",
+  "icon": "https://jetforge.io/brand/jetforge-favicon.png",
   "url": "https://jetforge.io",
-  "description": "Solana token launchpad — launch and trade tokens with a bonding curve",
-  "chains": ["solana:devnet"],
-  "features": ["solana:signTransaction", "solana:signAndSendTransaction"]
+  "description": "Solana token launchpad \u2014 launch and trade tokens with a bonding curve",
+  "chains": [
+    "solana:mainnet",
+    "solana:devnet"
+  ],
+  "features": [
+    "solana:signTransaction",
+    "solana:signAndSendTransaction"
+  ]
 }
