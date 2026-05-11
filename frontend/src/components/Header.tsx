@@ -27,7 +27,7 @@ const WALLETS = [
     // phantom.com/.well-known/apple-app-site-association registers /ul/*
     // which covers /ul/v1/browse/, making this Universal Link work correctly.
     mobileHref: (url: string) =>
-      `https://phantom.com/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
+      `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(new URL(url).origin)}`,
   },
   {
     name: "Solflare",
