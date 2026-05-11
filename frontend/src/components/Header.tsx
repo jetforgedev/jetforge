@@ -128,7 +128,7 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
 
 export function Header() {
   const pathname = usePathname();
-  const { publicKey, wallets } = useWallet();
+  const { publicKey, wallets, wallet, disconnect } = useWallet();
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -137,14 +137,25 @@ export function Header() {
   // True when running on a mobile/tablet with no supported wallet injected.
   const [noWalletOnMobile, setNoWalletOnMobile] = useState(false);
   useEffect(() => {
-    if (!isMobileDevice()) return;
     const installed = wallets.some(
       (w) =>
         w.readyState === WalletReadyState.Installed ||
         w.readyState === WalletReadyState.Loadable
     );
+    // Show install sheet on BOTH desktop and mobile when no wallet detected
     setNoWalletOnMobile(!installed);
   }, [wallets]);
+
+  // Reset selected wallet if not installed (avoids stuck button on desktop)
+  useEffect(() => {
+    if (
+      wallet &&
+      wallet.readyState !== WalletReadyState.Installed &&
+      wallet.readyState !== WalletReadyState.Loadable
+    ) {
+      disconnect().catch(() => {});
+    }
+  }, [wallet, disconnect]);
 
   useEffect(() => {
     if (!publicKey) {
