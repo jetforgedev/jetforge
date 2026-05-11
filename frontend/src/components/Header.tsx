@@ -202,9 +202,17 @@ export function Header() {
     return () => clearTimeout(t);
   }, [wallets]);
 
-  // Deselect adapter with no real extension
+  // Handle wallet selection when extension not installed
   useEffect(() => {
-    if (wallet && wallet.readyState !== WalletReadyState.Installed) {
+    if (!wallet) return;
+    if (wallet.readyState !== WalletReadyState.Installed) {
+      // If user picked Solflare but the extension isn't installed,
+      // redirect them to the install page and deselect so button resets.
+      if (wallet.adapter?.name === "Solflare" ||
+          (wallet as any).name === "Solflare") {
+        window.open("https://solflare.com/download", "_blank", "noopener,noreferrer");
+      }
+      // For any non-installed wallet (incl. Phantom not installed), deselect.
       select(null as any);
     }
   }, [wallet, select]);
