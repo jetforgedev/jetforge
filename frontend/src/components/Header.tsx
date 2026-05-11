@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
@@ -9,13 +9,7 @@ import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
 
-/** Returns true when running on a mobile / tablet device (UA sniff). */
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
-}
-
-// ── No-wallet bottom sheet ────────────────────────────────────────────────────
+// ── Wallet install options ────────────────────────────────────────────────────
 
 const WALLETS = [
   {
@@ -38,8 +32,9 @@ const WALLETS = [
   },
 ] as const;
 
+// ── Install sheet (bottom on mobile, centered modal on desktop) ───────────────
+
 function NoWalletSheet({ onClose }: { onClose: () => void }) {
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", handler);
@@ -55,38 +50,46 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
         aria-hidden="true"
       />
 
-      {/* Bottom sheet */}
+      {/* Panel — bottom sheet on mobile, centered modal on desktop */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Install a Solana wallet"
-        className="fixed inset-x-0 bottom-0 z-[70] rounded-t-[28px] border-t border-white/10 bg-[#0a1510] px-5 pb-safe-bottom pb-8 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.55)]"
+        className={[
+          /* shared */
+          "fixed z-[70] bg-[#0a1510] px-5 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.6)]",
+          /* mobile: full-width bottom sheet */
+          "inset-x-0 bottom-0 rounded-t-[28px] border-t border-white/10 pb-10",
+          /* desktop: centered card */
+          "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
+          "sm:w-[420px] sm:rounded-[28px] sm:border sm:border-white/10 sm:pb-6",
+        ].join(" ")}
       >
-        {/* Drag handle */}
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
+        {/* Drag handle (mobile only) */}
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15 sm:hidden" />
 
         {/* Icon + heading */}
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#ff5b6e]/20 bg-[#ff5b6e]/8 text-2xl">
           🔌
         </div>
 
         <h3 className="mb-1.5 text-[17px] font-bold tracking-tight text-white">
-          No Solana Wallet Detected
+          No Wallet Detected
         </h3>
-        <p className="mb-5 text-sm leading-6 text-white/52">
-          Install Phantom or Solflare to connect your wallet and start trading.
-          After installing, reopen this page inside the wallet's built-in browser.
+        <p className="mb-5 text-sm leading-relaxed text-white/50">
+          You need a Solana browser wallet extension to connect.
+          Choose one below to install it — it only takes a minute.
         </p>
 
-        {/* Wallet options */}
-        <div className="space-y-2.5 mb-5">
+        {/* Wallet install buttons */}
+        <div className="space-y-3 mb-5">
           {WALLETS.map((w) => (
             <a
               key={w.name}
               href={w.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-70"
+              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity hover:opacity-80 active:opacity-60"
               style={{ background: w.bg, borderColor: w.border }}
             >
               <div
@@ -96,10 +99,15 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
                 {w.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white">{w.name}</div>
+                <div className="text-sm font-bold text-white">
+                  Install {w.name}
+                </div>
                 <div className="text-xs text-white/45">{w.tagline}</div>
               </div>
-              <span className="shrink-0 text-xs font-bold" style={{ color: w.color }}>
+              <span
+                className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white"
+                style={{ background: w.color }}
+              >
                 Install ↗
               </span>
             </a>
@@ -107,15 +115,13 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="mb-3 text-center text-[11px] leading-5 text-white/30">
-          Already have a wallet?{" "}
-          <span className="text-white/50">
-            Open this page inside its browser tab.
-          </span>
+          Already installed?{" "}
+          <span className="text-white/50">Refresh the page after installing.</span>
         </p>
 
         <button
           onClick={onClose}
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-sm font-semibold text-white/55 transition-colors hover:bg-white/[0.07] active:bg-white/[0.10]"
+          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-sm font-semibold text-white/50 transition-colors hover:bg-white/[0.08]"
         >
           Dismiss
         </button>
@@ -128,63 +134,74 @@ function NoWalletSheet({ onClose }: { onClose: () => void }) {
 
 export function Header() {
   const pathname = usePathname();
-  const { publicKey, wallets, wallet, select, disconnect } = useWallet();
+  const { publicKey, wallets, wallet, select } = useWallet();
   const { connection } = useConnection();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNoWalletSheet, setShowNoWalletSheet] = useState(false);
+  const [noWalletDetected, setNoWalletDetected] = useState(true);
 
-  // True when running on a mobile/tablet with no supported wallet injected.
-  const [noWalletOnMobile, setNoWalletOnMobile] = useState(true);
+  // ── Detect whether any real browser wallet extension is installed ─────────
+  // We check ONLY Installed — NOT Loadable.
+  // Solflare returns Loadable without its extension (it has a web wallet),
+  // so checking Loadable would suppress the install sheet on a fresh browser.
   useEffect(() => {
-    // Only treat as "wallet installed" if readyState === Installed.
-    // Solflare returns Loadable (has web-wallet) even without browser extension,
-    // so checking Loadable here would suppress the install sheet on desktop.
     const hasExtension = wallets.some(
       (w) => w.readyState === WalletReadyState.Installed
     );
-    setNoWalletOnMobile(!hasExtension);
+    setNoWalletDetected(!hasExtension);
   }, [wallets]);
 
-  // Deselect wallet if it has no browser extension installed.
-  // Must use select(null) — disconnect() leaves the adapter selected → stuck button.
+  // ── Deselect adapter if no extension found ───────────────────────────────
+  // select(null) fully clears the selected wallet so the button doesn't freeze.
   useEffect(() => {
     if (wallet && wallet.readyState !== WalletReadyState.Installed) {
       select(null as any);
     }
   }, [wallet, select]);
 
+  // ── Wallet balance ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!publicKey) {
-      setWalletBalance(null);
-      return;
-    }
-
-    const fetchBalance = async () => {
+    if (!publicKey) { setWalletBalance(null); return; }
+    const fetch = async () => {
       try {
         const lamports = await connection.getBalance(publicKey);
         setWalletBalance(lamports / 1e9);
-      } catch {
-        // Ignore balance fetch errors
-      }
+      } catch { /* ignore */ }
     };
-
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 15_000);
-    return () => clearInterval(interval);
+    fetch();
+    const id = setInterval(fetch, 15_000);
+    return () => clearInterval(id);
   }, [publicKey, connection]);
+
+  // ── Click interceptor ref (wraps WalletMultiButton) ──────────────────────
+  // Intercepts the click at the wrapper level — if no extension is installed,
+  // open the install sheet instead of letting WalletMultiButton open its modal.
+  // This is the safety net in case noWalletDetected state is stale on first render.
+  const interceptClick = (e: React.MouseEvent) => {
+    if (publicKey) return;                    // already connected — let through
+    const hasExtension = wallets.some(
+      (w) => w.readyState === WalletReadyState.Installed
+    );
+    if (!hasExtension) {
+      e.stopPropagation();                    // block WalletMultiButton
+      e.preventDefault();
+      setShowNoWalletSheet(true);
+    }
+  };
 
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/launch", label: "Launch" },
     { href: "/leaderboard", label: "Leaderboard" },
     { href: "/creators", label: "Creators" },
-    ...(publicKey ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }] : []),
+    ...(publicKey
+      ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }]
+      : []),
   ];
 
-  // The connect entry point on mobile when no wallet is installed.
-  // Renders the same visual as WalletMultiButton but opens our install sheet.
-  const noWalletButton = (
+  // Button shown when noWalletDetected — opens install sheet directly
+  const connectNoWallet = (
     <button
       onClick={() => setShowNoWalletSheet(true)}
       className="flex items-center justify-center rounded-[14px] text-[13px] font-extrabold text-[#03110d]"
@@ -243,58 +260,48 @@ export function Header() {
             Launch Token
           </Link>
 
-          {/* Connect — swap for install sheet on mobile when no wallet detected */}
-          {noWalletOnMobile && !publicKey ? noWalletButton : (
-            <WalletMultiButton
-              style={{
-                height: "40px",
-                fontSize: "13px",
-                padding: "0 14px",
-                borderRadius: "14px",
-                background: "linear-gradient(90deg,#00ff88,#00e5ff)",
-                color: "#03110d",
-                fontWeight: 800,
-              }}
-            />
+          {/* Wallet area ─────────────────────────────────────────────────── */}
+          {noWalletDetected && !publicKey ? (
+            /* No extension → show our button that opens install sheet */
+            connectNoWallet
+          ) : (
+            /* Extension present (or already connected) — wrap WalletMultiButton
+               with a click interceptor as a safety net */
+            <div onClick={interceptClick} style={{ display: "contents" }}>
+              <WalletMultiButton
+                style={{
+                  height: "40px",
+                  fontSize: "13px",
+                  padding: "0 14px",
+                  borderRadius: "14px",
+                  background: "linear-gradient(90deg,#00ff88,#00e5ff)",
+                  color: "#03110d",
+                  fontWeight: 800,
+                }}
+              />
+            </div>
           )}
 
-          {/* Hamburger — mobile only */}
+          {/* Hamburger */}
           <button
             onClick={() => setMobileMenuOpen((v) => !v)}
             className="flex h-10 w-10 flex-col items-center justify-center gap-[5px] rounded-xl border border-white/10 bg-white/[0.04] md:hidden"
             aria-label="Toggle menu"
           >
-            <span
-              className={clsx(
-                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
-                mobileMenuOpen && "translate-y-[7px] rotate-45"
-              )}
-            />
-            <span
-              className={clsx(
-                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
-                mobileMenuOpen && "opacity-0"
-              )}
-            />
-            <span
-              className={clsx(
-                "h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200",
-                mobileMenuOpen && "-translate-y-[7px] -rotate-45"
-              )}
-            />
+            <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "translate-y-[7px] rotate-45")} />
+            <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "opacity-0")} />
+            <span className={clsx("h-[2px] w-5 rounded-full bg-white/70 transition-all duration-200", mobileMenuOpen && "-translate-y-[7px] -rotate-45")} />
           </button>
         </div>
       </div>
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile dropdown */}
       {mobileMenuOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 top-16 z-40 bg-black/50 md:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          {/* Menu panel */}
           <div className="absolute inset-x-0 top-full z-50 border-b border-white/8 bg-[#07110f]/95 backdrop-blur-xl md:hidden">
             <nav className="mx-auto max-w-[1440px] flex flex-col gap-1 px-4 py-3">
               {navLinks.map((link) => (
@@ -313,14 +320,13 @@ export function Header() {
                 </Link>
               ))}
 
-              {/* No-wallet guidance in the hamburger menu */}
-              {noWalletOnMobile && !publicKey && (
+              {noWalletDetected && !publicKey && (
                 <div className="mt-2 rounded-xl border border-[#ffcc44]/20 bg-[#ffcc44]/5 px-4 py-3">
-                  <p className="text-xs text-[#ffcc44]/90 font-medium mb-1">
-                    No Solana wallet detected
+                  <p className="text-xs text-[#ffcc44]/90 font-semibold mb-1">
+                    No wallet detected
                   </p>
                   <p className="text-[11px] text-white/50 mb-3">
-                    Install Phantom or Solflare to connect.
+                    Install a browser extension to trade on JetForge.
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     {WALLETS.map((w) => (
@@ -343,7 +349,7 @@ export function Header() {
         </>
       )}
 
-      {/* No-wallet install sheet — rendered at root level so it covers the full screen */}
+      {/* Install sheet */}
       {showNoWalletSheet && (
         <NoWalletSheet onClose={() => setShowNoWalletSheet(false)} />
       )}
