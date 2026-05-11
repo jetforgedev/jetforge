@@ -1,25 +1,26 @@
 # JetForge — Solana Token Launch Platform
 
-A pump.fun-style token launch and trading platform built on Solana devnet.
+JetForge is a permissionless, fair-launch token launchpad built on Solana. Launch any token instantly with a built-in bonding curve, automatic Raydium liquidity at graduation, and a transparent on-chain fee model.
+
 Live at **[https://jetforge.io](https://jetforge.io)**
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      User's Browser                             │
-│  Next.js 16 Frontend (React, TailwindCSS, lightweight-charts)   │
-└────────────────────────┬───────────────────────────────────────┘
-                         │ HTTPS + WebSocket (Socket.io)
-┌────────────────────────▼───────────────────────────────────────┐
-│              Node.js Backend (Express + Socket.io)              │
-│  REST API | Solana Event Indexer | Live Feed Broadcaster        │
-└──────┬─────────────────────────────────────────┬───────────────┘
-       │ Prisma ORM                               │ @solana/web3.js
-┌──────▼──────┐                        ┌─────────▼────────────────┐
-│ PostgreSQL  │                        │  Solana Blockchain        │
-│  Database   │                        │  Anchor Program (Rust)    │
-└─────────────┘                        └──────────────────────────┘
++------------------------------------------------------------------+
+|                      User's Browser                              |
+|  Next.js 16 Frontend (React, TailwindCSS, lightweight-charts)    |
++------------------------+-----------------------------------------+
+                         | HTTPS + WebSocket (Socket.io)
++------------------------v-----------------------------------------+
+|              Node.js Backend (Express + Socket.io)               |
+|  REST API | Solana Event Indexer | Live Feed Broadcaster          |
++------+--------------------------------------------+--------------+
+       | Prisma ORM                                  | @solana/web3.js
++------v------+                           +-----------v-------------+
+| PostgreSQL  |                           |  Solana Blockchain       |
+|  Database   |                           |  Anchor Program (Rust)   |
++-------------+                           +-------------------------+
 ```
 
 ## Tokenomics
@@ -32,27 +33,27 @@ Every token launched on JetForge uses a fixed 1 billion token supply split into 
 |------|--------|---|---------|
 | **Bonding Curve** | 700,000,000 tokens | 70% | Available for trading on the bonding curve |
 | **Raydium Reserve** | 300,000,000 tokens | 30% | Locked; released to Raydium pool at graduation |
-| **Total Supply** | 1,000,000,000 tokens | 100% | — |
+| **Total Supply** | 1,000,000,000 tokens | 100% | -- |
 
-> Tokens have **6 decimal places** (raw values are 1,000× larger, e.g. 1,000,000,000,000,000 raw = 1B tokens).
+> Tokens have **6 decimal places** (raw values are 1,000x larger, e.g. 1,000,000,000,000,000 raw = 1B tokens).
 
 ### Bonding Curve Constants
 
-Uses a constant product AMM formula (x × y = k):
+Uses a constant product AMM formula (x * y = k):
 
 | Constant | Value | Notes |
 |----------|-------|-------|
 | Initial virtual SOL | 30 SOL (30,000,000,000 lamports) | Sets the starting price |
-| Initial virtual tokens | 1,073,000,191,000,000 raw | ~1.073B virtual — higher than real supply to price token low at launch |
+| Initial virtual tokens | 1,073,000,191,000,000 raw | ~1.073B virtual -- higher than real supply to price token low at launch |
 | Real token reserves (init) | 700,000,000,000,000 raw | 700M tokens available on curve |
-| Graduation threshold | **0.5 SOL** (devnet) / **85 SOL** (mainnet) | Real SOL raised to trigger graduation |
+| Graduation threshold | **85 SOL** (85,000,000,000 lamports) | Real SOL raised to trigger Raydium graduation |
 
-**Starting price** ≈ 30 SOL ÷ 1,073,000,191,000 = ~0.0000000000280 SOL per raw unit  
+**Starting price** ~= 30 SOL / 1,073,000,191,000 = ~0.0000000000280 SOL per raw unit
 = ~0.0000280 SOL per token (6 decimals) = ~$0.0000023 at $82/SOL
 
 **Buy formula:**
 ```
-k                  = virtual_sol × virtual_tokens
+k                  = virtual_sol * virtual_tokens
 new_virtual_sol    = virtual_sol + sol_in_after_fee
 new_virtual_tokens = k / new_virtual_sol
 tokens_out         = virtual_tokens - new_virtual_tokens
@@ -60,7 +61,7 @@ tokens_out         = virtual_tokens - new_virtual_tokens
 
 **Sell formula:**
 ```
-k                  = virtual_sol × virtual_tokens
+k                  = virtual_sol * virtual_tokens
 new_virtual_tokens = virtual_tokens + token_in
 new_virtual_sol    = k / new_virtual_tokens
 sol_out            = virtual_sol - new_virtual_sol  (capped at real_sol_reserves, then 1% fee deducted)
@@ -76,29 +77,30 @@ sol_out            = virtual_sol - new_virtual_sol  (capped at real_sol_reserves
 | **Treasury** | 40% of fee | Platform revenue |
 | **Buyback vault** | 20% of fee | Auto-burns tokens when vault reaches 0.1 SOL threshold |
 
-**Example — 1 SOL buy (fee = 0.01 SOL):**
+**Example -- 1 SOL buy (fee = 0.01 SOL):**
 - Creator vault: +0.004 SOL
 - Treasury: +0.004 SOL
-- Buyback vault: +0.002 SOL → burns tokens when vault ≥ 0.1 SOL
+- Buyback vault: +0.002 SOL -> burns tokens when vault >= 0.1 SOL
 
 ### Graduation
 
-When `real_sol_reserves` reaches the graduation threshold the bonding curve is marked complete and the `graduate` instruction is triggered automatically.
+When `real_sol_reserves` reaches **85 SOL**, the bonding curve is marked complete and the `graduate` instruction is triggered automatically by the keeper service.
 
 **What happens at graduation:**
 
-1. **300M reserve tokens** are transferred from the reserve vault → treasury ATA (for Raydium pool seeding)
-2. **Unsold curve tokens** (any of the 700M not bought) are burned — deflationary
+1. **300M reserve tokens** are transferred from the reserve vault to the treasury ATA (for Raydium pool seeding)
+2. **Unsold curve tokens** (any of the 700M not bought) are burned -- deflationary
 3. **SOL is split:**
 
 | Recipient | % | Purpose |
 |-----------|---|---------|
 | Creator | 5% | Graduation bonus reward |
 | Treasury (platform fee) | 5% | Platform cut |
-| Treasury (liquidity) | 90% | Seeds the Raydium CLMM pool together with the 300M reserve tokens |
+| Treasury (liquidity) | 90% | Seeds the Raydium CPMM pool together with the 300M reserve tokens |
 
-4. **Raydium CLMM pool** is created with the 90% SOL + 300M tokens
-5. Token is marked `is_graduated = true` — bonding curve trading disabled
+4. **Raydium CPMM pool** is created with the 90% SOL + 300M tokens
+5. **LP tokens are burned** to the incinerator -- liquidity is permanently locked
+6. Token is marked `is_graduated = true` -- bonding curve trading disabled
 
 ### Buyback & Burn
 
@@ -106,7 +108,7 @@ The buyback vault accumulates 20% of every trading fee. When it reaches **0.1 SO
 
 - The 0.1 SOL is used to buy tokens from the bonding curve at market price
 - All purchased tokens are immediately burned
-- This is permissionless — any wallet can trigger it
+- This is permissionless -- any wallet can trigger it
 
 ---
 
@@ -119,8 +121,8 @@ The buyback vault accumulates 20% of every trading fee. When it reaches **0.1 SO
 | `create_token` | Deploy token: mint 1B supply, create bonding curve PDA, split tokens into curve vault (700M) and reserve vault (300M), create Metaplex metadata |
 | `buy` | Buy tokens with SOL using constant product formula, distribute 1% fee |
 | `sell` | Sell tokens back for SOL, distribute 1% fee, cap sol_out at real reserves |
-| `graduate` | Triggered when curve is complete — burns unsold tokens, seeds Raydium pool, splits SOL 5/5/90 |
-| `execute_buyback` | Permissionless: burns accumulated buyback fees when vault ≥ 0.1 SOL |
+| `graduate` | Triggered when curve is complete -- burns unsold tokens, seeds Raydium CPMM pool, splits SOL 5/5/90, burns LP |
+| `execute_buyback` | Permissionless: burns accumulated buyback fees when vault >= 0.1 SOL |
 | `withdraw_creator_fees` | Creator withdraws accumulated fee SOL from their vault |
 
 ### Contract Addresses
@@ -128,7 +130,7 @@ The buyback vault accumulates 20% of every trading fee. When it reaches **0.1 SO
 | Network | Program ID |
 |---|---|
 | **Devnet** | `7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk` |
-| Mainnet | Not deployed yet — audit in progress |
+| Mainnet | Not deployed yet -- audit in progress |
 
 ---
 
@@ -136,33 +138,33 @@ The buyback vault accumulates 20% of every trading fee. When it reaches **0.1 SO
 
 ```
 jetforge/
-├── programs/token-launch/     # Anchor smart contract (Rust)
-│   └── src/
-│       ├── lib.rs             # Program entry point + TREASURY_PUBKEY
-│       ├── instructions/      # buy, sell, create_token, graduate,
-│       │                      # execute_buyback, withdraw_creator_fees
-│       ├── state/             # BondingCurveState + constants
-│       └── errors.rs          # Custom error codes
-├── backend/                   # Node.js API server
-│   ├── prisma/schema.prisma   # Database schema (Token, Trade)
-│   └── src/
-│       ├── index.ts           # Express server + Socket.io
-│       ├── config.ts          # Config + startup validation
-│       ├── indexer/           # Solana event indexer (WS + polling fallback)
-│       ├── api/               # REST API routes
-│       └── services/          # graduateKeeper, raydiumService
-└── frontend/                  # Next.js 16 frontend
-    └── src/
-        ├── app/               # App Router pages
-        │   ├── page.tsx       # Homepage (token list)
-        │   ├── token/[mint]/  # Token detail + chart + trading
-        │   ├── portfolio/     # Wallet portfolio + trade history
-        │   ├── leaderboard/   # Top tokens + top traders
-        │   └── launch/        # Create new token
-        ├── components/        # TradingPanel, PriceChart, LaunchForm…
-        ├── hooks/             # useTokenData, useTrades, usePrice…
-        ├── lib/               # bondingCurve.ts, api.ts, program.ts
-        └── providers/         # Wallet + React Query providers
++-- programs/token-launch/     # Anchor smart contract (Rust)
+|   +-- src/
+|       +-- lib.rs             # Program entry point + TREASURY_PUBKEY
+|       +-- instructions/      # buy, sell, create_token, graduate,
+|       |                      # execute_buyback, withdraw_creator_fees
+|       +-- state/             # BondingCurveState + constants
+|       +-- errors.rs          # Custom error codes
++-- backend/                   # Node.js API server
+|   +-- prisma/schema.prisma   # Database schema (Token, Trade)
+|   +-- src/
+|       +-- index.ts           # Express server + Socket.io
+|       +-- config.ts          # Config + startup validation
+|       +-- indexer/           # Solana event indexer (WS + polling fallback)
+|       +-- api/               # REST API routes
+|       +-- services/          # graduateKeeper, raydiumService
++-- frontend/                  # Next.js 16 frontend
+    +-- src/
+        +-- app/               # App Router pages
+        |   +-- page.tsx       # Homepage (token list)
+        |   +-- token/[mint]/  # Token detail + chart + trading
+        |   +-- portfolio/     # Wallet portfolio + trade history
+        |   +-- leaderboard/   # Top tokens + top traders
+        |   +-- launch/        # Create new token
+        +-- components/        # TradingPanel, PriceChart, LaunchForm
+        +-- hooks/             # useTokenData, useTrades, usePrice
+        +-- lib/               # bondingCurve.ts, api.ts, program.ts
+        +-- providers/         # Wallet + React Query providers
 ```
 
 ---
@@ -208,7 +210,7 @@ npx prisma generate
 npx concurrently "npm run dev --prefix backend" "npm run dev --prefix frontend"
 ```
 
-Backend: `http://localhost:4000`  
+Backend: `http://localhost:4000`
 Frontend: `http://localhost:3000`
 
 ---
@@ -234,7 +236,7 @@ NEXT_PUBLIC_API_URL=https://api.jetforge.io/api
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 ```
 
-> Setting `NEXT_PUBLIC_API_URL` to your public domain is required for Raydium to display token name and image — the metadata URI stored on-chain points to this URL.
+> Setting `NEXT_PUBLIC_API_URL` to your public domain is required for Raydium to display token name and image -- the metadata URI stored on-chain points to this URL.
 
 ### Update VPS after a pull
 
@@ -278,24 +280,24 @@ GET  /api/stats                          # Platform stats (total tokens, 24h vol
 
 ### WebSocket Events
 
-**Client → Server:**
-- `subscribe:token <mint>` — Join token room for live price updates
-- `unsubscribe:token <mint>` — Leave token room
-- `subscribe:feed` — Join global live feed
+**Client to Server:**
+- `subscribe:token <mint>` -- Join token room for live price updates
+- `unsubscribe:token <mint>` -- Leave token room
+- `subscribe:feed` -- Join global live feed
 
-**Server → Client:**
-- `price_update` — Real-time price / reserves / graduation progress
-- `new_trade` — New trade on subscribed token
-- `feed_trade` — Any trade across all tokens (global feed)
-- `token_created` — New token launched
-- `token_graduated` — Token reached graduation threshold
+**Server to Client:**
+- `price_update` -- Real-time price / reserves / graduation progress
+- `new_trade` -- New trade on subscribed token
+- `feed_trade` -- Any trade across all tokens (global feed)
+- `token_created` -- New token launched
+- `token_graduated` -- Token reached 85 SOL graduation threshold
 
 ---
 
 ## Testing on Devnet
 
 1. Install **Phantom** wallet browser extension
-2. Switch network to **Devnet** (Settings → Developer Settings → Devnet)
+2. Switch network to **Devnet** (Settings -> Developer Settings -> Devnet)
 3. Get free devnet SOL at **[faucet.solana.com](https://faucet.solana.com)**
 4. Visit **[https://jetforge.io](https://jetforge.io)**
 
@@ -303,12 +305,12 @@ GET  /api/stats                          # Platform stats (total tokens, 24h vol
 
 ## Security
 
-- All arithmetic uses `checked_*` ops — no silent overflow
+- All arithmetic uses `checked_*` ops -- no silent overflow
 - Slippage protection on all trades (`min_tokens_out`, `min_sol_out`)
-- Treasury address is hardcoded in program binary — cannot be spoofed by caller
+- Treasury address is hardcoded in program binary -- cannot be spoofed by caller
 - `has_one` constraints validate mint matches bonding curve on all instructions
-- Graduation fee math uses `ok_or(MathOverflow)?` — no silent zero fallback
-- Config validation on startup — server refuses to boot with placeholder addresses
+- Graduation fee math uses `ok_or(MathOverflow)?` -- no silent zero fallback
+- Config validation on startup -- server refuses to boot with placeholder addresses
 - URI validation blocks `javascript:` and `data:` injection
 
 ---
