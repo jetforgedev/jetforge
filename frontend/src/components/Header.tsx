@@ -179,12 +179,22 @@ export function Header() {
   // open the install sheet instead of letting WalletMultiButton open its modal.
   // This is the safety net in case noWalletDetected state is stale on first render.
   const interceptClick = (e: React.MouseEvent) => {
-    if (publicKey) return;                    // already connected — let through
-    const hasExtension = wallets.some(
-      (w) => w.readyState === WalletReadyState.Installed
-    );
-    if (!hasExtension) {
-      e.stopPropagation();                    // block WalletMultiButton
+    if (publicKey) return;
+    // Same Solana-aware check used in the useEffect above.
+    const hasSolanaWallet =
+      typeof window !== "undefined" &&
+      (
+        !!(window as any).phantom?.solana ||
+        !!(window as any).solflare ||
+        !!(window as any).solana ||
+        wallets.some(
+          (w) =>
+            w.readyState === WalletReadyState.Installed &&
+            ["Phantom", "Solflare", "Backpack", "Glow", "Slope", "Exodus"].includes(w.name)
+        )
+      );
+    if (!hasSolanaWallet) {
+      e.stopPropagation();
       e.preventDefault();
       setShowNoWalletSheet(true);
     }
