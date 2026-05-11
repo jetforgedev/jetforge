@@ -20,9 +20,14 @@ const WALLETS = [
     bg: "rgba(153,69,255,0.12)",
     border: "rgba(153,69,255,0.28)",
     installHref: "https://phantom.app/download",
-    // Universal link: opens Phantom app and loads the current URL inside it
+    // Use phantom:// custom URL scheme — more reliable than Universal Links on iOS.
+    // Universal links (phantom.app/ul/v1/browse/) open the app but iOS sometimes
+    // does not forward the URL, landing Phantom on its home screen instead.
+    // The custom scheme directly encodes the action and works reliably.
     mobileHref: (url: string) =>
-      `https://phantom.app/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
+      `phantom://v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
+    // App Store fallback when phantom:// fails (app not installed)
+    fallbackHref: "https://apps.apple.com/app/phantom-crypto-wallet/id1598432977",
   },
   {
     name: "Solflare",
@@ -175,21 +180,49 @@ function MobileWalletSheet({ onClose }: { onClose: () => void }) {
         </p>
 
         <div className="space-y-3 mb-5">
-          {WALLETS.map((w) => (
-            <a
-              key={w.name}
-              href={pageUrl ? w.mobileHref(pageUrl) : w.installHref}
-              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-60"
-              style={{ background: w.bg, borderColor: w.border }}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: w.bg }}>{w.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-white">Open in {w.name}</div>
-                <div className="text-xs text-white/45">{w.tagline}</div>
-              </div>
-              <span className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white" style={{ background: w.color }}>Open ↗</span>
-            </a>
-          ))}
+          {WALLETS.map((w) => {
+            // Build the href for this wallet:
+            // - Phantom: uses phantom:// custom scheme (more reliable on iOS than
+            //   Universal Links which sometimes open the app without the URL).
+            // - Solflare: uses https://solflare.com/ul/v1/browse/ Universal Link.
+            const href = pageUrl ? w.mobileHref(pageUrl) : w.installHref;
+            const isCustomScheme = href.startsWith("phantom://") || href.startsWith("solflare://");
+
+            const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+              if (!isCustomScheme || !pageUrl) return;
+              // For custom schemes: use window.location to trigger the scheme.
+              // Then start a timeout — if the app opens, the page loses focus
+              // (visibilitychange / blur fires) and we cancel. If focus stays
+              // (app not installed), redirect to fallback (App Store).
+              e.preventDefault();
+              const fallback = (w as any).fallbackHref || w.installHref;
+              let redirected = false;
+              const timer = setTimeout(() => {
+                if (!redirected) window.location.href = fallback;
+              }, 1500);
+              const cancel = () => { redirected = true; clearTimeout(timer); };
+              document.addEventListener("visibilitychange", cancel, { once: true });
+              window.addEventListener("blur", cancel, { once: true });
+              window.location.href = href;
+            };
+
+            return (
+              <a
+                key={w.name}
+                href={href}
+                onClick={handleClick}
+                className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-opacity active:opacity-60"
+                style={{ background: w.bg, borderColor: w.border }}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: w.bg }}>{w.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Open in {w.name}</div>
+                  <div className="text-xs text-white/45">{w.tagline}</div>
+                </div>
+                <span className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-white" style={{ background: w.color }}>Open ↗</span>
+              </a>
+            );
+          })}
         </div>
 
         <p className="mb-3 text-center text-[11px] text-white/35">
