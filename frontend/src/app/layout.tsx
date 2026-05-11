@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ClientProviders } from "./ClientProviders";
 import { Header } from "@/components/Header";
@@ -104,6 +105,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
         <link rel="me" href={BASE_URL} />
+
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-CS8VS5VBHM"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-CS8VS5VBHM');
+          `}
+        </Script>
       </head>
       <body className="min-h-screen bg-[#07110f] text-white" suppressHydrationWarning>
         <ClientProviders>
