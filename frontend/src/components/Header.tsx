@@ -20,14 +20,14 @@ const WALLETS = [
     bg: "rgba(153,69,255,0.12)",
     border: "rgba(153,69,255,0.28)",
     installHref: "https://phantom.app/download",
-    // Use phantom:// custom URL scheme — more reliable than Universal Links on iOS.
-    // Universal links (phantom.app/ul/v1/browse/) open the app but iOS sometimes
-    // does not forward the URL, landing Phantom on its home screen instead.
-    // The custom scheme directly encodes the action and works reliably.
+    // phantom.COM is the correct domain for Phantom Universal Links on iOS.
+    // phantom.APP just 301-redirects to phantom.com — iOS does NOT follow
+    // redirects when checking apple-app-site-association files, so links to
+    // phantom.app/ul/... are never intercepted and fall through to Safari.
+    // phantom.com/.well-known/apple-app-site-association registers /ul/*
+    // which covers /ul/v1/browse/, making this Universal Link work correctly.
     mobileHref: (url: string) =>
-      `phantom://v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
-    // App Store fallback when phantom:// fails (app not installed)
-    fallbackHref: "https://apps.apple.com/app/phantom-crypto-wallet/id1598432977",
+      `https://phantom.com/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(url)}`,
   },
   {
     name: "Solflare",
