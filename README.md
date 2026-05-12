@@ -1,6 +1,6 @@
 # JetForge — Solana Token Launch Platform
 
-A pump.fun-style token launch and trading platform built on Solana devnet.
+A token launch and trading platform built on Solana devnet.
 Live at **[https://jetforge.io](https://jetforge.io)**
 
 ## Architecture Overview
