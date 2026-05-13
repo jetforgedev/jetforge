@@ -1,3 +1,25 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Disclaimer — JetForge Risk Disclosure",
+  description: "Important risk disclosures for JetForge users. Trading meme tokens on Solana carries significant risk. Read before using the platform.",
+  alternates: { canonical: "https://jetforge.io/disclaimer" },
+  openGraph: {
+    type: "website",
+    url: "https://jetforge.io/disclaimer",
+    title: "Disclaimer — JetForge Risk Disclosure",
+    description: "Important risk disclosures for JetForge users. Trading meme tokens on Solana carries significant risk.",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "JetForge Disclaimer" }],
+    siteName: "JetForge",
+  },
+  twitter: {
+    card: "summary",
+    title: "Disclaimer — JetForge Risk Disclosure",
+    description: "Important risk disclosures for JetForge users. Trading meme tokens on Solana carries significant risk.",
+    images: ["/og-image.jpg"],
+  },
+};
+
 export default function DisclaimerPage() {
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-8">

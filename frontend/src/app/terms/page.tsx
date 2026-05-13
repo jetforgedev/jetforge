@@ -1,3 +1,25 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service — JetForge",
+  description: "Read the JetForge Terms of Service. By using JetForge you agree to these terms governing use of the decentralized Solana token launchpad.",
+  alternates: { canonical: "https://jetforge.io/terms" },
+  openGraph: {
+    type: "website",
+    url: "https://jetforge.io/terms",
+    title: "Terms of Service — JetForge",
+    description: "Read the JetForge Terms of Service governing use of the decentralized Solana token launchpad.",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "JetForge Terms of Service" }],
+    siteName: "JetForge",
+  },
+  twitter: {
+    card: "summary",
+    title: "Terms of Service — JetForge",
+    description: "Read the JetForge Terms of Service.",
+    images: ["/og-image.jpg"],
+  },
+};
+
 export default function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-8">

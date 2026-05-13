@@ -1,3 +1,25 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Support — JetForge Help Center",
+  description: "Get help with JetForge. Find answers in our FAQ, join the Telegram community, follow us on X, or contact our support team directly.",
+  alternates: { canonical: "https://jetforge.io/support" },
+  openGraph: {
+    type: "website",
+    url: "https://jetforge.io/support",
+    title: "Support — JetForge Help Center",
+    description: "Get help with JetForge. Find answers in our FAQ, join the Telegram community, or contact our support team.",
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "JetForge Support" }],
+    siteName: "JetForge",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Support — JetForge Help Center",
+    description: "Get help with JetForge. Join the community, check the FAQ, or contact support.",
+    images: ["/og-image.jpg"],
+  },
+};
+
 export default function SupportPage() {
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-8">
