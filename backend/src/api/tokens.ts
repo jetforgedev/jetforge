@@ -559,14 +559,14 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
     };
     const intervalMs = intervalMap[interval] || intervalMap["5m"];
 
-    // Fetch a recent time window rather than scanning arbitrary historical rows.
-    // We overshoot the window by 2× to ensure we have enough raw trades to
-    // build `limit` candles even for sparse trading periods.
-    const windowMs = Math.max(intervalMs * limit * 2, 60_000); // at least 1 minute
-    const windowStart = new Date(Date.now() - windowMs);
-
+    // Fetch the most-recent trades for this mint without an artificial time
+    // window.  The time window was causing silent empty charts: if a token's
+    // last trade was 7h ago the 1m window (6.67h) returned [] while 1h (16.7d)
+    // returned all candles — making 1m always look blank on the home→token flow.
+    // Using only `take` lets every interval show all available history while
+    // capping the in-memory aggregation work at limit×10 rows.
     const trades = await prisma.trade.findMany({
-      where: { mint, timestamp: { gte: windowStart } },
+      where: { mint },
       orderBy: { timestamp: "desc" },
       take: limit * 10, // cap raw trades to keep JS aggregation bounded
     });
