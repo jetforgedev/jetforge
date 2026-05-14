@@ -1,25 +1,30 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Launch a Token — JetForge",
-  description: "Create and launch your own Solana token in minutes. No presales, no team allocations. 100% fair launch with a transparent bonding curve on JetForge.",
-  alternates: { canonical: "https://jetforge.io/launch" },
+  title: "Launch a Token — JetForge | JetForge",
+  description: "Create and launch your own Solana token in under 30 seconds. No coding required. Fair launch with a bonding curve — no presales, no team allocations.",
   openGraph: {
-    type: "website",
-    url: "https://jetforge.io/launch",
     title: "Launch a Token — JetForge",
-    description: "Create and launch your own Solana token in minutes. No presales, no team allocations. 100% fair launch with a transparent bonding curve on JetForge.",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Launch a token on JetForge" }],
+    description: "Launch your own Solana token in under 30 seconds. Fair launch, bonding curve, auto-graduation to Raydium.",
+    url: "https://jetforge.io/launch",
     siteName: "JetForge",
+    images: [{ url: "https://jetforge.io/og-image.jpg", width: 1200, height: 630 }],
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Launch a Token — JetForge",
-    description: "Create and launch your own Solana token in minutes. 100% fair launch on JetForge.",
-    images: ["/og-image.jpg"],
+    description: "Launch your own Solana token in under 30 seconds. Fair launch, bonding curve, auto-graduation to Raydium.",
+    images: ["https://jetforge.io/og-image.jpg"],
   },
+  alternates: { canonical: "https://jetforge.io/launch" },
 };
 
-export default function LaunchLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <h1 className="sr-only">Launch a Token on Solana — JetForge</h1>
+      {children}
+    </>
+  );
 }
