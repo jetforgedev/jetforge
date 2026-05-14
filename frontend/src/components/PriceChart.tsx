@@ -440,7 +440,19 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
 
   // Load OHLCV data — depends on chartReady so it re-fires after async chart init
   useEffect(() => {
-    if (!chartReady || !candleSeriesRef.current || !ohlcv || ohlcv.length === 0) return;
+    if (!chartReady || !candleSeriesRef.current || !ohlcv) return;
+
+    // When 1m (or any interval) has no historical candles yet, scroll to the
+    // current time so live price_update candles from the WebSocket land in the
+    // visible viewport.  Without this the chart stays at time=0 and live
+    // candles appear off-screen until the user changes interval.
+    if (ohlcv.length === 0) {
+      if (ohlcvFirstLoad.current) {
+        chartRef.current?.timeScale()?.scrollToRealTime();
+        ohlcvFirstLoad.current = false;
+      }
+      return;
+    }
 
     // If solPrice hasn't loaded yet, mult=0 in USD mode which maps every candle
     // to 0 and corrupts the y-axis. Fall back to SOL-based units so the chart
@@ -499,6 +511,17 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
       }
       ts.fitContent();
       ohlcvFirstLoad.current = false;
+      // Double-RAF: re-fit after the browser finishes laying out the page.
+      // On client-side navigation (e.g. home → token page) the chart container
+      // may still be at 0px / transitioning when the first fitContent runs.
+      // The second call after two paint frames catches the final settled size.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (chartRef.current) {
+            chartRef.current.timeScale().fitContent();
+          }
+        });
+      });
     }
 
     // ATH: store raw backend value (pre-multiplier) so toggles don't corrupt it (P1-2)
