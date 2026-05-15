@@ -40,4 +40,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://app.jetforge.io/sitemap.xml
+Sitemap: https://jetforge.io/sitemap.xml

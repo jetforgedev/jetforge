@@ -113,6 +113,7 @@ export function Footer() {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Legal</div>
                 <div className="space-y-3 text-sm text-white/48">
                   <Link href="/terms" className="block transition-colors hover:text-white/85">Terms of Service</Link>
+                  <Link href="/privacy" className="block transition-colors hover:text-white/85">Privacy Policy</Link>
                   <Link href="/disclaimer" className="block transition-colors hover:text-white/85">Disclaimer</Link>
                 </div>
 

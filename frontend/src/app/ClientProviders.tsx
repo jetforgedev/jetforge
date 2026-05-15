@@ -1,17 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { MountedWalletProvider } from "@/providers/MountedWalletProvider";
 import { QueryClientWrapper } from "./QueryClientWrapper";
-
-const AppWalletProvider = dynamic(
-  () => import("@/providers/WalletProvider").then((m) => m.AppWalletProvider),
-  { ssr: false }
-);
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
-    <AppWalletProvider>
+    <MountedWalletProvider>
       <QueryClientWrapper>{children}</QueryClientWrapper>
-    </AppWalletProvider>
+    </MountedWalletProvider>
   );
 }
+
