@@ -22,9 +22,9 @@ import { Footer } from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 
 const BASE_URL = "https://jetforge.io";
-const DEFAULT_TITLE = "JetForge — Fair-Launch Token Platform | Built on Solana";
+const DEFAULT_TITLE = "JetForge — Fair-Launch Solana Token Launchpad | Launch in 60 Seconds";
 const DEFAULT_DESCRIPTION =
-  "Launch and trade tokens on Solana's most transparent bonding curve launchpad. No presales, no team allocations. 100% fair launch.";
+  "Launch your Solana token or meme coin in 60 seconds — no code needed. JetForge is the fair-launch bonding curve launchpad with whale alerts, real-time charts, and auto-graduation to Raydium.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -90,7 +90,7 @@ const websiteJsonLd = {
   description: DEFAULT_DESCRIPTION,
   potentialAction: {
     "@type": "SearchAction",
-    target: { "@type": "EntryPoint", urlTemplate: `${BASE_URL}/?q={search_term_string}` },
+    target: { "@type": "EntryPoint", urlTemplate: `${BASE_URL}/token/{search_term_string}` },
     "query-input": "required name=search_term_string",
   },
 };
@@ -100,10 +100,18 @@ const orgJsonLd = {
   "@type": "Organization",
   name: "JetForge",
   url: BASE_URL,
-  logo: `${BASE_URL}/brand/jetforge-favicon.png`,
+  logo: "https://jetforge.io/logo.png",
+  description: "Fair-launch bonding curve token launchpad on Solana",
   sameAs: [
-    "https://twitter.com/jetforgeDev",
+    "https://twitter.com/JetForgeIO",
+    "https://github.com/jetforgeio",
+    "https://www.wikidata.org/wiki/Q139801889",
   ],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "itsdrsmith013@gmail.com",
+    contactType: "customer support",
+  },
 };
 
 const softwareAppJsonLd = {
