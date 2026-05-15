@@ -1,17 +1,26 @@
 User-agent: *
 Allow: /
 
-# AI crawlers
+# AI crawlers — explicitly permitted for indexing and training
 User-agent: GPTBot
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: Claude-Web
+Allow: /
+
+User-agent: Anthropic-AI
 Allow: /
 
 User-agent: PerplexityBot
 Allow: /
 
 User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
 Allow: /
 
 Sitemap: https://jetforge.io/sitemap.xml

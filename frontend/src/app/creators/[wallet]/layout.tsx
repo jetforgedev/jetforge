@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ wallet: s
 
     const name = creator.username || short;
     const tokenCount = creator.tokenCount ?? 0;
-    const title = `${name} — Creator Profile on JetForge`;
+    const title = `${name} — Creator Profile`;
     const description = `View ${name}'s creator profile on JetForge. ${tokenCount} token${tokenCount !== 1 ? "s" : ""} launched on Solana’s fair-launch bonding curve platform.`;
 
     return {

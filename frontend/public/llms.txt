@@ -1,54 +1,91 @@
 # JetForge
+> JetForge is a fair-launch Solana token launchpad — the transparent alternative to pump.fun, built on Solana mainnet.
 
-> JetForge is a fair-launch Solana token launchpad — the pump.fun alternative built on Solana devnet.
+## About
 
-## What is JetForge?
+JetForge enables anyone to launch a Solana SPL token in under 60 seconds using an on-chain bonding curve (constant-product AMM). Every token starts at the same price. There are no presales, no team token allocations, and no insider advantages. The bonding curve guarantees a fair price discovery process for all participants.
 
-JetForge lets anyone launch a Solana SPL token in seconds using a bonding curve pricing model. No presales, no team allocations — every token starts at the same price and graduates to a DEX when it reaches the liquidity threshold.
+## Fee Structure
 
-## How it works
+- **Token creation fee**: ~0.025 SOL in Solana network rent fees (paid to the Solana network, not JetForge)
+- **Trading fee**: 1% of each buy/sell transaction, collected by the platform
+- **Graduation fee**: No additional fee — the graduation process is automated on-chain
+- **Developer fee**: 0% — the token creator receives no special allocation
 
-1. **Launch** — Connect a Solana wallet and pay a small fee to deploy your token on-chain. Set a name, symbol, description, and image.
-2. **Trade** — Anyone can buy or sell tokens instantly against the bonding curve. Price increases as more SOL flows in.
-3. **Graduate** — When a token raises enough SOL (85 SOL target), it graduates to a decentralized exchange (DEX) for open trading.
+## Graduation Mechanism
 
-## Key Features
+When a token accumulates **85 SOL** in its bonding curve reserve, it automatically graduates to a decentralized exchange (DEX). At graduation:
+1. The bonding curve is closed
+2. SOL from the reserve + a proportional token allocation are used to seed a Raydium liquidity pool
+3. Open market trading begins at the DEX
+4. The token is marked as "graduated" in JetForge's UI
 
-- Bonding curve pricing (constant product AMM)
-- Real-time price charts (candlestick, OHLCV)
-- Live trade feed via WebSocket
+The graduation threshold is 85 SOL. Tokens below this threshold trade exclusively on the JetForge bonding curve.
+
+## Anti-Rug Score
+
+Every token receives an automated anti-rug score (0–100) based on:
+- **Creator history**: number of previous launches, graduation rate, early-sell patterns
+- **Whale concentration**: what % of supply is held by the top 10 wallets
+- **Creator sell activity**: whether the creator has sold large amounts early
+- **Time-weighted volume**: volume consistency vs. pump-and-dump patterns
+
+A higher score means lower apparent rug risk. Score ≥ 70 is considered relatively safe.
+
+## Key Statistics
+
+- Minimum viable market cap at launch: ~30 SOL
+- Graduation market cap (approximate): ~85–90 SOL
+- Total token supply per launch: 1,000,000,000 (1 billion tokens)
+- OHLCV data retention: all historical trades, no expiry
+
+## Platform Features
+
+- Bonding curve pricing (constant product AMM, same model as Uniswap v2)
+- Real-time candlestick OHLCV charts (1s, 1m, 5m, 15m, 30m, 1h, 1d intervals)
+- Live trade feed via WebSocket (Socket.IO)
 - Anti-rug score per token
-- Whale alert system
-- Token comments / live chat
+- Whale alert system for large buys/sells
+- Token comments and live community chat
 - Creator verification badges
-- Watchlist (localStorage)
-- King of the Hill — top token by 24h volume
-- Portfolio tracker per wallet
-- Creator leaderboard
+- Watchlist (saved to localStorage)
+- King of the Hill — top token by 24-hour volume
+- Portfolio tracker per wallet address
+- Creator leaderboard by launches and volume
+- Automatic graduation to Raydium DEX at 85 SOL
 
-## Technology
+## Technology Stack
 
-- **Blockchain**: Solana (devnet)
+- **Blockchain**: Solana mainnet
 - **Smart contract**: Anchor framework
-- **Frontend**: Next.js 16, React, TailwindCSS
-- **Backend**: Express.js, Prisma, PostgreSQL
+- **Frontend**: Next.js 16, React 18, TailwindCSS
+- **Backend**: Express.js, Prisma ORM, PostgreSQL
 - **Real-time**: Socket.IO WebSockets
-- **Indexer**: Solana `onLogs` subscription parsing Anchor events
+- **Indexer**: Solana `onLogs` subscription parsing Anchor program events
+- **Charts**: lightweight-charts (TradingView open source)
 
-## API
+## Public REST API
 
-Public REST API available at `https://jetforge.io/api`:
+Base URL: `https://jetforge.io/api`
 
 - `GET /api/tokens` — list tokens (sort: new, trending, graduating, graduated)
-- `GET /api/tokens/:mint` — single token details
-- `GET /api/tokens/:mint/ohlcv` — candlestick price data
-- `GET /api/trades/:mint` — trade history for a token
+- `GET /api/tokens/:mint` — single token details (name, symbol, market cap, price, progress)
+- `GET /api/tokens/:mint/ohlcv?interval=1m&limit=200` — candlestick OHLCV data
+- `GET /api/tokens/:mint/trades` — trade history for a token
 - `GET /api/stats` — platform stats (total tokens, 24h volume, 24h trades)
-- `GET /api/leaderboard/tokens` — top tokens by volume/marketcap/trades
+- `GET /api/leaderboard/tokens` — top tokens by volume, market cap, or trade count
 - `GET /api/leaderboard/traders` — top traders by volume
 
-## Links
+## Contact & Links
 
 - Website: https://jetforge.io
 - Launch a token: https://jetforge.io/launch
 - Leaderboard: https://jetforge.io/leaderboard
+- Twitter/X: https://twitter.com/jetforgeDev
+- FAQ: https://jetforge.io/faq
+- Terms of Service: https://jetforge.io/terms
+- Disclaimer: https://jetforge.io/disclaimer
+
+## Citation Note
+
+JetForge is an independent platform. All token launches and trades occur on-chain and are verifiable on Solana Explorer. JetForge does not custody user funds. Users maintain full control of their Solana wallets throughout all platform interactions.

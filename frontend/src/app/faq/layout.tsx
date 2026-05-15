@@ -39,21 +39,31 @@ const faqJsonLd = {
   ],
 };
 
+
+const breadcrumbJsonLd_FAQ = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "JetForge", item: "https://jetforge.io" },
+    { "@type": "ListItem", position: 2, name: "FAQ", item: "https://jetforge.io/faq" },
+  ],
+};
+
 export const metadata: Metadata = {
-  title: "FAQ — JetForge Help & Common Questions",
+  title: "Frequently Asked Questions",
   description: "Answers to common questions about JetForge: how bonding curves work, token launch costs, graduation to DEX, trading fees, and Solana wallet setup.",
   alternates: { canonical: "https://jetforge.io/faq" },
   openGraph: {
     type: "website",
     url: "https://jetforge.io/faq",
-    title: "FAQ — JetForge Help & Common Questions",
+    title: "Frequently Asked Questions",
     description: "Answers to common questions about JetForge: how bonding curves work, token launch costs, graduation to DEX, and trading fees.",
     images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "JetForge FAQ" }],
     siteName: "JetForge",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FAQ — JetForge Help & Common Questions",
+    title: "Frequently Asked Questions",
     description: "Answers to common questions about JetForge: bonding curves, token launch costs, graduation, and fees.",
     images: ["/og-image.jpg"],
   },
@@ -69,6 +79,15 @@ export default function FaqLayout({ children }: { children: React.ReactNode }) {
             .replace(/</g, "\\u003c")
             .replace(/>/g, "\\u003e")
             .replace(/&/g, "\\u0026"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd_FAQ)
+            .replace(/</g, "\u003c")
+            .replace(/>/g, "\u003e")
+            .replace(/&/g, "\u0026"),
         }}
       />
       {children}

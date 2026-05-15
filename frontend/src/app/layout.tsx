@@ -86,7 +86,35 @@ const orgJsonLd = {
   name: "JetForge",
   url: BASE_URL,
   logo: `${BASE_URL}/brand/jetforge-favicon.png`,
-  sameAs: [],
+  sameAs: [
+    "https://twitter.com/jetforgeDev",
+  ],
+};
+
+const softwareAppJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "JetForge",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  url: BASE_URL,
+  description: "Fair-launch Solana token launchpad. Launch and trade SPL tokens with a bonding curve AMM — no presales, no team allocations. Auto-graduates to Raydium DEX at 85 SOL.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free to use. Token creation costs approximately 0.025 SOL in Solana network fees.",
+  },
+  featureList: [
+    "Fair-launch bonding curve AMM",
+    "Real-time OHLCV candlestick charts",
+    "Live WebSocket trade feed",
+    "Anti-rug score per token",
+    "Auto-graduation to Raydium DEX at 85 SOL",
+    "Portfolio tracker per wallet",
+    "Creator leaderboard",
+    "King of the Hill — top token by 24h volume",
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -103,6 +131,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }}
         />
         <link rel="me" href={BASE_URL} />
 

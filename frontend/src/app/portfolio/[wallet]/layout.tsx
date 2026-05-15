@@ -10,7 +10,7 @@ interface Props {
 export async function generateMetadata({ params }: { params: Promise<{ wallet: string }> }): Promise<Metadata> {
   const { wallet } = await params;
   const short = wallet.slice(0, 6) + "..." + wallet.slice(-4);
-  const title = `Portfolio ${short} — JetForge`;
+  const title = `Portfolio ${short}`;
   const description = `View trading portfolio and token holdings for wallet ${short} on JetForge, Solana’s fair-launch token platform.`;
 
   return {

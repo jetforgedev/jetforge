@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
     if (!res.ok) throw new Error("not found");
     const token = await res.json();
 
-    const title = `${token.name} (${token.symbol}) — Trade on JetForge`;
+    const title = `${token.name} (${token.symbol})`;
     const description = `Trade ${token.name} ($${token.symbol}) on JetForge. Market cap: ${Number(token.marketCapSol).toFixed(2)} SOL. ${token.isGraduated ? "Graduated to DEX." : `Bonding curve ${Math.min(100, token.graduationProgress).toFixed(1)}% complete.`} ${token.description ? token.description.slice(0, 120) : ""}`.trim();
     const image = token.imageUrl || "/og-image.png";
 
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
     };
   } catch {
     return {
-      title: "Token — JetForge",
+      title: "Token",
       description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
     };
   }
@@ -51,11 +51,23 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
 export default async function TokenLayout({ children, params }: Props) {
   const { mint } = await params;
   let tokenJsonLd: object | null = null;
+  let breadcrumbJsonLd: object | null = null;
 
   try {
     const res = await fetch(`${API_URL}/tokens/${mint}`, { next: { revalidate: 60 } });
     if (res.ok) {
       const token = await res.json();
+
+      breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "JetForge", item: BASE_URL },
+          { "@type": "ListItem", position: 2, name: "Tokens",   item: BASE_URL },
+          { "@type": "ListItem", position: 3, name: `${token.name} (${token.symbol})`, item: `${BASE_URL}/token/${mint}` },
+        ],
+      };
+
       tokenJsonLd = {
         "@context": "https://schema.org",
         "@type": "Product",
@@ -77,17 +89,24 @@ export default async function TokenLayout({ children, params }: Props) {
     }
   } catch {}
 
+  const esc = (obj: object) =>
+    JSON.stringify(obj)
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+
   return (
     <>
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: esc(breadcrumbJsonLd) }}
+        />
+      )}
       {tokenJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-          __html: JSON.stringify(tokenJsonLd)
-            .replace(/</g, "\\u003c")
-            .replace(/>/g, "\\u003e")
-            .replace(/&/g, "\\u0026"),
-        }}
+          dangerouslySetInnerHTML={{ __html: esc(tokenJsonLd) }}
         />
       )}
       {children}

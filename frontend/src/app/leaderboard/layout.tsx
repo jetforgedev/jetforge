@@ -1,7 +1,17 @@
 import type { Metadata } from "next";
 
+
+const breadcrumbJsonLd_Leaderboard = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "JetForge", item: "https://jetforge.io" },
+    { "@type": "ListItem", position: 2, name: "Leaderboard", item: "https://jetforge.io/leaderboard" },
+  ],
+};
+
 export const metadata: Metadata = {
-  title: "Leaderboard — Top Tokens on JetForge | JetForge",
+  title: "Leaderboard — Top Tokens",
   description: "Browse the top trending, recently launched, and graduated tokens on JetForge. Real-time Solana token leaderboard.",
   openGraph: {
     title: "Leaderboard — Top Tokens on JetForge",
@@ -23,6 +33,12 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd_Leaderboard).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026"),
+        }}
+      />
       <h1 className="sr-only">Leaderboard — Top Tokens on JetForge</h1>
       {children}
     </>
