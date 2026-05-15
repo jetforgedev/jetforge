@@ -96,11 +96,15 @@ export function Footer() {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Resources</div>
                 <div className="space-y-3 text-sm text-white/48">
                   <Link href="/about" className="block transition-colors hover:text-white/85">About</Link>
+                  <Link href="/press" className="block transition-colors hover:text-white/85">Press Kit</Link>
                   <Link href="/blog" className="block transition-colors hover:text-white/85">Blog</Link>
                   <Link href="/faq" className="block transition-colors hover:text-white/85">FAQ</Link>
                   <Link href="/support" className="block transition-colors hover:text-white/85">Support</Link>
                   <a href="https://docs.solana.com" target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-white/85">
                     Solana Docs ↗
+                  </a>
+                  <a href="https://www.coingecko.com/en/exchanges/jetforge" target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-white/85">
+                    CoinGecko ↗
                   </a>
                 </div>
               </div>

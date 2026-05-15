@@ -29,22 +29,27 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
         url: `${BASE_URL}/token/${mint}`,
         title,
         description,
-        images: [{ url: image, width: 1200, height: 630, alt: `${token.name} on JetForge` }],
+        images: [
+      { url: `https://app.jetforge.io/og?mint=${mint}`, width: 1200, height: 630, alt: `${token.name} on JetForge` },
+    ],
         siteName: "JetForge",
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: [image],
+        images: [`https://app.jetforge.io/og?mint=${mint}`],
       },
       alternates: { canonical: `${BASE_URL}/token/${mint}` },
     };
   } catch {
     return {
-      title: "Token",
-      description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
-    };
+    title: "Token — JetForge",
+    description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
+    openGraph: {
+      images: [{ url: "https://app.jetforge.io/og", width: 1200, height: 630 }],
+    },
+  };
   }
 }
 

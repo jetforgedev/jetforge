@@ -31,6 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/support`,                                 lastModified: new Date("2025-05-15"), changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE_URL}/terms`,                                   lastModified: new Date("2025-05-15"), changeFrequency: "yearly",  priority: 0.3 },
     { url: `${BASE_URL}/disclaimer`,                              lastModified: new Date("2025-05-15"), changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${BASE_URL}/press`,                                   lastModified: new Date("2025-05-15"), changeFrequency: "monthly", priority: 0.6 },
   ];
 
   const tokenRoutes: MetadataRoute.Sitemap = mints.map((mint) => ({

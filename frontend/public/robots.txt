@@ -1,6 +1,23 @@
 User-agent: *
 Allow: /
 
+# Block internal/API paths
+Disallow: /api/
+Disallow: /_next/static/
+Disallow: /uploads/
+
+# Allow important crawlable pages
+Allow: /token/
+Allow: /creators/
+Allow: /leaderboard
+Allow: /launch
+Allow: /about
+Allow: /blog/
+Allow: /faq
+Allow: /terms
+Allow: /disclaimer
+Allow: /support
+
 # AI crawlers — explicitly permitted for indexing and training
 User-agent: GPTBot
 Allow: /
@@ -23,4 +40,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://jetforge.io/sitemap.xml
+Sitemap: https://app.jetforge.io/sitemap.xml
