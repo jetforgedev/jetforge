@@ -19,6 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 import { ClientProviders } from "./ClientProviders";
 import { HeaderClient } from "@/components/HeaderClient";
 import { Footer } from "@/components/Footer";
+import { Suspense } from "react";
 import { Toaster } from "react-hot-toast";
 
 const BASE_URL = "https://jetforge.io";
@@ -180,7 +181,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="relative min-h-screen overflow-hidden">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[440px] bg-[radial-gradient(circle_at_top,rgba(0,255,136,0.10),transparent_58%)]" />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[260px] bg-[linear-gradient(180deg,rgba(0,204,255,0.08),transparent)]" />
-            <HeaderClient />
+            <Suspense fallback={null}>
+              <HeaderClient />
+            </Suspense>
             <main className="relative mx-auto max-w-[1560px] px-4 py-6 pb-6 sm:px-5 sm:pb-24 lg:px-6">
               {children}
             </main>
