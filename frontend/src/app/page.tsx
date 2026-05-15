@@ -227,7 +227,7 @@ function KingOfTheHill() {
             <div className="relative shrink-0">
               {resolveImageUrl(king.imageUrl) ? (
                 <div className="h-12 w-12 overflow-hidden rounded-[14px] border-2 border-[#ffcf5a]/40 shadow-[0_0_16px_rgba(255,207,90,0.3)]">
-                  <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} className="w-full h-full object-cover" />
+                  <img src={resolveImageUrl(king.imageUrl)!} alt={king.name} width={64} height={64} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="flex h-12 w-12 items-center justify-center rounded-[14px] border-2 border-[#ffcf5a]/40 bg-[#ffcf5a]/15 text-xl font-bold text-[#ffcf5a] shadow-[0_0_16px_rgba(255,207,90,0.3)]">

@@ -115,7 +115,7 @@ export default function CreatorsPage() {
               </div>
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {resolveImageUrl(creator.latestToken?.imageUrl) ? (
-                  <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                  <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" width={36} height={36} className="w-9 h-9 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] shrink-0">
                     {creator.wallet.slice(0, 2)}
@@ -181,7 +181,7 @@ export default function CreatorsPage() {
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                       {resolveImageUrl(creator.latestToken?.imageUrl) ? (
-                        <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                        <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" width={32} height={32} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
                           {creator.wallet.slice(0, 2)}

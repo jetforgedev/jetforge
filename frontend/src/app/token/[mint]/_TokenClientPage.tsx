@@ -547,7 +547,7 @@ export default function TokenClientPage({ mint }: { mint: string }) {
           <div className="flex items-center gap-2.5">
             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[14px] bg-white/[0.06]">
               {resolveImageUrl(token.imageUrl) ? (
-                <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} className="w-full h-full object-cover" />
+                <img src={resolveImageUrl(token.imageUrl)!} alt={token.name} width={48} height={48} className="w-full h-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#00ff88]">
                   {token.symbol.slice(0, 2)}

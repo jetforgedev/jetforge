@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+  display: "swap",
+});
 import { ClientProviders } from "./ClientProviders";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -119,7 +134,7 @@ const softwareAppJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/brand/jetforge-favicon.png" type="image/png" />
         <link rel="shortcut icon" href="/brand/jetforge-favicon.png" type="image/png" />
