@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — JetForge",
+  title: "Terms of Service",
   description: "Read the JetForge Terms of Service. By using JetForge you agree to these terms governing use of the decentralized Solana token launchpad.",
   alternates: { canonical: "https://jetforge.io/terms" },
   openGraph: {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Support — JetForge Help Center",
+  title: "Support & Help",
   description: "Get help with JetForge. Find answers in our FAQ, join the Telegram community, follow us on X, or contact our support team directly.",
   alternates: { canonical: "https://jetforge.io/support" },
   openGraph: {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Disclaimer — JetForge Risk Disclosure",
+  title: "Disclaimer",
   description: "Important risk disclosures for JetForge users. Trading meme tokens on Solana carries significant risk. Read before using the platform.",
   alternates: { canonical: "https://jetforge.io/disclaimer" },
   openGraph: {
