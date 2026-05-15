@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import FaqAccordion from "./FaqAccordion";
 
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: "FAQ — JetForge Help & Common Questions",
   description:

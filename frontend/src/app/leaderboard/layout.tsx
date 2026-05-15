@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+export const revalidate = 30;
+
 
 const breadcrumbJsonLd_Leaderboard = {
   "@context": "https://schema.org",

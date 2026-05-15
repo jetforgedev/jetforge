@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+export const dynamic = 'force-static';
+
 const faqJsonLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",

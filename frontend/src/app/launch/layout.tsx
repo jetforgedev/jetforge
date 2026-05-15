@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+export const dynamic = 'force-static';
+
 
 const breadcrumbJsonLd_Launch = {
   "@context": "https://schema.org",
