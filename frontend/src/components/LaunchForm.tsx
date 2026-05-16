@@ -374,14 +374,14 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
               </div>
               <div>
                 <div className="mb-1 text-white/35">Graduation at</div>
-                <div className="text-white font-mono">10 SOL</div>
+                <div className="text-white font-mono">85 SOL</div>
               </div>
             </div>
           </div>
 
           {/* Graduation reward preview */}
           <div className="rounded-[24px] border border-[#00ff88]/18 bg-[linear-gradient(135deg,rgba(0,255,136,0.10),rgba(0,255,136,0.03))] p-4">
-            <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 10 SOL)</div>
+            <div className="text-[#00ff88] text-xs font-semibold mb-2">🎓 Graduation Rewards (at 85 SOL)</div>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-white/50">Your reward (5%)</span>
