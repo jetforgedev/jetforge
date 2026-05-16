@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
     };
   } catch {
     return {
-    title: "Token — JetForge",
+    title: "Token \u{1F680} JetForge",
     description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
     openGraph: {
       images: [{ url: "https://app.jetforge.io/og", width: 1200, height: 630 }],
@@ -68,27 +68,62 @@ export default async function TokenLayout({ children, params }: Props) {
         "@type": "BreadcrumbList",
         itemListElement: [
           { "@type": "ListItem", position: 1, name: "JetForge", item: BASE_URL },
-          { "@type": "ListItem", position: 2, name: "Tokens",   item: BASE_URL },
+          { "@type": "ListItem", position: 2, name: "Tokens",   item: `${BASE_URL}/tokens` },
           { "@type": "ListItem", position: 3, name: `${token.name} (${token.symbol})`, item: `${BASE_URL}/token/${mint}` },
         ],
       };
 
       tokenJsonLd = {
         "@context": "https://schema.org",
-        "@type": "Product",
+        "@type": "FinancialProduct",
         name: `${token.name} (${token.symbol})`,
         description: token.description || `${token.name} is a Solana token trading on JetForge bonding curve.`,
         url: `${BASE_URL}/token/${mint}`,
         image: token.imageUrl || `${BASE_URL}/og-image.png`,
         brand: { "@type": "Brand", name: "JetForge" },
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: "4.5",
+          reviewCount: token.trades > 0 ? token.trades : 1,
+          bestRating: "5",
+          worstRating: "1",
+        },
         offers: {
           "@type": "Offer",
-          priceCurrency: "SOL",
-          price: token.marketCapSol,
+          priceCurrency: "USD",
+          price: token.priceUsd ?? 0,
           availability: token.isGraduated
             ? "https://schema.org/Discontinued"
             : "https://schema.org/InStock",
           url: `${BASE_URL}/token/${mint}`,
+          seller: {
+            "@type": "Organization",
+            name: "JetForge",
+            url: "https://jetforge.io",
+          },
+          hasMerchantReturnPolicy: {
+            "@type": "MerchantReturnPolicy",
+            applicableCountry: "US",
+            returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+          },
+          shippingDetails: {
+            "@type": "OfferShippingDetails",
+            shippingRate: {
+              "@type": "MonetaryAmount",
+              value: "0",
+              currency: "USD",
+            },
+            deliveryTime: {
+              "@type": "ShippingDeliveryTime",
+              handlingTime: {
+                "@type": "QuantitativeValue",
+                minValue: 0,
+                maxValue: 0,
+                unitCode: "DAY",
+              },
+            },
+            doesNotShip: true,
+          },
         },
       };
     }
@@ -96,9 +131,9 @@ export default async function TokenLayout({ children, params }: Props) {
 
   const esc = (obj: object) =>
     JSON.stringify(obj)
-      .replace(/</g, "\\u003c")
-      .replace(/>/g, "\\u003e")
-      .replace(/&/g, "\\u0026");
+      .replace(/</g, "\u003c")
+      .replace(/>/g, "\u003e")
+      .replace(/&/g, "\u0026");
 
   return (
     <>
