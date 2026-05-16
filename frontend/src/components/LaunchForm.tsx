@@ -385,15 +385,15 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between">
                 <span className="text-white/50">Your reward (5%)</span>
-                <span className="text-[#00ff88] font-mono font-semibold">~0.5 SOL</span>
+                <span className="text-[#00ff88] font-mono font-semibold">~4.25 SOL</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-white/50">Platform cut (5%)</span>
-                <span className="text-white font-mono">~0.5 SOL</span>
+                <span className="text-white font-mono">~4.25 SOL</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-white/50">DEX liquidity (90%)</span>
-                <span className="text-white font-mono">~9 SOL</span>
+                <span className="text-white font-mono">~76.5 SOL</span>
               </div>
               <div className="mt-1 border-t border-[#00ff88]/18 pt-1.5 text-white/42">
                 Plus ongoing 1% trading fee: 40% to you, 40% to platform, 20% buyback-and-burn
