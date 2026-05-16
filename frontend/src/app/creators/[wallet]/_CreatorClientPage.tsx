@@ -190,7 +190,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                 >
                   {/* Image */}
                   {resolveImageUrl(token.imageUrl) ? (
-                    <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} width={40} height={40} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    <img loading="lazy" decoding="async" src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} width={40} height={40} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-sm font-bold text-[#555] flex-shrink-0">
                       {token.symbol?.[0] ?? "?"}
@@ -253,7 +253,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {resolveImageUrl(token.imageUrl) ? (
-                        <img src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} width={32} height={32} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                        <img loading="lazy" decoding="async" src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} width={32} height={32} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
                           {token.symbol?.[0] ?? "?"}
