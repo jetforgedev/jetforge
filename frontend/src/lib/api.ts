@@ -236,7 +236,7 @@ export async function uploadTokenAssets(
     twitterUrl?: string;
     telegramUrl?: string;
   }
-): Promise<{ imageUrl: string; metadataUri: string }> {
+): Promise<{ imageUrl: string; arweaveImageUrl: string; metadataUri: string }> {
   const formData = new FormData();
   if (file) formData.append("image", file);
   formData.append("name",        meta.name);
@@ -253,7 +253,7 @@ export async function uploadTokenAssets(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? "Failed to upload token assets to Arweave");
+    throw new Error(err.error ?? "Failed to upload token assets");
   }
   return res.json();
 }

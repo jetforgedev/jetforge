@@ -24,21 +24,15 @@ function validateMagicBytes(filePath: string, mimetype: string): boolean {
 }
 
 // ─── Image compression with Sharp ────────────────────────────────────────────
-// Compress and resize before Arweave upload to minimise storage costs.
-// Target: max 500×500px, JPEG/WebP ≤ 150 KB.
-// This keeps every upload in the lowest Arweave price tier (~$0.005/upload).
 async function compressImage(inputPath: string, mimetype: string): Promise<{ buffer: Buffer; mime: string }> {
   let sharp: any;
   try {
     sharp = (await import("sharp")).default;
   } catch {
-    // Sharp unavailable — return raw file
     return { buffer: fs.readFileSync(inputPath), mime: mimetype };
   }
 
-  const isGif = mimetype === "image/gif";
-  if (isGif) {
-    // GIFs: keep as-is (Sharp doesn't handle animated GIFs well)
+  if (mimetype === "image/gif") {
     return { buffer: fs.readFileSync(inputPath), mime: mimetype };
   }
 
@@ -48,13 +42,10 @@ async function compressImage(inputPath: string, mimetype: string): Promise<{ buf
   let buffer: Buffer;
   let outMime: string;
 
-  // Convert everything to WebP for best size/quality ratio
-  // WebP is ~30% smaller than JPEG at equivalent quality
   try {
     buffer = await pipeline.webp({ quality: 82, effort: 4 }).toBuffer();
     outMime = "image/webp";
   } catch {
-    // Fallback to JPEG
     buffer = await pipeline.jpeg({ quality: 82, progressive: true }).toBuffer();
     outMime = "image/jpeg";
   }
@@ -64,6 +55,20 @@ async function compressImage(inputPath: string, mimetype: string): Promise<{ buf
   console.log(`[compress] ${originalSize} → ${buffer.length} bytes (${ratio}% reduction)`);
 
   return { buffer, mime: outMime };
+}
+
+// ─── Local permanent storage ──────────────────────────────────────────────────
+const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const API_BASE = process.env.API_BASE_URL || "https://api.jetforge.io";
+
+function saveLocally(buffer: Buffer, mime: string): { localPath: string; localUrl: string } {
+  const ext = mime === "image/webp" ? "webp" : mime === "image/gif" ? "gif" : "jpg";
+  const filename = `${uuidv4()}.${ext}`;
+  const localPath = path.join(UPLOADS_DIR, filename);
+  fs.writeFileSync(localPath, buffer);
+  return { localPath, localUrl: `${API_BASE}/uploads/${filename}` };
 }
 
 // ─── Irys client (lazy-init, cached) ─────────────────────────────────────────
@@ -81,6 +86,22 @@ async function getIrys() {
   return irysInstance;
 }
 
+// Upload buffer to Arweave via Irys (non-throwing — returns null on failure)
+async function uploadToArweave(
+  buffer: Buffer,
+  mime: string,
+  tags: { name: string; value: string }[]
+): Promise<string | null> {
+  try {
+    const irys = await getIrys();
+    const receipt = await irys.upload(buffer, { tags });
+    return `https://arweave.net/${receipt.id}`;
+  } catch (err: any) {
+    console.warn("[upload] Arweave upload failed:", err.message?.slice(0, 100));
+    return null;
+  }
+}
+
 // ─── Multer (temp storage only) ───────────────────────────────────────────────
 const TMP_DIR = path.join(process.cwd(), "tmp-uploads");
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
@@ -91,7 +112,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max raw
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     ok.includes(file.mimetype) ? cb(null, true) : cb(new Error("Only JPEG, PNG, GIF and WebP allowed"));
@@ -101,6 +122,7 @@ const upload = multer({
 export const uploadRouter = Router();
 
 // ─── POST /api/upload/image ──────────────────────────────────────────────────
+// Returns { url } immediately (local URL). Arweave upload happens in background.
 uploadRouter.post("/image", upload.single("image") as any, async (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No image file provided" });
   if (!validateMagicBytes(req.file.path, req.file.mimetype)) {
@@ -111,16 +133,19 @@ uploadRouter.post("/image", upload.single("image") as any, async (req: Request, 
     const { buffer, mime } = await compressImage(req.file.path, req.file.mimetype);
     fs.unlink(req.file.path, () => {});
 
-    const irys = await getIrys();
-    const receipt = await irys.upload(buffer, {
-      tags: [
-        { name: "Content-Type", value: mime },
-        { name: "App-Name",     value: "JetForge" },
-      ],
+    // Save locally — instant, always available
+    const { localUrl } = saveLocally(buffer, mime);
+
+    // Upload to Arweave in background — don't block the response
+    uploadToArweave(buffer, mime, [
+      { name: "Content-Type", value: mime },
+      { name: "App-Name",     value: "JetForge" },
+    ]).then((arweaveUrl) => {
+      if (arweaveUrl) console.log(`[upload] image → Arweave ${arweaveUrl} (${buffer.length} bytes)`);
     });
-    const url = `https://arweave.net/${receipt.id}`;
-    console.log(`[upload] image → ${url} (${buffer.length} bytes, ${mime})`);
-    return res.json({ url });
+
+    console.log(`[upload] image saved locally → ${localUrl}`);
+    return res.json({ url: localUrl });
   } catch (err: any) {
     fs.unlink(req.file.path, () => {});
     console.error("[upload] image error:", err.message);
@@ -129,7 +154,12 @@ uploadRouter.post("/image", upload.single("image") as any, async (req: Request, 
 });
 
 // ─── POST /api/upload/token ──────────────────────────────────────────────────
-// Uploads image + metadata JSON to Arweave via Irys in 2 transactions.
+// Strategy:
+//   1. Compress image
+//   2. Save to local disk immediately → imageUrl (fast, always available)
+//   3. Upload image to Arweave (with timeout fallback to local URL)
+//   4. Build metadata JSON pointing to Arweave image (or local if Arweave failed)
+//   5. Upload metadata to Arweave → metadataUri (on-chain permanent URI)
 // Returns: { imageUrl, metadataUri }
 uploadRouter.post("/token", upload.single("image") as any, async (req: Request, res: Response) => {
   const { name, symbol, description, creator, websiteUrl, twitterUrl, telegramUrl } = req.body;
@@ -138,13 +168,12 @@ uploadRouter.post("/token", upload.single("image") as any, async (req: Request, 
     return res.status(400).json({ error: "name and symbol are required" });
   }
 
-  let imageUrl = "";
+  let imageUrl = "";    // local URL — goes into DB, shown immediately on site
   let imageMime = "image/png";
+  let arweaveImageUrl = ""; // Arweave URL — goes into metadata JSON
 
   try {
-    const irys = await getIrys();
-
-    // Step 1: compress + upload image
+    // Step 1: compress + dual-store image
     if (req.file) {
       if (!validateMagicBytes(req.file.path, req.file.mimetype)) {
         fs.unlink(req.file.path, () => {});
@@ -154,16 +183,20 @@ uploadRouter.post("/token", upload.single("image") as any, async (req: Request, 
       fs.unlink(req.file.path, () => {});
       imageMime = mime;
 
-      const imgReceipt = await irys.upload(buffer, {
-        tags: [
-          { name: "Content-Type", value: mime },
-          { name: "App-Name",     value: "JetForge" },
-          { name: "Type",         value: "token-image" },
-          { name: "Token-Symbol", value: symbol },
-        ],
-      });
-      imageUrl = `https://arweave.net/${imgReceipt.id}`;
-      console.log(`[upload] token image → ${imageUrl}`);
+      // 1a. Save locally — instant
+      const { localUrl } = saveLocally(buffer, mime);
+      imageUrl = localUrl;
+
+      // 1b. Upload to Arweave — may take time, use local as fallback
+      const awUrl = await uploadToArweave(buffer, mime, [
+        { name: "Content-Type", value: mime },
+        { name: "App-Name",     value: "JetForge" },
+        { name: "Type",         value: "token-image" },
+        { name: "Token-Symbol", value: symbol },
+      ]);
+      arweaveImageUrl = awUrl ?? localUrl; // fallback to local if Arweave fails
+      if (awUrl) console.log(`[upload] token image → Arweave ${awUrl}`);
+      else       console.log(`[upload] token image → local only ${localUrl} (Arweave failed)`);
     }
 
     // Step 2: build + upload metadata JSON
@@ -171,7 +204,7 @@ uploadRouter.post("/token", upload.single("image") as any, async (req: Request, 
       name,
       symbol,
       description: description || `${name} ($${symbol}) — fair-launch token on JetForge.`,
-      image: imageUrl,
+      image: arweaveImageUrl || imageUrl,
       external_url: "https://jetforge.io",
       attributes: [
         { trait_type: "Platform", value: "JetForge" },
@@ -179,7 +212,7 @@ uploadRouter.post("/token", upload.single("image") as any, async (req: Request, 
         { trait_type: "Launch",   value: "Fair-Launch Bonding Curve" },
       ],
       properties: {
-        files: imageUrl ? [{ uri: imageUrl, type: imageMime }] : [],
+        files: (arweaveImageUrl || imageUrl) ? [{ uri: arweaveImageUrl || imageUrl, type: imageMime }] : [],
         category: "image",
         creators: creator ? [{ address: creator, share: 100 }] : [],
       },
@@ -190,22 +223,28 @@ uploadRouter.post("/token", upload.single("image") as any, async (req: Request, 
     };
 
     const metaBuffer = Buffer.from(JSON.stringify(metadata));
-    const metaReceipt = await irys.upload(metaBuffer, {
-      tags: [
-        { name: "Content-Type", value: "application/json" },
-        { name: "App-Name",     value: "JetForge" },
-        { name: "Type",         value: "token-metadata" },
-        { name: "Token-Symbol", value: symbol },
-      ],
-    });
-    const metadataUri = `https://arweave.net/${metaReceipt.id}`;
-    console.log(`[upload] token metadata → ${metadataUri}`);
+    let metadataUri = "";
+    const metaArweaveUrl = await uploadToArweave(metaBuffer, "application/json", [
+      { name: "Content-Type", value: "application/json" },
+      { name: "App-Name",     value: "JetForge" },
+      { name: "Type",         value: "token-metadata" },
+      { name: "Token-Symbol", value: symbol },
+    ]);
+    if (metaArweaveUrl) {
+      metadataUri = metaArweaveUrl;
+      console.log(`[upload] token metadata → Arweave ${metadataUri}`);
+    } else {
+      // Fallback: serve metadata locally
+      const { localUrl: metaLocalUrl } = saveLocally(metaBuffer, "application/json");
+      metadataUri = metaLocalUrl;
+      console.log(`[upload] token metadata → local ${metadataUri} (Arweave failed)`);
+    }
 
-    return res.json({ imageUrl, metadataUri });
+    return res.json({ imageUrl, arweaveImageUrl, metadataUri });
   } catch (err: any) {
     if (req.file) fs.unlink(req.file.path, () => {});
     console.error("[upload] token error:", err.message);
-    return res.status(500).json({ error: "Arweave upload failed: " + err.message });
+    return res.status(500).json({ error: "Upload failed: " + err.message });
   }
 });
 
@@ -215,7 +254,7 @@ uploadRouter.get("/balance", async (_req: Request, res: Response) => {
     const irys = await getIrys();
     const balance = await irys.getLoadedBalance();
     const price100kb = await irys.getPrice(102400);
-    const pricePerLaunch = await irys.getPrice(51200 + 2048); // 50KB image + 2KB metadata
+    const pricePerLaunch = await irys.getPrice(51200 + 2048);
     return res.json({
       balance: balance.toString(),
       balanceAR: (Number(balance) / 1e12).toFixed(8),
@@ -230,13 +269,12 @@ uploadRouter.get("/balance", async (_req: Request, res: Response) => {
 });
 
 // ─── POST /api/upload/fund ───────────────────────────────────────────────────
-// Fund the Irys node. winstonAmount defaults to 50B (0.05 AR).
 uploadRouter.post("/fund", async (req: Request, res: Response) => {
   const { secret, winstonAmount } = req.body;
   if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: "Forbidden" });
   try {
     const irys = await getIrys();
-    const amount = BigInt(winstonAmount ?? "50000000000"); // default 0.05 AR
+    const amount = BigInt(winstonAmount ?? "50000000000");
     const receipt = await irys.fund(amount);
     const balance = await irys.getLoadedBalance();
     return res.json({ funded: receipt.quantity.toString(), newBalance: balance.toString() });
