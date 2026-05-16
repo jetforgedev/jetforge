@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef } from "react";
 import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import toast from "react-hot-toast";
 import { clsx } from "clsx";
-import { createTokenRecord, uploadImage } from "@/lib/api";
+import { createTokenRecord, uploadImage, uploadTokenAssets } from "@/lib/api";
 import { buildCreateTokenTransaction } from "@/lib/program";
 
 // Minimum SOL needed to create a token (rent for mint + bonding curve + 4 vaults)
@@ -61,6 +61,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [launchedMint, setLaunchedMint] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,12 +83,13 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
     const localUrl = URL.createObjectURL(file);
     setImagePreview(localUrl);
 
+    setImageFile(file);
     setIsUploading(true);
     try {
       const url = await uploadImage(file);
       update("imageUrl", url);
       setImagePreview(url);
-      toast.success("Image uploaded!");
+      toast.success("Image ready!");
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
       setImagePreview(null);
@@ -136,38 +138,27 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       const name = form.name.trim();
       const symbol = form.symbol.trim().toUpperCase();
 
-      // Generate the mint keypair early so we can build the metadata URI before
-      // creating the token. The same keypair is reused in buildCreateTokenTransaction.
-      const { Keypair } = await import("@solana/web3.js");
-      const mintKeypairForUri = Keypair.generate();
-      const mintAddressForUri = mintKeypairForUri.publicKey.toString();
-
-      // Pre-register the token in the backend so the metadata endpoint is live
-      // before the on-chain transaction is submitted.
-      try {
-        await createTokenRecord({
-          mint: mintAddressForUri,
+      // Upload image + metadata JSON to Arweave (permanent storage).
+      // Both uploads happen via the backend Irys node using the Arweave key.
+      toast.loading("Uploading to Arweave...", { id: loadingToast });
+      const { imageUrl: arweaveImageUrl, metadataUri } = await uploadTokenAssets(
+        imageFile,
+        {
           name,
           symbol,
           description: form.description.trim(),
-          imageUrl: form.imageUrl || undefined,
-          websiteUrl: form.websiteUrl || undefined,
-          twitterUrl: form.twitterUrl || undefined,
-          telegramUrl: form.telegramUrl || undefined,
           creator: publicKey.toString(),
-        });
-      } catch {
-        // Non-fatal — indexer will sync it on-chain
-      }
+          websiteUrl:  form.websiteUrl  || undefined,
+          twitterUrl:  form.twitterUrl  || undefined,
+          telegramUrl: form.telegramUrl || undefined,
+        }
+      );
+      const uri = metadataUri;
+      console.log("[LaunchForm] Arweave metadataUri:", uri);
+      console.log("[LaunchForm] Arweave imageUrl:", arweaveImageUrl);
 
-      // Use the backend metadata JSON URL as the on-chain URI.
-      // This is the Metaplex-standard format (name, symbol, image, description).
-      // When the program is upgraded to create a Metaplex metadata account,
-      // blockchain explorers will automatically read this URL.
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "https://api.jetforge.io/api")
-        .replace(/\/api$/, ""); // remove trailing /api only at end
-      const uri = `${apiBase}/api/metadata/${mintAddressForUri}`;
-      console.log("[LaunchForm] URI being passed to program:", uri);
+      const { Keypair } = await import("@solana/web3.js");
+      const mintKeypairForUri = Keypair.generate();
 
       // Build the on-chain createToken transaction
       toast.loading("Sending transaction...", { id: loadingToast });
@@ -214,26 +205,22 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
 
       const mint = mintKeypair.publicKey.toString();
 
-      // Post-launch metadata save: the pre-registration above always fails because
-      // the POST /tokens endpoint verifies the token exists on-chain, but we call
-      // it before sending the transaction. Now that the tx is confirmed, the token
-      // IS on-chain — call it again so imageUrl, description, and social links are
-      // actually persisted in the database.
+      // Post-launch: save token record with permanent Arweave URLs.
       try {
         await createTokenRecord({
           mint,
           name,
           symbol,
           description: form.description.trim(),
-          imageUrl: form.imageUrl || undefined,
-          websiteUrl: form.websiteUrl || undefined,
-          twitterUrl: form.twitterUrl || undefined,
+          imageUrl:    arweaveImageUrl || undefined,
+          metadataUri: metadataUri     || undefined,
+          websiteUrl:  form.websiteUrl  || undefined,
+          twitterUrl:  form.twitterUrl  || undefined,
           telegramUrl: form.telegramUrl || undefined,
           creator: publicKey.toString(),
         });
       } catch (metaErr) {
-        // Non-fatal — indexer will still index the token; image just won't show
-        console.warn("[LaunchForm] Post-launch metadata save failed:", metaErr);
+        console.warn("[LaunchForm] Post-launch record save failed:", metaErr);
       }
 
       toast.dismiss(loadingToast);
@@ -455,12 +442,13 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
                       Uploading...
                     </div>
                   ) : (
-                    <div className="text-[#00ff88] text-sm font-medium">✓ Image uploaded</div>
+                    <div className="text-[#00ff88] text-sm font-medium">✓ Image ready — uploads to Arweave on launch</div>
                   )}
                   <button
                     type="button"
                     onClick={() => {
                       setImagePreview(null);
+                      setImageFile(null);
                       update("imageUrl", "");
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}

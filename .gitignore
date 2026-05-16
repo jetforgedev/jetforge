@@ -63,3 +63,4 @@ backend/uploads/
 
 # ─── TypeScript incremental build info ───────────────────────────────────────
 **/*.tsbuildinfo
+arweave-key.json
