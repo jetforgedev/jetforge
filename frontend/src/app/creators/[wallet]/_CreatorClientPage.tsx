@@ -7,7 +7,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
 import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.jetforge.io";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://api.jetforge.io").replace(/\/api\/?$/, "");
 const JWT_KEY = "jetforge_jwt";
 
 function ReputationBadge({ badge, label, color }: { badge: string; label: string; color: string }) {
