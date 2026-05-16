@@ -104,10 +104,16 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
   const [referralStats, setReferralStats] = useState<any>({ totalEarned: 0, totalReferrals: 0, hasReferralAccount: false });
   const [referralDashboard, setReferralDashboard] = useState<any>({});
   const [withdrawing, setWithdrawing] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
 
   // Cashback state (for the connected viewer)
   const [cashback, setCashback] = useState<any>({ cashbackBalance: 0, cashbackEarned: 0, active: false, daysRemaining: 0, canClaim: false });
   const [claiming, setClaiming] = useState(false);
+
+  // Check token on mount
+  useEffect(() => {
+    setHasToken(!!localStorage.getItem(JWT_KEY));
+  }, []);
 
   const { data: creator, isLoading: creatorLoading, error: creatorError } = useQuery({
     queryKey: ["creator-profile", wallet],
@@ -161,18 +167,24 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
       .catch(() => {});
   }, [wallet]);
 
-  // Fetch private dashboard (owner only)
+  // Fetch private dashboard (owner only) - also auto-creates referral account
   useEffect(() => {
     if (!isOwn) return;
     const token = localStorage.getItem(JWT_KEY);
     if (!token) return;
+    setHasToken(true);
     fetch(`${API_BASE}/api/referral/code`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then(() => fetch(`${API_BASE}/api/referral/dashboard`, { headers: { Authorization: `Bearer ${token}` } }))
-      .then((r) => r.json())
-      .then(setReferralDashboard)
+      .then(() => Promise.all([
+        fetch(`${API_BASE}/api/referral/dashboard`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()),
+        fetch(`${API_BASE}/api/referral/stats/${wallet}`).then((r) => r.json()),
+      ]))
+      .then(([dashboard, stats]) => {
+        setReferralDashboard(dashboard);
+        setReferralStats(stats);
+      })
       .catch(() => {});
-  }, [isOwn]);
+  }, [isOwn, wallet]);
 
   // Fetch cashback for the connected wallet (viewer, regardless of whose profile)
   useEffect(() => {
@@ -586,25 +598,39 @@ Timestamp: ${Date.now()}`;
         </div>
       </div>
 
-      {/* Referral Stats - public */}
-      {referralStats.hasReferralAccount && (
-        <div className="border border-[#1a2a1a] rounded-xl p-4">
-          <h3 className="text-[#00ff88] font-semibold mb-3">Referral Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-gray-400 text-xs mb-1">All-time earnings</div>
-              <div className="text-white font-mono font-bold">{referralStats.totalEarned.toFixed(4)} SOL</div>
+      {/* Referral Stats - always visible to everyone */}
+      <div className="border border-[#1a2a1a] rounded-xl p-4 mt-4">
+        <h3 className="text-[#00ff88] font-semibold mb-3 flex items-center gap-2">
+          <span>📣</span> Referral Stats
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-gray-400 text-xs mb-1">All-time referral earnings</div>
+            <div className="text-white font-mono font-bold text-lg">
+              {(referralStats.totalEarned || 0).toFixed(4)} SOL
             </div>
-            <div>
-              <div className="text-gray-400 text-xs mb-1">Users referred</div>
-              <div className="text-white font-bold">{referralStats.totalReferrals}</div>
+          </div>
+          <div>
+            <div className="text-gray-400 text-xs mb-1">Users referred</div>
+            <div className="text-white font-bold text-lg">
+              {referralStats.totalReferrals || 0}
             </div>
           </div>
         </div>
-      )}
+        {referralStats.referralCode && (
+          <div className="mt-3 text-xs text-gray-500">
+            Referral code: <span className="text-[#00ff88] font-mono">{referralStats.referralCode}</span>
+          </div>
+        )}
+      </div>
 
-      {/* Referral Dashboard - owner only */}
-      {isOwn && (
+      {/* Referral Dashboard - owner only, requires auth */}
+      {isOwn && !hasToken && (
+        <div className="border border-[#1a2a1a] rounded-xl p-4 mt-4 text-center">
+          <p className="text-gray-400 text-sm">Connect &amp; sign in to manage your referral dashboard</p>
+        </div>
+      )}
+      {isOwn && hasToken && (
         <div className="border border-[#1a2a1a] rounded-xl p-4">
           <h3 className="text-[#00ff88] font-semibold mb-3">Your Referral Dashboard</h3>
           <div className="mb-3">
