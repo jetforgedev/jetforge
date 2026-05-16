@@ -18,26 +18,52 @@ import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
 import { holdersCache } from "../holdersCache";
 
-// ─── Referral credit helper ─────────────────────────────────────────────────
+// ─── Referral credit helper ─────────────────────────────────────────────
+const REFERRAL_SHARE = 0.25;          // referrer gets 25% of platform's 40% cut = 10% of total fee
+const CASHBACK_SHARE = 0.25;          // referred user gets 25% of platform's cut = 10% of total fee
+const CASHBACK_DAYS = 30;             // cashback active for 30 days after referral registration
+const MIN_TRADE_SOL = 0.05;           // minimum trade size to earn referral credit
+
 async function creditReferral(traderWallet: string, feeLamports: bigint): Promise<void> {
   try {
-    // Platform gets 40% of the 1% fee. Referrer gets 25% of platform's cut = 10% of total fee
-    const REFERRAL_SHARE = 0.25;
     const feeSol = Number(feeLamports) / 1e9;
-    const platformCut = feeSol * 0.40;
-    const referralAmount = platformCut * REFERRAL_SHARE;
-    if (referralAmount < 0.000001) return; // too small to credit
+    const platformCut = feeSol * 0.40; // platform's 40% of the 1% fee
 
+    // Rule: minimum trade size (fee is ~1% of trade, so min fee = 0.0005 SOL)
+    if (feeSol < MIN_TRADE_SOL * 0.01) return;
+
+    // Find if this trader was referred
     const link = await (prisma as any).referralLink.findUnique({ where: { referredWallet: traderWallet } });
-    if (!link) return;
 
-    await (prisma as any).referralAccount.updateMany({
-      where: { wallet: link.referrerWallet },
-      data: {
-        pendingBalance: { increment: referralAmount },
-        totalEarned: { increment: referralAmount },
-      },
-    });
+    // --- REFERRER CREDIT ---
+    if (link) {
+      const referralAmount = platformCut * REFERRAL_SHARE; // 10% of total fee
+
+      if (referralAmount > 0) {
+        await (prisma as any).referralAccount.updateMany({
+          where: { wallet: link.referrerWallet },
+          data: {
+            pendingBalance: { increment: referralAmount },
+            totalEarned: { increment: referralAmount },
+          },
+        });
+      }
+
+      // --- REFERRED USER CASHBACK (first 30 days only) ---
+      const daysSinceReferral = (Date.now() - new Date(link.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceReferral <= CASHBACK_DAYS) {
+        const cashbackAmount = platformCut * CASHBACK_SHARE; // 10% of total fee back to referred user
+        if (cashbackAmount > 0) {
+          await (prisma as any).referralLink.update({
+            where: { referredWallet: traderWallet },
+            data: {
+              cashbackBalance: { increment: cashbackAmount },
+              cashbackEarned: { increment: cashbackAmount },
+            },
+          });
+        }
+      }
+    }
   } catch (err) {
     console.warn('[referral] credit error:', err);
   }

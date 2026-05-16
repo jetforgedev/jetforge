@@ -105,6 +105,10 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
   const [referralDashboard, setReferralDashboard] = useState<any>({});
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // Cashback state (for the connected viewer)
+  const [cashback, setCashback] = useState<any>({ cashbackBalance: 0, cashbackEarned: 0, active: false, daysRemaining: 0, canClaim: false });
+  const [claiming, setClaiming] = useState(false);
+
   const { data: creator, isLoading: creatorLoading, error: creatorError } = useQuery({
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
@@ -170,6 +174,15 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
       .catch(() => {});
   }, [isOwn]);
 
+  // Fetch cashback for the connected wallet (viewer, regardless of whose profile)
+  useEffect(() => {
+    const token = localStorage.getItem(JWT_KEY);
+    if (!token || !viewer) return;
+    fetch(`${API_BASE}/api/referral/cashback`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json()).then(setCashback).catch(() => {});
+  }, [viewer]);
+
   const handleWithdraw = async () => {
     setWithdrawing(true);
     try {
@@ -189,6 +202,25 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
       alert("Withdrawal failed");
     }
     setWithdrawing(false);
+  };
+
+  const handleClaimCashback = async () => {
+    setClaiming(true);
+    try {
+      const token = localStorage.getItem(JWT_KEY);
+      const r = await fetch(`${API_BASE}/api/referral/cashback/claim`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (data.ok) {
+        alert(data.message);
+        setCashback((prev: any) => ({ ...prev, cashbackBalance: 0, canClaim: false }));
+      } else {
+        alert(data.error);
+      }
+    } catch { alert('Claim failed'); }
+    setClaiming(false);
   };
 
   // Ensure valid JWT, signing if needed
@@ -618,6 +650,47 @@ Timestamp: ${Date.now()}`;
           {!referralDashboard.canWithdraw && (referralDashboard.pendingBalance || 0) < 0.1 && (
             <p className="text-gray-500 text-xs text-center mt-2">
               {(0.1 - (referralDashboard.pendingBalance || 0)).toFixed(4)} SOL more needed to withdraw
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Cashback section - shown to any connected wallet that has been referred */}
+      {viewer && (cashback.active || cashback.cashbackEarned > 0) && (
+        <div className="border border-[#1a3a2a] rounded-xl p-4 bg-[#0a1a0f]">
+          <h3 className="text-[#00ff88] font-semibold mb-3">Your Referral Cashback</h3>
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <div className="text-gray-400 text-xs mb-1">Pending cashback</div>
+              <div className="text-white font-mono font-bold">{cashback.cashbackBalance.toFixed(4)} SOL</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs mb-1">All-time earned</div>
+              <div className="text-white font-mono font-bold">{cashback.cashbackEarned.toFixed(4)} SOL</div>
+            </div>
+          </div>
+          {cashback.active && (
+            <div className="text-xs text-[#00ff88] mb-3">
+              Cashback active &mdash; {cashback.daysRemaining} days remaining (10% back on every trade)
+            </div>
+          )}
+          {!cashback.active && (
+            <div className="text-xs text-gray-500 mb-3">Cashback period ended &mdash; claim your remaining balance</div>
+          )}
+          <button
+            onClick={handleClaimCashback}
+            disabled={!cashback.canClaim || claiming}
+            className={`w-full py-2 rounded-lg font-semibold text-sm transition-all ${
+              cashback.canClaim
+                ? 'bg-[#00ff88] text-black hover:bg-[#00cc66]'
+                : 'bg-[#1a2a1a] text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {claiming ? 'Processing...' : `Claim ${cashback.cashbackBalance.toFixed(4)} SOL`}
+          </button>
+          {!cashback.canClaim && (
+            <p className="text-gray-500 text-xs text-center mt-2">
+              Minimum claim: 0.05 SOL ({Math.max(0, 0.05 - cashback.cashbackBalance).toFixed(4)} SOL more needed)
             </p>
           )}
         </div>

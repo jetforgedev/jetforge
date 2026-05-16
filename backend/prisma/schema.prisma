@@ -146,6 +146,8 @@ model ReferralLink {
   id              String   @id @default(cuid())
   referredWallet  String   @unique
   referrerWallet  String
+  cashbackBalance Float    @default(0)
+  cashbackEarned  Float    @default(0)
   createdAt       DateTime @default(now())
 }
 
