@@ -82,43 +82,7 @@ export default async function TokenLayout({ children, params }: Props) {
         image: token.imageUrl || `${BASE_URL}/og-image.png`,
         brand: { "@type": "Brand", name: "JetForge" },
 
-        offers: {
-          "@type": "Offer",
-          priceCurrency: "USD",
-          price: token.priceUsd ?? 0,
-          availability: token.isGraduated
-            ? "https://schema.org/Discontinued"
-            : "https://schema.org/InStock",
-          url: `${BASE_URL}/token/${mint}`,
-          seller: {
-            "@type": "Organization",
-            name: "JetForge",
-            url: "https://jetforge.io",
-          },
-          hasMerchantReturnPolicy: {
-            "@type": "MerchantReturnPolicy",
-            applicableCountry: "US",
-            returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
-          },
-          shippingDetails: {
-            "@type": "OfferShippingDetails",
-            shippingRate: {
-              "@type": "MonetaryAmount",
-              value: "0",
-              currency: "USD",
-            },
-            deliveryTime: {
-              "@type": "ShippingDeliveryTime",
-              handlingTime: {
-                "@type": "QuantitativeValue",
-                minValue: 0,
-                maxValue: 0,
-                unitCode: "DAY",
-              },
-            },
-            doesNotShip: true,
-          },
-        },
+        feesAndCommissionsSpecification: "1% trading fee on all bonding curve buy and sell transactions. No listing fees or developer token allocations.",
       };
     }
   } catch {}
