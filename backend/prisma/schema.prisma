@@ -109,3 +109,24 @@ model Follow {
   @@index([follower])
   @@index([following])
 }
+
+model CreatorProfile {
+  wallet      String   @id
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  twitterUrl  String?
+  websiteUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       CreatorPost[]
+}
+
+model CreatorPost {
+  id        String   @id @default(cuid())
+  wallet    String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  creator   CreatorProfile @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+}

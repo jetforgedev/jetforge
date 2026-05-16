@@ -1,11 +1,14 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { getCreatorProfile, truncateAddress, timeAgo, resolveImageUrl, getFollowStats, followCreator, unfollowCreator } from "@/lib/api";
 import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.jetforge.io";
+const JWT_KEY = "jetforge_jwt";
 
 function ReputationBadge({ badge, label, color }: { badge: string; label: string; color: string }) {
   return (
@@ -18,15 +21,86 @@ function ReputationBadge({ badge, label, color }: { badge: string; label: string
   );
 }
 
+function Avatar({ avatarUrl, wallet, size = 56 }: { avatarUrl?: string | null; wallet: string; size?: number }) {
+  const initials = wallet.slice(0, 2).toUpperCase();
+  const colors = ["#00ff88", "#ff6b35", "#7b68ee", "#FFD700", "#00bfff"];
+  const color = colors[parseInt(wallet.slice(0, 8), 16) % colors.length] || "#00ff88";
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt="Avatar"
+        width={size}
+        height={size}
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full flex items-center justify-center font-bold flex-shrink-0 text-black"
+      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35 }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(JWT_KEY);
+}
+
+function setToken(token: string) {
+  if (typeof window !== "undefined") localStorage.setItem(JWT_KEY, token);
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return Date.now() / 1000 > payload.exp;
+  } catch {
+    return true;
+  }
+}
+
 export default function CreatorClientPage({ wallet }: { wallet: string }) {
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
   const queryClient = useQueryClient();
   const viewer = publicKey?.toBase58();
   const isOwn = viewer === wallet;
 
   const solPrice = useSolPrice();
 
-  const { data: creator, isLoading, error } = useQuery({
+  // Profile state
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Posts state
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+
+  // Edit modal state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ displayName: "", bio: "", twitterUrl: "", websiteUrl: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Post compose state
+  const [postContent, setPostContent] = useState("");
+  const [postSubmitting, setPostSubmitting] = useState(false);
+  const [postError, setPostError] = useState("");
+
+  // Follow state
+  const [followData, setFollowData] = useState<{ followerCount: number; followingCount: number; following: boolean }>({
+    followerCount: 0, followingCount: 0, following: false,
+  });
+
+  const { data: creator, isLoading: creatorLoading, error: creatorError } = useQuery({
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
     staleTime: 30_000,
@@ -34,26 +108,233 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
     retry: false,
   });
 
-  const { data: followStats } = useQuery({
-    queryKey: ["follow-stats", wallet, viewer],
-    queryFn: () => getFollowStats(wallet, viewer),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
+  // Fetch social profile
+  useEffect(() => {
+    setProfileLoading(true);
+    fetch(`${API_BASE}/api/creators/${wallet}/profile`)
+      .then((r) => r.json())
+      .then((data) => {
+        setProfile(data);
+        setFollowData({
+          followerCount: data.followerCount ?? 0,
+          followingCount: data.followingCount ?? 0,
+          following: false,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setProfileLoading(false));
+  }, [wallet]);
+
+  // Fetch follow status
+  useEffect(() => {
+    if (!viewer) return;
+    fetch(`${API_BASE}/api/creators/${wallet}/follow-status?viewer=${viewer}`)
+      .then((r) => r.json())
+      .then((data) => setFollowData((prev) => ({ ...prev, following: data.following })))
+      .catch(() => {});
+  }, [wallet, viewer]);
+
+  // Fetch posts
+  useEffect(() => {
+    setPostsLoading(true);
+    fetch(`${API_BASE}/api/creators/${wallet}/posts`)
+      .then((r) => r.json())
+      .then((data) => setPosts(Array.isArray(data) ? data : []))
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [wallet]);
+
+  // Ensure valid JWT, signing if needed
+  async function ensureAuth(): Promise<string | null> {
+    let token = getToken();
+    if (token && !isTokenExpired(token)) return token;
+    if (!signMessage || !publicKey) return null;
+    try {
+      const message = `Sign in to JetForge
+Wallet: ${publicKey.toBase58()}
+Timestamp: ${Date.now()}`;
+      const msgBytes = new TextEncoder().encode(message);
+      const sigBytes = await signMessage(msgBytes);
+      // bs58 encode the signature
+      const bs58Chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+      function encodeBase58(buffer: Uint8Array): string {
+        let digits = [0];
+        for (let i = 0; i < buffer.length; i++) {
+          let carry = buffer[i];
+          for (let j = 0; j < digits.length; j++) {
+            carry += digits[j] << 8;
+            digits[j] = carry % 58;
+            carry = (carry / 58) | 0;
+          }
+          while (carry > 0) {
+            digits.push(carry % 58);
+            carry = (carry / 58) | 0;
+          }
+        }
+        let result = "";
+        for (let i = 0; i < buffer.length && buffer[i] === 0; i++) result += "1";
+        for (let i = digits.length - 1; i >= 0; i--) result += bs58Chars[digits[i]];
+        return result;
+      }
+      const signature = encodeBase58(sigBytes);
+      const resp = await fetch(`${API_BASE}/api/auth/wallet-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: publicKey.toBase58(), signature, message }),
+      });
+      const data = await resp.json();
+      if (data.token) {
+        setToken(data.token);
+        return data.token;
+      }
+    } catch (e) {
+      console.error("Auth error:", e);
+    }
+    return null;
+  }
+
+  // Edit profile
+  const openEdit = () => {
+    setEditForm({
+      displayName: profile?.displayName || "",
+      bio: profile?.bio || "",
+      twitterUrl: profile?.twitterUrl || "",
+      websiteUrl: profile?.websiteUrl || "",
+    });
+    setEditError("");
+    setEditOpen(true);
+  };
+
+  const saveProfile = async () => {
+    setEditSaving(true);
+    setEditError("");
+    try {
+      const token = await ensureAuth();
+      if (!token) { setEditError("Could not authenticate wallet"); return; }
+      const resp = await fetch(`${API_BASE}/api/creators/${wallet}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editForm),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setProfile((prev: any) => ({ ...prev, ...data }));
+        setEditOpen(false);
+      } else {
+        setEditError(data.error || "Save failed");
+      }
+    } catch (e: any) {
+      setEditError(e.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    setAvatarUploading(true);
+    try {
+      const token = await ensureAuth();
+      if (!token) { setEditError("Could not authenticate wallet"); return; }
+      // Upload image file first
+      const formData = new FormData();
+      formData.append("image", file);
+      const uploadResp = await fetch(`${API_BASE}/api/upload/image`, {
+        method: "POST",
+        body: formData,
+      });
+      const uploadData = await uploadResp.json();
+      if (!uploadResp.ok) { setEditError(uploadData.error || "Upload failed"); return; }
+      const avatarUrl = uploadData.url || uploadData.imageUrl;
+      if (!avatarUrl) { setEditError("No URL returned from upload"); return; }
+      // Update avatar
+      const resp = await fetch(`${API_BASE}/api/creators/${wallet}/avatar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ avatarUrl }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setProfile((prev: any) => ({ ...prev, avatarUrl: data.avatarUrl }));
+      } else {
+        setEditError(data.error || "Avatar update failed");
+      }
+    } catch (e: any) {
+      setEditError(e.message);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const submitPost = async () => {
+    if (!postContent.trim()) return;
+    setPostSubmitting(true);
+    setPostError("");
+    try {
+      const token = await ensureAuth();
+      if (!token) { setPostError("Could not authenticate wallet"); return; }
+      const resp = await fetch(`${API_BASE}/api/creators/${wallet}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content: postContent }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setPosts((prev) => [data, ...prev]);
+        setPostContent("");
+      } else {
+        setPostError(data.error || "Post failed");
+      }
+    } catch (e: any) {
+      setPostError(e.message);
+    } finally {
+      setPostSubmitting(false);
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    try {
+      const token = await ensureAuth();
+      if (!token) return;
+      const resp = await fetch(`${API_BASE}/api/creators/${wallet}/posts/${postId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+      }
+    } catch {}
+  };
 
   const toggleFollow = async () => {
     if (!viewer) return;
     try {
-      if (followStats?.isFollowing) {
-        await unfollowCreator(viewer, wallet);
-      } else {
-        await followCreator(viewer, wallet);
+      const token = await ensureAuth();
+      if (!token) return;
+      const resp = await fetch(`${API_BASE}/api/creators/${wallet}/follow`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setFollowData((prev) => ({
+          ...prev,
+          following: data.following,
+          followerCount: prev.followerCount + (data.following ? 1 : -1),
+        }));
       }
-      queryClient.invalidateQueries({ queryKey: ["follow-stats", wallet] });
     } catch {}
   };
 
-  if (isLoading) {
+  // Copy wallet address
+  const [copied, setCopied] = useState(false);
+  const copyWallet = () => {
+    navigator.clipboard.writeText(wallet).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  if (creatorLoading || profileLoading) {
     return (
       <div className="max-w-[900px] mx-auto py-10 px-4 space-y-4 animate-pulse">
         <div className="h-32 bg-[#111] rounded-xl" />
@@ -62,7 +343,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
     );
   }
 
-  if (error || !creator) return notFound();
+  if (creatorError || !creator) return notFound();
 
   return (
     <div className="max-w-[900px] mx-auto py-10 px-4 space-y-6">
@@ -77,12 +358,60 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
       <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#00ff8830] to-[#00ff8810] border border-[#00ff8830] flex items-center justify-center text-2xl">
-              {creator.badge}
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              <Avatar avatarUrl={profile?.avatarUrl} wallet={wallet} size={72} />
+              {isOwn && (
+                <button
+                  onClick={openEdit}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#00ff88] rounded-full flex items-center justify-center text-black text-xs font-bold hover:bg-[#00dd77] transition-colors"
+                  title="Edit profile"
+                >
+                  ✎
+                </button>
+              )}
             </div>
+
             <div>
-              <div className="text-white font-bold text-lg font-mono">{truncateAddress(wallet, 8)}</div>
-              <div className="mt-1.5">
+              {/* Display name or wallet */}
+              <div className="flex items-center gap-2">
+                <div className="text-white font-bold text-lg">
+                  {profile?.displayName || truncateAddress(wallet, 8)}
+                </div>
+                {isOwn && !profile?.displayName && (
+                  <button onClick={openEdit} className="text-[#00ff88] text-xs hover:underline">+ Set name</button>
+                )}
+              </div>
+              {/* Full wallet with copy */}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[#555] font-mono text-xs">{wallet}</span>
+                <button
+                  onClick={copyWallet}
+                  className="text-[#444] hover:text-[#888] transition-colors text-[10px]"
+                  title="Copy address"
+                >
+                  {copied ? "✓" : "⧉"}
+                </button>
+              </div>
+              {/* Bio */}
+              {profile?.bio && (
+                <div className="text-[#888] text-xs mt-1.5 max-w-xs">{profile.bio}</div>
+              )}
+              {/* Links */}
+              <div className="flex items-center gap-3 mt-1.5">
+                {profile?.twitterUrl && (
+                  <a href={profile.twitterUrl} target="_blank" rel="noopener noreferrer" className="text-[#1DA1F2] text-xs hover:underline">
+                    Twitter
+                  </a>
+                )}
+                {profile?.websiteUrl && (
+                  <a href={profile.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-[#00ff88] text-xs hover:underline">
+                    Website
+                  </a>
+                )}
+              </div>
+              {/* Badge */}
+              <div className="mt-2">
                 <ReputationBadge badge={creator.badge} label={creator.badgeLabel} color={creator.badgeColor} />
               </div>
             </div>
@@ -91,11 +420,18 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Follower stats */}
             <div className="flex items-center gap-3 text-xs text-[#555] border border-[#1a1a1a] px-3 py-1.5 rounded-lg">
-              <span><span className="text-white font-semibold">{followStats?.followerCount ?? 0}</span> followers</span>
+              <span><span className="text-white font-semibold">{followData.followerCount}</span> followers</span>
               <span className="text-[#2a2a2a]">·</span>
-              <span><span className="text-white font-semibold">{followStats?.followingCount ?? 0}</span> following</span>
+              <span><span className="text-white font-semibold">{followData.followingCount}</span> following</span>
             </div>
-            {!isOwn && (
+            {isOwn ? (
+              <button
+                onClick={openEdit}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-colors"
+              >
+                Edit Profile
+              </button>
+            ) : (
               <button
                 onClick={toggleFollow}
                 disabled={!viewer}
@@ -103,12 +439,12 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
                   !viewer
                     ? "border-[#2a2a2a] text-[#444] cursor-not-allowed bg-transparent"
-                    : followStats?.isFollowing
+                    : followData.following
                       ? "bg-[#00ff8815] border-[#00ff8840] text-[#00ff88] hover:bg-[#00ff8825]"
                       : "bg-[#00ff88] border-[#00ff88] text-black font-bold hover:bg-[#00dd77]"
                 }`}
               >
-                {!viewer ? "Connect to Follow" : followStats?.isFollowing ? "✓ Following" : "+ Follow"}
+                {!viewer ? "Connect to Follow" : followData.following ? "✓ Following" : "+ Follow"}
               </button>
             )}
             <Link
@@ -145,7 +481,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
         {/* Earnings row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <div className="bg-[#0d0d0d] border border-[#00ff8830] rounded-lg p-4">
-            <div className="text-[#555] text-xs mb-1">💰 All-Time Earnings</div>
+            <div className="text-[#555] text-xs mb-1">All-Time Earnings</div>
             <div className="text-[#00ff88] font-mono font-bold text-xl">
               {parseFloat(creator.estimatedEarningsSol).toFixed(4)} SOL
             </div>
@@ -157,7 +493,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
             </div>
           </div>
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-4">
-            <div className="text-[#555] text-xs mb-1">🏦 Claimable Now</div>
+            <div className="text-[#555] text-xs mb-1">Claimable Now</div>
             <div className="text-white font-mono font-bold text-xl">
               {parseFloat(creator.claimableEarningsSol ?? "0").toFixed(4)} SOL
             </div>
@@ -171,6 +507,76 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
         </div>
       </div>
 
+      {/* Posts section */}
+      <div>
+        <div className="text-white font-semibold text-sm mb-3">Posts</div>
+
+        {/* Compose (own profile) */}
+        {isOwn && (
+          <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 mb-4">
+            <textarea
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              placeholder="Write a post..."
+              maxLength={500}
+              rows={3}
+              className="w-full bg-transparent text-white text-sm resize-none outline-none placeholder:text-[#444] border-b border-[#1a1a1a] pb-2 mb-3"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-[#444] text-xs">{postContent.length}/500</span>
+              <div className="flex items-center gap-2">
+                {postError && <span className="text-red-400 text-xs">{postError}</span>}
+                <button
+                  onClick={submitPost}
+                  disabled={postSubmitting || !postContent.trim()}
+                  className="px-4 py-1.5 bg-[#00ff88] text-black text-xs font-bold rounded-lg hover:bg-[#00dd77] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {postSubmitting ? "Posting..." : "Post"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Posts feed */}
+        {postsLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <div key={i} className="h-20 bg-[#111] border border-[#1a1a1a] rounded-xl animate-pulse" />)}
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-8 text-center text-[#444] text-sm">
+            No posts yet
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <div key={post.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Avatar avatarUrl={profile?.avatarUrl} wallet={wallet} size={28} />
+                    <span className="text-white text-xs font-semibold">{profile?.displayName || truncateAddress(wallet, 6)}</span>
+                    <span className="text-[#444] text-xs">{timeAgo(post.createdAt)}</span>
+                  </div>
+                  {isOwn && (
+                    <button
+                      onClick={() => deletePost(post.id)}
+                      className="text-[#444] hover:text-red-400 text-xs transition-colors flex-shrink-0"
+                      title="Delete post"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <p className="text-[#ccc] text-sm whitespace-pre-wrap">{post.content}</p>
+                {post.imageUrl && (
+                  <img src={post.imageUrl} alt="Post image" className="mt-3 rounded-lg max-h-64 object-cover" />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Tokens launched */}
       <div>
         <div className="text-white font-semibold text-sm mb-3">Tokens Launched</div>
@@ -180,7 +586,7 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
           </div>
         ) : (
           <>
-            {/* ── Mobile card list ── */}
+            {/* Mobile card list */}
             <div className="sm:hidden space-y-2">
               {creator.tokens.map((token: any) => (
                 <Link
@@ -188,7 +594,6 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                   href={`/token/${token.mint}`}
                   className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#2a2a2a] transition-colors"
                 >
-                  {/* Image */}
                   {resolveImageUrl(token.imageUrl) ? (
                     <img loading="lazy" decoding="async" src={resolveImageUrl(token.imageUrl)!} alt={token.symbol} width={40} height={40} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                   ) : (
@@ -196,7 +601,6 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                       {token.symbol?.[0] ?? "?"}
                     </div>
                   )}
-                  {/* Name + time */}
                   <div className="min-w-0 flex-1">
                     <div className="text-white text-sm font-semibold truncate">{token.name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -215,7 +619,6 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                       <span className="text-[#666] text-[10px]">{token.trades} trades</span>
                     </div>
                   </div>
-                  {/* Right: status + claimable */}
                   <div className="flex-shrink-0 text-right">
                     {token.isGraduated ? (
                       <span className="px-1.5 py-0.5 bg-[#00ff8820] border border-[#00ff8840] rounded text-[#00ff88] text-[10px] font-semibold">GRAD</span>
@@ -227,15 +630,12 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
                         {parseFloat(token.claimableEarnings).toFixed(3)} SOL
                       </div>
                     )}
-                    {parseFloat(token.claimableEarnings) > 0 && solToUsd(parseFloat(token.claimableEarnings), solPrice) && (
-                      <div className="text-[#444] text-[10px]">{solToUsd(parseFloat(token.claimableEarnings), solPrice)}</div>
-                    )}
                   </div>
                 </Link>
               ))}
             </div>
 
-            {/* ── Desktop table ── */}
+            {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto rounded-xl">
               <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[400px]">
                 <div className="grid grid-cols-[1fr_80px_60px_80px_55px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
@@ -300,6 +700,113 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
           </>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setEditOpen(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative bg-[#111] border border-[#1a2a1a] rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-white font-bold text-lg">Edit Profile</h2>
+              <button onClick={() => setEditOpen(false)} className="text-[#555] hover:text-white transition-colors text-xl">✕</button>
+            </div>
+
+            {/* Avatar upload */}
+            <div className="flex items-center gap-4 mb-5">
+              <Avatar avatarUrl={profile?.avatarUrl} wallet={wallet} size={56} />
+              <div>
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="text-xs text-[#00ff88] hover:underline disabled:opacity-50"
+                >
+                  {avatarUploading ? "Uploading..." : "Change avatar"}
+                </button>
+                <p className="text-[#444] text-[10px] mt-0.5">JPG, PNG, GIF up to 5MB</p>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAvatar(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[#555] text-xs block mb-1.5">Display Name <span className="text-[#333]">(30 chars max)</span></label>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={editForm.displayName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+                  placeholder="Your name"
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#00ff8840] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[#555] text-xs block mb-1.5">Bio <span className="text-[#333]">(160 chars max)</span></label>
+                <textarea
+                  maxLength={160}
+                  rows={3}
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                  placeholder="Tell people about yourself..."
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#00ff8840] transition-colors resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[#555] text-xs block mb-1.5">Twitter URL</label>
+                <input
+                  type="url"
+                  value={editForm.twitterUrl}
+                  onChange={(e) => setEditForm((f) => ({ ...f, twitterUrl: e.target.value }))}
+                  placeholder="https://twitter.com/yourhandle"
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#00ff8840] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[#555] text-xs block mb-1.5">Website URL</label>
+                <input
+                  type="url"
+                  value={editForm.websiteUrl}
+                  onChange={(e) => setEditForm((f) => ({ ...f, websiteUrl: e.target.value }))}
+                  placeholder="https://yoursite.com"
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#00ff8840] transition-colors"
+                />
+              </div>
+            </div>
+
+            {editError && <p className="text-red-400 text-xs mt-3">{editError}</p>}
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setEditOpen(false)}
+                className="flex-1 py-2 border border-[#2a2a2a] text-[#888] text-sm rounded-lg hover:text-white hover:border-[#444] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveProfile}
+                disabled={editSaving}
+                className="flex-1 py-2 bg-[#00ff88] text-black text-sm font-bold rounded-lg hover:bg-[#00dd77] disabled:opacity-50 transition-colors"
+              >
+                {editSaving ? "Saving..." : "Save Profile"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
