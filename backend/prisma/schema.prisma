@@ -130,3 +130,22 @@ model CreatorPost {
   createdAt DateTime @default(now())
   creator   CreatorProfile @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
 }
+
+model ReferralAccount {
+  wallet          String   @id
+  referralCode    String   @unique
+  pendingBalance  Float    @default(0)
+  totalEarned     Float    @default(0)
+  totalReferrals  Int      @default(0)
+  lastWithdrawnAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ReferralLink {
+  id              String   @id @default(cuid())
+  referredWallet  String   @unique
+  referrerWallet  String
+  createdAt       DateTime @default(now())
+}
+

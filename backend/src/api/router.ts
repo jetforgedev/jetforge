@@ -11,6 +11,7 @@ import { followsRouter } from "./follows";
 import { portfolioRouter } from "./portfolio";
 import { coingeckoRouter } from "./coingecko";
 import authRouter from "./auth";
+import referralRouter from "./referral";
 
 export function createRouter(): Router {
   const router = Router();
@@ -27,6 +28,7 @@ export function createRouter(): Router {
   router.use("/portfolio", portfolioRouter);
   router.use("/coingecko", coingeckoRouter);
   router.use("/auth", authRouter);
+  router.use("/referral", referralRouter);
 
   return router;
 }

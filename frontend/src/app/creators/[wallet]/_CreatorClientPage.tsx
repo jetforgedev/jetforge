@@ -100,6 +100,11 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
     followerCount: 0, followingCount: 0, following: false,
   });
 
+  // Referral state
+  const [referralStats, setReferralStats] = useState<any>({ totalEarned: 0, totalReferrals: 0, hasReferralAccount: false });
+  const [referralDashboard, setReferralDashboard] = useState<any>({});
+  const [withdrawing, setWithdrawing] = useState(false);
+
   const { data: creator, isLoading: creatorLoading, error: creatorError } = useQuery({
     queryKey: ["creator-profile", wallet],
     queryFn: () => getCreatorProfile(wallet),
@@ -143,6 +148,48 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
       .catch(() => setPosts([]))
       .finally(() => setPostsLoading(false));
   }, [wallet]);
+
+  // Fetch public referral stats
+  useEffect(() => {
+    fetch(`${API_BASE}/api/referral/stats/${wallet}`)
+      .then((r) => r.json())
+      .then(setReferralStats)
+      .catch(() => {});
+  }, [wallet]);
+
+  // Fetch private dashboard (owner only)
+  useEffect(() => {
+    if (!isOwn) return;
+    const token = localStorage.getItem(JWT_KEY);
+    if (!token) return;
+    fetch(`${API_BASE}/api/referral/code`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(() => fetch(`${API_BASE}/api/referral/dashboard`, { headers: { Authorization: `Bearer ${token}` } }))
+      .then((r) => r.json())
+      .then(setReferralDashboard)
+      .catch(() => {});
+  }, [isOwn]);
+
+  const handleWithdraw = async () => {
+    setWithdrawing(true);
+    try {
+      const token = localStorage.getItem(JWT_KEY);
+      const r = await fetch(`${API_BASE}/api/referral/withdraw`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (data.ok) {
+        alert(data.message);
+        setReferralDashboard((prev: any) => ({ ...prev, pendingBalance: 0, canWithdraw: false }));
+      } else {
+        alert(data.error);
+      }
+    } catch {
+      alert("Withdrawal failed");
+    }
+    setWithdrawing(false);
+  };
 
   // Ensure valid JWT, signing if needed
   async function ensureAuth(): Promise<string | null> {
@@ -506,6 +553,75 @@ Timestamp: ${Date.now()}`;
           </div>
         </div>
       </div>
+
+      {/* Referral Stats - public */}
+      {referralStats.hasReferralAccount && (
+        <div className="border border-[#1a2a1a] rounded-xl p-4">
+          <h3 className="text-[#00ff88] font-semibold mb-3">Referral Stats</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-gray-400 text-xs mb-1">All-time earnings</div>
+              <div className="text-white font-mono font-bold">{referralStats.totalEarned.toFixed(4)} SOL</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs mb-1">Users referred</div>
+              <div className="text-white font-bold">{referralStats.totalReferrals}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Referral Dashboard - owner only */}
+      {isOwn && (
+        <div className="border border-[#1a2a1a] rounded-xl p-4">
+          <h3 className="text-[#00ff88] font-semibold mb-3">Your Referral Dashboard</h3>
+          <div className="mb-3">
+            <div className="text-gray-400 text-xs mb-1">Your referral link</div>
+            <div className="flex items-center gap-2 bg-[#0f1f0f] rounded-lg p-2">
+              <code className="text-[#00ff88] text-sm flex-1 truncate">
+                {referralDashboard.referralLink || "Loading..."}
+              </code>
+              <button
+                onClick={() => { navigator.clipboard.writeText(referralDashboard.referralLink || ""); }}
+                className="text-gray-400 hover:text-white text-xs px-2 py-1 border border-[#1a2a1a] rounded"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <div className="text-gray-400 text-xs mb-1">Pending balance</div>
+              <div className="text-white font-mono font-bold text-lg">
+                {(referralDashboard.pendingBalance || 0).toFixed(4)} SOL
+              </div>
+              <div className="text-gray-500 text-xs">Min. 0.1 SOL to withdraw</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-xs mb-1">All-time earned</div>
+              <div className="text-white font-mono font-bold text-lg">
+                {(referralDashboard.totalEarned || 0).toFixed(4)} SOL
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleWithdraw}
+            disabled={!referralDashboard.canWithdraw || withdrawing}
+            className={`w-full py-2 rounded-lg font-semibold text-sm transition-all ${
+              referralDashboard.canWithdraw
+                ? "bg-[#00ff88] text-black hover:bg-[#00cc66]"
+                : "bg-[#1a2a1a] text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {withdrawing ? "Processing..." : `Withdraw ${(referralDashboard.pendingBalance || 0).toFixed(4)} SOL`}
+          </button>
+          {!referralDashboard.canWithdraw && (referralDashboard.pendingBalance || 0) < 0.1 && (
+            <p className="text-gray-500 text-xs text-center mt-2">
+              {(0.1 - (referralDashboard.pendingBalance || 0)).toFixed(4)} SOL more needed to withdraw
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Posts section */}
       <div>

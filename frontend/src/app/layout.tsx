@@ -20,6 +20,7 @@ import { ClientProviders } from "./ClientProviders";
 import { HeaderClient } from "@/components/HeaderClient";
 import { Footer } from "@/components/Footer";
 import { Suspense } from "react";
+import ReferralTracker from "@/components/ReferralTracker";
 import { Toaster } from "react-hot-toast";
 
 const BASE_URL = "https://jetforge.io";
@@ -185,6 +186,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <HeaderClient />
             </Suspense>
             <main className="relative mx-auto max-w-[1560px] px-4 py-6 pb-6 sm:px-5 sm:pb-24 lg:px-6">
+              <Suspense fallback={null}>
+                <ReferralTracker />
+              </Suspense>
               {children}
             </main>
             <Footer />

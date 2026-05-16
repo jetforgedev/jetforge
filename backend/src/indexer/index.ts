@@ -17,6 +17,33 @@ import {
 import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
 import { holdersCache } from "../holdersCache";
+
+// ─── Referral credit helper ─────────────────────────────────────────────────
+async function creditReferral(traderWallet: string, feeLamports: bigint): Promise<void> {
+  try {
+    // Platform gets 40% of the 1% fee. Referrer gets 25% of platform's cut = 10% of total fee
+    const REFERRAL_SHARE = 0.25;
+    const feeSol = Number(feeLamports) / 1e9;
+    const platformCut = feeSol * 0.40;
+    const referralAmount = platformCut * REFERRAL_SHARE;
+    if (referralAmount < 0.000001) return; // too small to credit
+
+    const link = await (prisma as any).referralLink.findUnique({ where: { referredWallet: traderWallet } });
+    if (!link) return;
+
+    await (prisma as any).referralAccount.updateMany({
+      where: { wallet: link.referrerWallet },
+      data: {
+        pendingBalance: { increment: referralAmount },
+        totalEarned: { increment: referralAmount },
+      },
+    });
+  } catch (err) {
+    console.warn('[referral] credit error:', err);
+  }
+}
+
+
 import { getSolanaConnection } from "../solana/connection";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
@@ -181,6 +208,9 @@ async function handleBuyEvent(
     ]);
     const volume24h = Number(vol24hResult._sum.solAmount ?? 0n) / 1e9;
 
+    // Credit referral earnings (non-blocking)
+    creditReferral(buyer, fee).catch(() => {});
+
     // Holder upsert then count (count must follow upsert).
     await (prisma as any).holder.upsert({
       where: { mint_wallet: { mint, wallet: buyer } },
@@ -327,6 +357,9 @@ async function handleSellEvent(
       }),
     ]);
     const volume24h = Number(vol24hResult._sum.solAmount ?? 0n) / 1e9;
+
+    // Credit referral earnings (non-blocking)
+    creditReferral(seller, fee).catch(() => {});
 
     // Decrement seller's balance then clean up zero rows.
     await (prisma as any).holder.upsert({
