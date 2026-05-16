@@ -20,7 +20,7 @@ export default function ReferralPage() {
         {/* Hero */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-[#0f2a0f] border border-[#00ff88]/20 rounded-full px-4 py-1.5 text-[#00ff88] text-sm mb-6">
-            \u{1F4B0} Passive Income on Solana
+            💰 Passive Income on Solana
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Earn SOL Every Time<br />
@@ -44,19 +44,19 @@ export default function ReferralPage() {
             {[
               {
                 step: '01',
-                icon: '\\uD83D\\uDD17',
+                icon: '🔗',
                 title: 'Get Your Link',
                 desc: 'Connect your wallet, go to your creator profile, and sign in. Your unique referral link is generated instantly.',
               },
               {
                 step: '02',
-                icon: '\\uD83D\\uDCE3',
+                icon: '📣',
                 title: 'Share It',
                 desc: 'Post your link on X (Twitter), Telegram, Discord — anywhere your audience is. Use our pre-written share templates or write your own.',
               },
               {
                 step: '03',
-                icon: '\\uD83D\\uDCB0',
+                icon: '💰',
                 title: 'Earn Forever',
                 desc: 'Every trade your referrals make earns you 10% of the platform fee. Earnings accumulate automatically. Withdraw anytime.',
               },
@@ -104,7 +104,7 @@ export default function ReferralPage() {
         <section className="mb-16">
           <div className="bg-gradient-to-br from-[#0f2a1f] to-[#0f1a0f] border border-[#00ff88]/20 rounded-2xl p-8">
             <div className="flex items-start gap-4">
-              <div className="text-4xl">\\uD83C\\uDF81</div>
+              <div className="text-4xl">🎁</div>
               <div>
                 <h2 className="text-xl font-bold mb-2">10% Cashback for New Users</h2>
                 <p className="text-gray-400 text-sm leading-relaxed mb-4">
@@ -131,22 +131,22 @@ export default function ReferralPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {[
               {
-                icon: '\\uD83D\\uDCCA',
+                icon: '📊',
                 title: 'Earnings Accumulate Automatically',
                 desc: 'Every trade your referrals make credits your balance in real time. No manual claiming needed — it just builds up.',
               },
               {
-                icon: '\\uD83D\\uDCB3',
+                icon: '💳',
                 title: 'Withdraw When Ready',
                 desc: 'Minimum withdrawal is 0.1 SOL. Request a withdrawal anytime from your creator profile — paid to your wallet within 24 hours.',
               },
               {
-                icon: '\\u23F0',
+                icon: '⏰',
                 title: '24-Hour Cooldown',
                 desc: 'There is a 24-hour cooldown between withdrawals to keep the system efficient. Earnings never expire.',
               },
               {
-                icon: '\\uD83D\\uDD12',
+                icon: '🔒',
                 title: 'Abuse Protection Built-In',
                 desc: 'Self-referrals, circular referrals, and wash trading are automatically blocked. The system is fair for everyone.',
               },
