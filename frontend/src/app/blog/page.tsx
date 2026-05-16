@@ -19,6 +19,13 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "jetforge-referral-program",
+    title: "Earn Passive SOL Income: JetForge's Referral Program Explained",
+    desc: "Share your referral link and earn 10% of platform fees from every trade your referrals make — forever. Here's how it works.",
+    tag: "Guide",
+    readTime: "5 min read",
+  },
+  {
     slug: "how-to-launch-a-token-on-solana",
     title: "How to Launch a Token on Solana in Under 60 Seconds",
     desc: "A step-by-step guide to creating and launching your own Solana SPL token using JetForge's fair-launch bonding curve. No coding required.",
@@ -71,7 +78,7 @@ export default function BlogPage() {
               {post.title}
             </h2>
             <p className="mt-2 text-sm text-white/50 leading-6">{post.desc}</p>
-            <div className="mt-4 text-xs text-[#00ff88] font-medium">Read article →</div>
+            <div className="mt-4 text-xs text-[#00ff88] font-medium">Read article &rarr;</div>
           </Link>
         ))}
       </div>

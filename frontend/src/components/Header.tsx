@@ -289,6 +289,7 @@ export function Header() {
     { href: "/launch", label: "Launch" },
     { href: "/leaderboard", label: "Leaderboard" },
     { href: "/creators", label: "Creators" },
+    { href: "/referral", label: "Referral" },
     ...(publicKey ? [{ href: `/portfolio/${publicKey.toString()}`, label: "Portfolio" }] : []),
   ];
 

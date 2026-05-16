@@ -315,6 +315,47 @@ GET  /api/stats                          # Platform stats (total tokens, 24h vol
 
 ---
 
+
+## Referral Program
+
+JetForge has a built-in referral system that lets creators earn passive income.
+
+### How It Works
+1. Creator gets a unique referral link from their profile page
+2. New user clicks the link -> registered as that creator's referral
+3. Every trade the referred user makes -> referrer earns **10% of platform fees**
+4. Referred user gets **10% cashback** on every trade for their first 30 days
+
+### Fee Split With Referral Active
+| Recipient | Share |
+|---|---|
+| Token creator vault | 40% (unchanged) |
+| Buyback vault | 20% (unchanged) |
+| Referrer (passive income) | 10% |
+| Referred user cashback (30d) | 10% |
+| Platform treasury | 20% |
+
+### Rules & Abuse Prevention
+- Minimum withdrawal: **0.1 SOL** (24h cooldown between withdrawals)
+- Self-referrals: blocked
+- Circular referrals (A->B, B->A): blocked
+- Maximum 50 new referrals registered per referrer per 24 hours
+- Minimum trade size: 0.05 SOL (dust trades ignored)
+- Cashback expires after 30 days
+
+### API Endpoints
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/referral/stats/:wallet` | Public | Public referral stats |
+| GET | `/api/referral/code` | JWT | Get/create referral account |
+| GET | `/api/referral/dashboard` | JWT | Private dashboard |
+| POST | `/api/referral/register` | None | Register referral link |
+| POST | `/api/referral/withdraw` | JWT | Request withdrawal |
+| GET | `/api/referral/cashback` | JWT | Cashback balance |
+| POST | `/api/referral/cashback/claim` | JWT | Claim cashback |
+
+Full documentation: [jetforge.io/referral](https://jetforge.io/referral)
+
 ## License
 
 MIT
