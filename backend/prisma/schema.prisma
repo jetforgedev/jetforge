@@ -14,6 +14,7 @@ model Token {
   symbol          String
   description     String?
   imageUrl        String?
+  metadataUri     String?
   websiteUrl      String?
   twitterUrl      String?
   telegramUrl     String?
@@ -87,9 +88,6 @@ model Comment {
   @@index([createdAt])
 }
 
-// Per-mint holder balances — maintained by the indexer on every buy/sell.
-// Replaces the expensive "SELECT … GROUP BY trader" fallback and the
-// multi-round-trip RPC path in GET /tokens/:mint/holders.
 model Holder {
   id        Int      @id @default(autoincrement())
   mint      String
@@ -101,11 +99,10 @@ model Holder {
   @@index([mint, balance])
 }
 
-// Social follow graph — wallet-to-wallet, no auth required (wallet IS identity)
 model Follow {
   id          String   @id @default(cuid())
-  follower    String   // wallet that is following
-  following   String   // wallet being followed (creator)
+  follower    String
+  following   String
   createdAt   DateTime @default(now())
 
   @@unique([follower, following])

@@ -14,7 +14,7 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@irys/sdk": "^0.2.11",
-    "@prisma/client": "^5.10.0",
+    "@prisma/client": "^5.22.0",
     "@raydium-io/raydium-sdk-v2": "^0.2.39-alpha",
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.91.0",
