@@ -81,13 +81,7 @@ export default async function TokenLayout({ children, params }: Props) {
         url: `${BASE_URL}/token/${mint}`,
         image: token.imageUrl || `${BASE_URL}/og-image.png`,
         brand: { "@type": "Brand", name: "JetForge" },
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: "4.5",
-          reviewCount: token.trades > 0 ? token.trades : 1,
-          bestRating: "5",
-          worstRating: "1",
-        },
+
         offers: {
           "@type": "Offer",
           priceCurrency: "USD",
