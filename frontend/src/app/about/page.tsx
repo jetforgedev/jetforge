@@ -40,7 +40,7 @@ const aboutJsonLd = {
     logo: "https://jetforge.io/logo.png",
     description:
       "Fair-launch Solana token launchpad powered by an on-chain bonding curve AMM. No presales, no team allocations. Transparent price discovery for everyone.",
-    foundingDate: "2024",
+    foundingDate: "2025",
     sameAs: [
       "https://x.com/jetforgeDev",
       "https://t.me/jetforgechat",

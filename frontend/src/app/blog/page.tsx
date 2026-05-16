@@ -23,7 +23,7 @@ const posts = [
     title: "How to Launch a Token on Solana in Under 60 Seconds",
     desc: "A step-by-step guide to creating and launching your own Solana SPL token using JetForge's fair-launch bonding curve. No coding required.",
     tag: "Guide",
-    readTime: "5 min read",
+    readTime: "8 min read",
   },
   {
     slug: "jetforge-vs-pumpfun",
@@ -31,6 +31,13 @@ const posts = [
     desc: "An honest side-by-side comparison of JetForge and pump.fun — fees, features, graduation thresholds, creator earnings, and anti-rug tools.",
     tag: "Comparison",
     readTime: "6 min read",
+  },
+  {
+    slug: "what-is-a-bonding-curve",
+    title: "What Is a Bonding Curve? How Solana Token Launchpads Work (2026)",
+    desc: "Bonding curves price tokens algorithmically — no market makers, no presales. See exactly how the constant-product math works and why it makes rug pulls structurally impossible.",
+    tag: "Education",
+    readTime: "10 min read",
   },
 ];
 

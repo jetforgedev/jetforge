@@ -50,7 +50,7 @@ const articleJsonLd = {
     logo: { "@type": "ImageObject", url: "https://jetforge.io/logo.png" },
   },
   datePublished: "2025-05-01",
-  dateModified: "2026-05-15",
+  dateModified: "2026-05-16",
   mainEntityOfPage: { "@type": "WebPage", "@id": "https://jetforge.io/blog/jetforge-vs-pumpfun" },
 };
 

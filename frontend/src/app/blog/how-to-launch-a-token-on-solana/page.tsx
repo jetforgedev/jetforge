@@ -47,7 +47,7 @@ const articleJsonLd = {
   description:
     "Step-by-step guide to creating and launching a Solana SPL token using JetForge fair-launch bonding curve launchpad. No coding required.",
   datePublished: "2025-05-01",
-  dateModified: "2026-05-15",
+  dateModified: "2026-05-16",
   url: "https://jetforge.io/blog/how-to-launch-a-token-on-solana",
   author: { "@type": "Organization", name: "JetForge Team" },
   publisher: {
