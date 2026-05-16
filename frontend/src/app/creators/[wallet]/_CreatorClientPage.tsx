@@ -626,58 +626,141 @@ Timestamp: ${Date.now()}`;
 
       {/* Referral Dashboard - owner only, requires auth */}
       {isOwn && !hasToken && (
-        <div className="border border-[#1a2a1a] rounded-xl p-4 mt-4 text-center">
-          <p className="text-gray-400 text-sm">Connect &amp; sign in to manage your referral dashboard</p>
+        <div className="border border-[#1a2a1a] rounded-xl p-5 mt-4 text-center">
+          <p className="text-gray-400 text-sm mb-3">Sign in with your wallet to access your referral dashboard</p>
+          <button
+            onClick={async () => {
+              const token = await ensureAuth();
+              if (token) {
+                setHasToken(true);
+                // Fetch referral data after sign-in
+                fetch(`${API_BASE}/api/referral/code`, { headers: { Authorization: `Bearer ${token}` } })
+                  .then(() => Promise.all([
+                    fetch(`${API_BASE}/api/referral/dashboard`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+                    fetch(`${API_BASE}/api/referral/stats/${wallet}`).then(r => r.json()),
+                  ]))
+                  .then(([dashboard, stats]) => {
+                    setReferralDashboard(dashboard);
+                    setReferralStats(stats);
+                  })
+                  .catch(() => {});
+              }
+            }}
+            className="bg-[#00ff88] text-black font-semibold px-6 py-2 rounded-lg hover:bg-[#00cc66] transition-all text-sm"
+          >
+            🔑 Sign in with Wallet
+          </button>
         </div>
       )}
       {isOwn && hasToken && (
-        <div className="border border-[#1a2a1a] rounded-xl p-4">
-          <h3 className="text-[#00ff88] font-semibold mb-3">Your Referral Dashboard</h3>
-          <div className="mb-3">
-            <div className="text-gray-400 text-xs mb-1">Your referral link</div>
-            <div className="flex items-center gap-2 bg-[#0f1f0f] rounded-lg p-2">
-              <code className="text-[#00ff88] text-sm flex-1 truncate">
-                {referralDashboard.referralLink || "Loading..."}
-              </code>
-              <button
-                onClick={() => { navigator.clipboard.writeText(referralDashboard.referralLink || ""); }}
-                className="text-gray-400 hover:text-white text-xs px-2 py-1 border border-[#1a2a1a] rounded"
-              >
-                Copy
-              </button>
-            </div>
+        <div className="border border-[#1a2a1a] rounded-xl p-5 mt-4">
+          <h3 className="text-[#00ff88] font-semibold mb-4 flex items-center gap-2">
+            <span>💰</span> Your Referral Dashboard
+          </h3>
+
+          {/* Referral Link + Share */}
+          <div className="mb-5">
+            <div className="text-gray-400 text-xs mb-2">Your referral link</div>
+            {referralDashboard.referralLink ? (
+              <>
+                <div className="flex items-center gap-2 bg-[#0f1a0f] border border-[#1a2a1a] rounded-lg p-3 mb-3">
+                  <code className="text-[#00ff88] text-sm flex-1 truncate font-mono">
+                    {referralDashboard.referralLink}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(referralDashboard.referralLink);
+                      alert('Referral link copied!');
+                    }}
+                    className="text-gray-400 hover:text-white text-xs px-3 py-1.5 border border-[#1a2a1a] rounded-lg hover:border-[#00ff88] transition-all whitespace-nowrap"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+                {/* Share buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      const text = encodeURIComponent(`🚀 Trade meme coins on JetForge and earn! Use my referral link to get 10% cashback on all your trades for 30 days:`);
+                      const url = encodeURIComponent(referralDashboard.referralLink);
+                      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+                    }}
+                    className="flex items-center gap-1.5 bg-black border border-[#333] text-white text-xs px-3 py-2 rounded-lg hover:border-white transition-all"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    Share on X
+                  </button>
+                  <button
+                    onClick={() => {
+                      const text = encodeURIComponent(`🚀 Trade meme coins on JetForge! Use my referral link to get 10% cashback on all trades for 30 days: ${referralDashboard.referralLink}`);
+                      window.open(`https://t.me/share/url?url=${encodeURIComponent(referralDashboard.referralLink)}&text=${text}`, '_blank');
+                    }}
+                    className="flex items-center gap-1.5 bg-[#0088cc] border border-[#0088cc] text-white text-xs px-3 py-2 rounded-lg hover:bg-[#006699] transition-all"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.869 4.326-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.829.941z"/></svg>
+                    Share on Telegram
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({
+                          title: 'JetForge Referral',
+                          text: '🚀 Trade meme coins and get 10% cashback for 30 days!',
+                          url: referralDashboard.referralLink,
+                        });
+                      } else {
+                        navigator.clipboard.writeText(referralDashboard.referralLink);
+                        alert('Link copied to clipboard!');
+                      }
+                    }}
+                    className="flex items-center gap-1.5 bg-[#1a2a1a] border border-[#1a2a1a] text-gray-300 text-xs px-3 py-2 rounded-lg hover:border-[#00ff88] hover:text-white transition-all"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    More
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-gray-500 text-sm">Generating your link...</div>
+            )}
           </div>
+
+          {/* Stats */}
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
+            <div className="bg-[#0f1a0f] rounded-lg p-3">
               <div className="text-gray-400 text-xs mb-1">Pending balance</div>
-              <div className="text-white font-mono font-bold text-lg">
-                {(referralDashboard.pendingBalance || 0).toFixed(4)} SOL
+              <div className="text-white font-mono font-bold text-xl">
+                {(referralDashboard.pendingBalance || 0).toFixed(4)}
+                <span className="text-gray-400 text-sm ml-1">SOL</span>
               </div>
-              <div className="text-gray-500 text-xs">Min. 0.1 SOL to withdraw</div>
+              <div className="text-gray-500 text-xs mt-1">Min. 0.1 SOL to withdraw</div>
             </div>
-            <div>
+            <div className="bg-[#0f1a0f] rounded-lg p-3">
               <div className="text-gray-400 text-xs mb-1">All-time earned</div>
-              <div className="text-white font-mono font-bold text-lg">
-                {(referralDashboard.totalEarned || 0).toFixed(4)} SOL
+              <div className="text-white font-mono font-bold text-xl">
+                {(referralDashboard.totalEarned || 0).toFixed(4)}
+                <span className="text-gray-400 text-sm ml-1">SOL</span>
               </div>
+              <div className="text-gray-500 text-xs mt-1">{referralDashboard.totalReferrals || 0} users referred</div>
             </div>
           </div>
+
+          {/* Withdraw button */}
           <button
             onClick={handleWithdraw}
             disabled={!referralDashboard.canWithdraw || withdrawing}
-            className={`w-full py-2 rounded-lg font-semibold text-sm transition-all ${
+            className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-all ${
               referralDashboard.canWithdraw
-                ? "bg-[#00ff88] text-black hover:bg-[#00cc66]"
-                : "bg-[#1a2a1a] text-gray-500 cursor-not-allowed"
+                ? 'bg-[#00ff88] text-black hover:bg-[#00cc66]'
+                : 'bg-[#0f1a0f] text-gray-500 cursor-not-allowed border border-[#1a2a1a]'
             }`}
           >
-            {withdrawing ? "Processing..." : `Withdraw ${(referralDashboard.pendingBalance || 0).toFixed(4)} SOL`}
+            {withdrawing ? 'Processing...' :
+              referralDashboard.canWithdraw
+                ? `Withdraw ${(referralDashboard.pendingBalance || 0).toFixed(4)} SOL`
+                : `Need ${Math.max(0, 0.1 - (referralDashboard.pendingBalance || 0)).toFixed(4)} SOL more to withdraw`
+            }
           </button>
-          {!referralDashboard.canWithdraw && (referralDashboard.pendingBalance || 0) < 0.1 && (
-            <p className="text-gray-500 text-xs text-center mt-2">
-              {(0.1 - (referralDashboard.pendingBalance || 0)).toFixed(4)} SOL more needed to withdraw
-            </p>
-          )}
         </div>
       )}
 
