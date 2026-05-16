@@ -106,6 +106,9 @@ export default function CreatorClientPage({ wallet }: { wallet: string }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [hasToken, setHasToken] = useState(false);
 
+  // Share message state
+  const [shareMessage, setShareMessage] = useState('💰 Every trade earns me SOL on JetForge.\n\nUse my link → get 10% cashback on every trade for 30 days.\n\nFree money. No catch. 👇');
+
   // Cashback state (for the connected viewer)
   const [cashback, setCashback] = useState<any>({ cashbackBalance: 0, cashbackEarned: 0, active: false, daysRemaining: 0, canClaim: false });
   const [claiming, setClaiming] = useState(false);
@@ -677,13 +680,34 @@ Timestamp: ${Date.now()}`;
                     📋 Copy
                   </button>
                 </div>
+                {/* Editable share message */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-gray-400 text-xs">Share message (editable)</div>
+                    <button
+                      onClick={() => setShareMessage('💰 Every trade earns me SOL on JetForge.\n\nUse my link → get 10% cashback on every trade for 30 days.\n\nFree money. No catch. 👇')}
+                      className="text-gray-500 hover:text-[#00ff88] text-xs transition-colors"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  <textarea
+                    value={shareMessage}
+                    onChange={e => setShareMessage(e.target.value)}
+                    rows={4}
+                    maxLength={280}
+                    className="w-full bg-[#0f1a0f] border border-[#1a2a1a] rounded-lg p-3 text-sm text-white resize-none focus:outline-none focus:border-[#00ff88] transition-colors"
+                    placeholder="Write your share message..."
+                  />
+                  <div className="text-right text-gray-600 text-xs mt-1">{shareMessage.length}/280</div>
+                </div>
+
                 {/* Share buttons */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap mb-5">
                   <button
                     onClick={() => {
-                      const text = encodeURIComponent(`🚀 Trade meme coins on JetForge and earn! Use my referral link to get 10% cashback on all your trades for 30 days:`);
-                      const url = encodeURIComponent(referralDashboard.referralLink);
-                      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+                      const fullText = encodeURIComponent(shareMessage + '\n\n' + referralDashboard.referralLink);
+                      window.open(`https://twitter.com/intent/tweet?text=${fullText}`, '_blank');
                     }}
                     className="flex items-center gap-1.5 bg-black border border-[#333] text-white text-xs px-3 py-2 rounded-lg hover:border-white transition-all"
                   >
@@ -692,8 +716,9 @@ Timestamp: ${Date.now()}`;
                   </button>
                   <button
                     onClick={() => {
-                      const text = encodeURIComponent(`🚀 Trade meme coins on JetForge! Use my referral link to get 10% cashback on all trades for 30 days: ${referralDashboard.referralLink}`);
-                      window.open(`https://t.me/share/url?url=${encodeURIComponent(referralDashboard.referralLink)}&text=${text}`, '_blank');
+                      const text = encodeURIComponent(shareMessage);
+                      const url = encodeURIComponent(referralDashboard.referralLink);
+                      window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
                     }}
                     className="flex items-center gap-1.5 bg-[#0088cc] border border-[#0088cc] text-white text-xs px-3 py-2 rounded-lg hover:bg-[#006699] transition-all"
                   >
@@ -702,15 +727,15 @@ Timestamp: ${Date.now()}`;
                   </button>
                   <button
                     onClick={() => {
+                      const fullMessage = shareMessage + '\n\n' + referralDashboard.referralLink;
                       if (navigator.share) {
                         navigator.share({
                           title: 'JetForge Referral',
-                          text: '🚀 Trade meme coins and get 10% cashback for 30 days!',
-                          url: referralDashboard.referralLink,
+                          text: fullMessage,
                         });
                       } else {
-                        navigator.clipboard.writeText(referralDashboard.referralLink);
-                        alert('Link copied to clipboard!');
+                        navigator.clipboard.writeText(fullMessage);
+                        alert('Message + link copied to clipboard!');
                       }
                     }}
                     className="flex items-center gap-1.5 bg-[#1a2a1a] border border-[#1a2a1a] text-gray-300 text-xs px-3 py-2 rounded-lg hover:border-[#00ff88] hover:text-white transition-all"
