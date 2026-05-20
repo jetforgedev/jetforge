@@ -105,13 +105,13 @@ const orgJsonLd = {
   logo: "https://jetforge.io/logo.png",
   description: "Fair-launch bonding curve token launchpad on Solana",
   sameAs: [
-    "https://twitter.com/JetForgeIO",
-    "https://github.com/jetforgeio",
+    "https://x.com/jetforgeDev",
+    "https://github.com/jetforgedev/jetforge",
     "https://www.wikidata.org/wiki/Q139801889",
   ],
   contactPoint: {
     "@type": "ContactPoint",
-    email: "itsdrsmith013@gmail.com",
+    email: "support@jetforge.io",
     contactType: "customer support",
   },
 };

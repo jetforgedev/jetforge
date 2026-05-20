@@ -30,7 +30,7 @@ const jsonLd = {
     url: "https://jetforge.io",
     logo: { "@type": "ImageObject", url: "https://jetforge.io/logo.png" },
     sameAs: [
-      "https://twitter.com/JetForgeIO",
+      "https://x.com/jetforgeDev",
       "https://github.com/jetforgeio",
     ],
   },
@@ -79,7 +79,7 @@ export default function PressPage() {
                 },
                 { label: "Website", value: "https://jetforge.io" },
                 { label: "App", value: "https://app.jetforge.io" },
-                { label: "Twitter / X", value: "@JetForgeIO" },
+                { label: "Twitter / X", value: "@jetforgeDev" },
               ].map(({ label, value }) => (
                 <div
                   key={label}
@@ -232,14 +232,14 @@ export default function PressPage() {
                 For press inquiries, interview requests, partnership opportunities, or listing questions:
               </p>
               <a
-                href="mailto:itsdrsmith013@gmail.com"
+                href="mailto:support@jetforge.io"
                 className="text-indigo-400 hover:text-indigo-300 font-medium text-lg transition-colors"
               >
-                itsdrsmith013@gmail.com
+                support@jetforge.io
               </a>
               <div className="mt-4 flex gap-4">
                 <a
-                  href="https://twitter.com/JetForgeIO"
+                  href="https://x.com/jetforgeDev"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors text-sm"

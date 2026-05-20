@@ -50,7 +50,7 @@ export default function SupportPage() {
             icon: "💻",
             title: "GitHub Issues",
             desc: "Found a bug? Open an issue on our GitHub repository.",
-            link: "https://github.com/jetforge",
+            link: "https://github.com/jetforgedev/jetforge",
             label: "Open Issue",
           },
           {

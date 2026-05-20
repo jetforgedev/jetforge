@@ -133,8 +133,8 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-4">
               To exercise these rights, contact us at{" "}
-              <a href="mailto:itsdrsmith013@gmail.com" className="text-indigo-400 hover:text-indigo-300">
-                itsdrsmith013@gmail.com
+              <a href="mailto:support@jetforge.io" className="text-indigo-400 hover:text-indigo-300">
+                support@jetforge.io
               </a>.
             </p>
           </section>
@@ -172,8 +172,8 @@ export default function PrivacyPage() {
               For privacy-related enquiries, data access requests, or complaints:
             </p>
             <p className="mt-2">
-              <a href="mailto:itsdrsmith013@gmail.com" className="text-indigo-400 hover:text-indigo-300">
-                itsdrsmith013@gmail.com
+              <a href="mailto:support@jetforge.io" className="text-indigo-400 hover:text-indigo-300">
+                support@jetforge.io
               </a>
             </p>
             <p className="mt-4 text-gray-500 text-sm">
