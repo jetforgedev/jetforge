@@ -14,13 +14,13 @@ fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     chat_id: CHAT_ID,
-    text: '<b>JetForge Bot Connected!</b>
+    text: `<b>JetForge Bot Connected!</b>
 
 Your Telegram alerts are working. You will now receive:
 New token launches
 Big buys (1+ SOL)
 Big sells (1+ SOL)
-Graduations to Raydium',
+Graduations to Raydium`,
     parse_mode: 'HTML',
   }),
 })
