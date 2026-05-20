@@ -17,6 +17,7 @@ import {
 import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
 import { holdersCache } from "../holdersCache";
+import * as telegram from "../services/telegramService";
 
 // ─── Referral credit helper ─────────────────────────────────────────────
 const REFERRAL_SHARE = 0.25;          // referrer gets 25% of platform's 40% cut = 10% of total fee
@@ -314,6 +315,16 @@ async function handleBuyEvent(
       );
     }
 
+    telegram.notifyBigBuy({
+      mint,
+      name: (tokenMeta as any)?.name ?? '',
+      symbol: (tokenMeta as any)?.symbol ?? '',
+      buyer,
+      solAmount,
+      tokenAmount,
+      newPriceSol: price,
+      reserveSol: Number(realSol) / 1e9,
+    }).catch(() => {});
     console.log(`[BUY] ${mint.slice(0, 8)}… buyer=${buyer.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);
   } catch (error) {
     console.error("Error handling buy event:", error);
@@ -446,6 +457,15 @@ async function handleSellEvent(
       holders: holdersCount,
     });
 
+    telegram.notifyBigSell({
+      mint,
+      name: (tokenMeta as any)?.name ?? '',
+      symbol: (tokenMeta as any)?.symbol ?? '',
+      seller,
+      solAmount,
+      newPriceSol: price,
+      reserveSol: Number(realSol) / 1e9,
+    }).catch(() => {});
     console.log(`[SELL] ${mint.slice(0, 8)}… seller=${seller.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);
   } catch (error) {
     console.error("Error handling sell event:", error);
@@ -485,6 +505,7 @@ async function handleTokenCreatedEvent(
     });
 
     broadcastTokenCreated(io, { mint, creator, name, symbol, timestamp });
+    telegram.notifyNewToken({ mint, name, symbol, creator }).catch(() => {});
     console.log(`[CREATE] ${symbol} (${mint.slice(0, 8)}…) by ${creator.slice(0, 8)}…`);
   } catch (error) {
     console.error("Error handling token created event:", error);
@@ -521,6 +542,18 @@ async function handleGraduationEvent(
       totalTrades: data.totalTrades.toString(),
       timestamp,
     });
+    // Fetch token name/symbol for graduation notification
+    const gradTokenMeta = tokenMetaCache.get(mint)
+      || await prisma.token.findUnique({ where: { mint }, select: { name: true, symbol: true, creator: true } });
+    if (gradTokenMeta) {
+      telegram.notifyGraduation({
+        mint,
+        name: (gradTokenMeta as any).name ?? '',
+        symbol: (gradTokenMeta as any).symbol ?? '',
+        creator,
+        totalRaisedSol: 85,
+      }).catch(() => {});
+    }
     console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} poolTokens=${Number(liquidityTokens)/1e6} burned=${Number(tokensBurned)/1e6}`);
 
     // Skip pool creation if poolId is already stored (idempotency for polling re-runs)
