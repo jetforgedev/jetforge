@@ -204,3 +204,154 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch creator profile" });
   }
 });
+
+import jwt from 'jsonwebtoken';
+const JWT_SECRET = process.env.JWT_SECRET || 'jetforge-secret-change-in-prod';
+
+function requireAuth(req: any, res: any, next: any) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const payload = jwt.verify(auth.slice(7), JWT_SECRET) as any;
+    req.walletFromToken = payload.wallet;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+// GET /api/creators/:wallet/profile
+creatorsRouter.get('/:wallet/profile', async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    let profile = await prisma.creatorProfile.findUnique({ where: { wallet } });
+    if (!profile) {
+      profile = { wallet, displayName: null, bio: null, avatarUrl: null, twitterUrl: null, websiteUrl: null, createdAt: new Date(), updatedAt: new Date() } as any;
+    }
+    const followerCount = await prisma.follow.count({ where: { following: wallet } });
+    const followingCount = await prisma.follow.count({ where: { follower: wallet } });
+    res.json({ ...profile, followerCount, followingCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/creators/:wallet/profile
+creatorsRouter.put('/:wallet/profile', requireAuth, async (req: any, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    if (req.walletFromToken !== wallet) return res.status(403).json({ error: 'Forbidden' });
+    const { displayName, bio, twitterUrl, websiteUrl } = req.body;
+    const profile = await prisma.creatorProfile.upsert({
+      where: { wallet },
+      update: {
+        ...(displayName !== undefined && { displayName: displayName?.slice(0, 30) || null }),
+        ...(bio !== undefined && { bio: bio?.slice(0, 160) || null }),
+        ...(twitterUrl !== undefined && { twitterUrl: twitterUrl || null }),
+        ...(websiteUrl !== undefined && { websiteUrl: websiteUrl || null }),
+      },
+      create: { wallet, displayName: displayName?.slice(0, 30), bio: bio?.slice(0, 160), twitterUrl, websiteUrl },
+    });
+    res.json(profile);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/creators/:wallet/avatar
+creatorsRouter.post('/:wallet/avatar', requireAuth, async (req: any, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    if (req.walletFromToken !== wallet) return res.status(403).json({ error: 'Forbidden' });
+    const { avatarUrl } = req.body;
+    if (!avatarUrl) return res.status(400).json({ error: 'avatarUrl required' });
+    const profile = await prisma.creatorProfile.upsert({
+      where: { wallet },
+      update: { avatarUrl },
+      create: { wallet, avatarUrl },
+    });
+    res.json(profile);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/creators/:wallet/posts
+creatorsRouter.get('/:wallet/posts', async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    const posts = await prisma.creatorPost.findMany({
+      where: { wallet },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    res.json(posts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/creators/:wallet/posts
+creatorsRouter.post('/:wallet/posts', requireAuth, async (req: any, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    if (req.walletFromToken !== wallet) return res.status(403).json({ error: 'Forbidden' });
+    const { content, imageUrl } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const post = await prisma.creatorPost.create({
+      data: { wallet, content: content.slice(0, 500), imageUrl },
+    });
+    res.json(post);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/creators/:wallet/posts/:id
+creatorsRouter.delete('/:wallet/posts/:id', requireAuth, async (req: any, res: Response) => {
+  try {
+    const { wallet, id } = req.params;
+    if (req.walletFromToken !== wallet) return res.status(403).json({ error: 'Forbidden' });
+    await prisma.creatorPost.delete({ where: { id, wallet } });
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/creators/:wallet/follow  (toggle)
+creatorsRouter.post('/:wallet/follow', requireAuth, async (req: any, res: Response) => {
+  try {
+    const followingWallet = req.params.wallet;
+    const followerWallet = req.walletFromToken;
+    if (followerWallet === followingWallet) return res.status(400).json({ error: 'Cannot follow yourself' });
+
+    const existing = await prisma.follow.findUnique({
+      where: { follower_following: { follower: followerWallet, following: followingWallet } }
+    });
+    if (existing) {
+      await prisma.follow.delete({ where: { follower_following: { follower: followerWallet, following: followingWallet } } });
+      res.json({ following: false });
+    } else {
+      await prisma.follow.create({ data: { follower: followerWallet, following: followingWallet } });
+      res.json({ following: true });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/creators/:wallet/follow-status?viewer=WALLET
+creatorsRouter.get('/:wallet/follow-status', async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    const { viewer } = req.query as { viewer: string };
+    if (!viewer) return res.json({ following: false });
+    const existing = await prisma.follow.findUnique({
+      where: { follower_following: { follower: viewer, following: wallet } }
+    });
+    res.json({ following: !!existing });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});

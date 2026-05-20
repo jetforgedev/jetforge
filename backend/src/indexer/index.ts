@@ -17,6 +17,60 @@ import {
 import { createRaydiumPool } from "../services/raydiumService";
 import { callGraduateInstruction } from "../services/graduateKeeper";
 import { holdersCache } from "../holdersCache";
+import * as telegram from "../services/telegramService";
+
+// ─── Referral credit helper ─────────────────────────────────────────────
+const REFERRAL_SHARE = 0.25;          // referrer gets 25% of platform's 40% cut = 10% of total fee
+const CASHBACK_SHARE = 0.25;          // referred user gets 25% of platform's cut = 10% of total fee
+const CASHBACK_DAYS = 30;             // cashback active for 30 days after referral registration
+const MIN_TRADE_SOL = 0.05;           // minimum trade size to earn referral credit
+
+async function creditReferral(traderWallet: string, feeLamports: bigint): Promise<void> {
+  try {
+    const feeSol = Number(feeLamports) / 1e9;
+    const platformCut = feeSol * 0.40; // platform's 40% of the 1% fee
+
+    // Rule: minimum trade size (fee is ~1% of trade, so min fee = 0.0005 SOL)
+    if (feeSol < MIN_TRADE_SOL * 0.01) return;
+
+    // Find if this trader was referred
+    const link = await (prisma as any).referralLink.findUnique({ where: { referredWallet: traderWallet } });
+
+    // --- REFERRER CREDIT ---
+    if (link) {
+      const referralAmount = platformCut * REFERRAL_SHARE; // 10% of total fee
+
+      if (referralAmount > 0) {
+        await (prisma as any).referralAccount.updateMany({
+          where: { wallet: link.referrerWallet },
+          data: {
+            pendingBalance: { increment: referralAmount },
+            totalEarned: { increment: referralAmount },
+          },
+        });
+      }
+
+      // --- REFERRED USER CASHBACK (first 30 days only) ---
+      const daysSinceReferral = (Date.now() - new Date(link.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceReferral <= CASHBACK_DAYS) {
+        const cashbackAmount = platformCut * CASHBACK_SHARE; // 10% of total fee back to referred user
+        if (cashbackAmount > 0) {
+          await (prisma as any).referralLink.update({
+            where: { referredWallet: traderWallet },
+            data: {
+              cashbackBalance: { increment: cashbackAmount },
+              cashbackEarned: { increment: cashbackAmount },
+            },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[referral] credit error:', err);
+  }
+}
+
+
 import { getSolanaConnection } from "../solana/connection";
 import { getMinuteBucketStart } from "../utils/timeBucket";
 
@@ -191,6 +245,9 @@ async function handleBuyEvent(
     });
     const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
 
+    // Credit referral earnings (non-blocking)
+    creditReferral(buyer, fee).catch(() => {});
+
     // Holder upsert then count (count must follow upsert).
     await (prisma as any).holder.upsert({
       where: { mint_wallet: { mint, wallet: buyer } },
@@ -268,6 +325,16 @@ async function handleBuyEvent(
       );
     }
 
+    telegram.notifyBigBuy({
+      mint,
+      name: (tokenMeta as any)?.name ?? '',
+      symbol: (tokenMeta as any)?.symbol ?? '',
+      buyer,
+      solAmount,
+      tokenAmount,
+      newPriceSol: price,
+      reserveSol: Number(realSol) / 1e9,
+    }).catch(() => {});
     console.log(`[BUY] ${mint.slice(0, 8)}… buyer=${buyer.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);
   } catch (error) {
     console.error("Error handling buy event:", error);
@@ -347,6 +414,9 @@ async function handleSellEvent(
     });
     const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
 
+    // Credit referral earnings (non-blocking)
+    creditReferral(seller, fee).catch(() => {});
+
     // Decrement seller's balance then clean up zero rows.
     await (prisma as any).holder.upsert({
       where: { mint_wallet: { mint, wallet: seller } },
@@ -406,6 +476,15 @@ async function handleSellEvent(
       holders: holdersCount,
     });
 
+    telegram.notifyBigSell({
+      mint,
+      name: (tokenMeta as any)?.name ?? '',
+      symbol: (tokenMeta as any)?.symbol ?? '',
+      seller,
+      solAmount,
+      newPriceSol: price,
+      reserveSol: Number(realSol) / 1e9,
+    }).catch(() => {});
     console.log(`[SELL] ${mint.slice(0, 8)}… seller=${seller.slice(0, 8)}… sol=${Number(solAmount) / 1e9}`);
   } catch (error) {
     console.error("Error handling sell event:", error);
@@ -445,6 +524,7 @@ async function handleTokenCreatedEvent(
     });
 
     broadcastTokenCreated(io, { mint, creator, name, symbol, timestamp });
+    telegram.notifyNewToken({ mint, name, symbol, creator }).catch(() => {});
     console.log(`[CREATE] ${symbol} (${mint.slice(0, 8)}…) by ${creator.slice(0, 8)}…`);
   } catch (error) {
     console.error("Error handling token created event:", error);
@@ -481,6 +561,18 @@ async function handleGraduationEvent(
       totalTrades: data.totalTrades.toString(),
       timestamp,
     });
+    // Fetch token name/symbol for graduation notification
+    const gradTokenMeta = tokenMetaCache.get(mint)
+      || await prisma.token.findUnique({ where: { mint }, select: { name: true, symbol: true, creator: true } });
+    if (gradTokenMeta) {
+      telegram.notifyGraduation({
+        mint,
+        name: (gradTokenMeta as any).name ?? '',
+        symbol: (gradTokenMeta as any).symbol ?? '',
+        creator,
+        totalRaisedSol: 85,
+      }).catch(() => {});
+    }
     console.log(`[GRADUATE] ${mint.slice(0, 8)}… SOL=${Number(liquiditySol)/1e9} poolTokens=${Number(liquidityTokens)/1e6} burned=${Number(tokensBurned)/1e6}`);
 
     // Skip pool creation if poolId is already stored (idempotency for polling re-runs)

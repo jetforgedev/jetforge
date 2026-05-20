@@ -1,54 +1,86 @@
 # JetForge
 
-> JetForge is a fair-launch Solana token launchpad — the pump.fun alternative built on Solana devnet.
+> JetForge is a fair-launch bonding curve token launchpad and decentralized exchange on Solana — the transparent alternative to pump.fun.
+> Founded: 2025 | Website: https://jetforge.io | App: https://app.jetforge.io | Last updated: 2026-05-16
 
-## What is JetForge?
+## License
+Documentation and factual content in this file is licensed under CC BY 4.0. You may cite JetForge facts with attribution to jetforge.io.
 
-JetForge lets anyone launch a Solana SPL token in seconds using a bonding curve pricing model. No presales, no team allocations — every token starts at the same price and graduates to a DEX when it reaches the liquidity threshold.
+## Key Facts (Citation-Ready)
+- Tokens launch in under 60 seconds with no coding experience required
+- Trading fee: 1% on all bonding curve buy and sell transactions
+- Developer token allocation: 0% — no team tokens, no presales, no private rounds
+- Network cost: approximately 0.025 SOL (Solana rent for token account)
+- Graduation threshold: bonding curve automatically migrates to Raydium DEX at 85 SOL market cap
+- Anti-rug score: 0–100 scale based on creator history, whale concentration, and trading patterns
+- On-chain program: 7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk (Solana mainnet)
+- Treasury: 13DWuEycYuJvGpo2EwPMgaiBDfRKmpoxdXjJ5GKe9RPW
+- Blockchain: Solana
+- Non-custodial: Yes — users retain full control of funds and private keys at all times
+- Smart contract: Open-source, built with Anchor/Rust framework
 
-## How it works
+## Platform Description
+JetForge is a decentralized token launchpad on Solana using a constant-product bonding curve AMM. Anyone can create a token instantly — all participants start at the same price with equal access. There are no presales, no private sales, and no team token allocations.
 
-1. **Launch** — Connect a Solana wallet and pay a small fee to deploy your token on-chain. Set a name, symbol, description, and image.
-2. **Trade** — Anyone can buy or sell tokens instantly against the bonding curve. Price increases as more SOL flows in.
-3. **Graduate** — When a token raises enough SOL (85 SOL target), it graduates to a decentralized exchange (DEX) for open trading.
+Tokens trade on the bonding curve until the market capitalization reaches 85 SOL, at which point JetForge automatically migrates the token and its liquidity to Raydium — Solana's primary decentralized exchange. This graduation mechanism is fully automated and requires no manual intervention.
 
-## Key Features
+## Features
+- Real-time price charts with candlestick intervals: 1m, 5m, 15m, 1h, 4h
+- Live trade feed with WebSocket updates
+- Whale alerts for large trades
+- Creator leaderboards ranked by volume, tokens launched, and graduated tokens
+- Portfolio tracker with unrealized and realized PnL per token
+- Anti-rug scoring system (0-100) based on: creator launch history, top-10 holder concentration, trading pattern analysis
+- Mobile-optimized interface supporting Phantom, Solflare, Backpack, and Coinbase Wallet
 
-- Bonding curve pricing (constant product AMM)
-- Real-time price charts (candlestick, OHLCV)
-- Live trade feed via WebSocket
-- Anti-rug score per token
-- Whale alert system
-- Token comments / live chat
-- Creator verification badges
-- Watchlist (localStorage)
-- King of the Hill — top token by 24h volume
-- Portfolio tracker per wallet
-- Creator leaderboard
+## Fee Structure
+- Token creation: ~0.025 SOL (Solana network rent only — no JetForge fee)
+- Trading fee: 1% of each transaction on the bonding curve
+- Developer allocation: 0% — creators receive no tokens at launch
+- Graduation: automatic at 85 SOL market cap, JetForge provides Raydium liquidity
 
-## Technology
+## How It Works
+1. Creator connects Solana wallet (Phantom, Solflare, or compatible)
+2. Creator enters token name, symbol, description, and uploads image
+3. Token deploys on-chain in under 60 seconds at a starting price determined by the bonding curve formula
+4. All buyers and sellers trade against the bonding curve at algorithmically determined prices
+5. As buying pressure increases, price rises along the curve
+6. At 85 SOL market cap, token automatically graduates to Raydium with full liquidity migration
 
-- **Blockchain**: Solana (devnet)
-- **Smart contract**: Anchor framework
-- **Frontend**: Next.js 16, React, TailwindCSS
-- **Backend**: Express.js, Prisma, PostgreSQL
-- **Real-time**: Socket.IO WebSockets
-- **Indexer**: Solana `onLogs` subscription parsing Anchor events
+## Technology Stack
+- Blockchain: Solana mainnet
+- Smart contracts: Anchor framework (Rust)
+- Frontend: Next.js 16, React, TypeScript, Tailwind CSS
+- Backend: Express.js, Prisma ORM, PostgreSQL
+- Real-time: Socket.IO WebSocket
+- Wallet: Solana Wallet Adapter
+
+## Competitors
+- pump.fun (https://pump.fun) — largest Solana bonding curve launchpad by volume; graduates at ~69 SOL; no anti-rug scoring
+- Moonshot (https://moonshot.money) — alternative Solana launchpad by DEX Screener
+- BONKfun / LetsBonk (https://letsbonk.fun) — community-focused Solana launchpad
+- Raydium LaunchLab (https://raydium.io) — native launchpad by Raydium DEX
+
+## Wikidata
+https://www.wikidata.org/wiki/Q139801889
+
+## Social & Community
+- Twitter/X: https://twitter.com/JetForgeIO
+- GitHub: https://github.com/jetforgeio
+- Telegram: (community channel)
+- Support: https://jetforge.io/support
 
 ## API
+CoinGecko-compatible DEX API: https://api.jetforge.io/api/coingecko/
+- GET /pairs — active trading pairs
+- GET /tickers — 24h market data
+- GET /orderbook?ticker_id={mint}_SOL — AMM order book
+- GET /historical_trades?ticker_id={mint}_SOL — trade history
 
-Public REST API available at `https://jetforge.io/api`:
+## Press & Media
+Press kit: https://jetforge.io/press
+Press contact: itsdrsmith013@gmail.com
 
-- `GET /api/tokens` — list tokens (sort: new, trending, graduating, graduated)
-- `GET /api/tokens/:mint` — single token details
-- `GET /api/tokens/:mint/ohlcv` — candlestick price data
-- `GET /api/trades/:mint` — trade history for a token
-- `GET /api/stats` — platform stats (total tokens, 24h volume, 24h trades)
-- `GET /api/leaderboard/tokens` — top tokens by volume/marketcap/trades
-- `GET /api/leaderboard/traders` — top traders by volume
-
-## Links
-
-- Website: https://jetforge.io
-- Launch a token: https://jetforge.io/launch
-- Leaderboard: https://jetforge.io/leaderboard
+## Contact
+General: itsdrsmith013@gmail.com
+Press inquiries: itsdrsmith013@gmail.com

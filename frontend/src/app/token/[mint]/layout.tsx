@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
     if (!res.ok) throw new Error("not found");
     const token = await res.json();
 
-    const title = `${token.name} (${token.symbol}) — Trade on JetForge`;
+    const title = `${token.name} (${token.symbol})`;
     const description = `Trade ${token.name} ($${token.symbol}) on JetForge. Market cap: ${Number(token.marketCapSol).toFixed(2)} SOL. ${token.isGraduated ? "Graduated to DEX." : `Bonding curve ${Math.min(100, token.graduationProgress).toFixed(1)}% complete.`} ${token.description ? token.description.slice(0, 120) : ""}`.trim();
     const image = token.imageUrl || "/og-image.png";
 
@@ -29,65 +29,82 @@ export async function generateMetadata({ params }: { params: Promise<{ mint: str
         url: `${BASE_URL}/token/${mint}`,
         title,
         description,
-        images: [{ url: image, width: 1200, height: 630, alt: `${token.name} on JetForge` }],
+        images: [
+      { url: `https://app.jetforge.io/og?mint=${mint}`, width: 1200, height: 630, alt: `${token.name} on JetForge` },
+    ],
         siteName: "JetForge",
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: [image],
+        images: [`https://app.jetforge.io/og?mint=${mint}`],
       },
       alternates: { canonical: `${BASE_URL}/token/${mint}` },
     };
   } catch {
     return {
-      title: "Token — JetForge",
-      description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
-    };
+    title: "Token \u{1F680} JetForge",
+    description: "Trade Solana tokens on JetForge, the fair-launch bonding curve platform.",
+    openGraph: {
+      images: [{ url: "https://app.jetforge.io/og", width: 1200, height: 630 }],
+    },
+  };
   }
 }
 
 export default async function TokenLayout({ children, params }: Props) {
   const { mint } = await params;
   let tokenJsonLd: object | null = null;
+  let breadcrumbJsonLd: object | null = null;
 
   try {
     const res = await fetch(`${API_URL}/tokens/${mint}`, { next: { revalidate: 60 } });
     if (res.ok) {
       const token = await res.json();
+
+      breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "JetForge", item: BASE_URL },
+          { "@type": "ListItem", position: 2, name: "Tokens",   item: `${BASE_URL}/tokens` },
+          { "@type": "ListItem", position: 3, name: `${token.name} (${token.symbol})`, item: `${BASE_URL}/token/${mint}` },
+        ],
+      };
+
       tokenJsonLd = {
         "@context": "https://schema.org",
-        "@type": "Product",
+        "@type": "FinancialProduct",
         name: `${token.name} (${token.symbol})`,
         description: token.description || `${token.name} is a Solana token trading on JetForge bonding curve.`,
         url: `${BASE_URL}/token/${mint}`,
         image: token.imageUrl || `${BASE_URL}/og-image.png`,
         brand: { "@type": "Brand", name: "JetForge" },
-        offers: {
-          "@type": "Offer",
-          priceCurrency: "SOL",
-          price: token.marketCapSol,
-          availability: token.isGraduated
-            ? "https://schema.org/Discontinued"
-            : "https://schema.org/InStock",
-          url: `${BASE_URL}/token/${mint}`,
-        },
+
+        feesAndCommissionsSpecification: "1% trading fee on all bonding curve buy and sell transactions. No listing fees or developer token allocations.",
       };
     }
   } catch {}
 
+  const esc = (obj: object) =>
+    JSON.stringify(obj)
+      .replace(/</g, "\u003c")
+      .replace(/>/g, "\u003e")
+      .replace(/&/g, "\u0026");
+
   return (
     <>
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: esc(breadcrumbJsonLd) }}
+        />
+      )}
       {tokenJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-          __html: JSON.stringify(tokenJsonLd)
-            .replace(/</g, "\\u003c")
-            .replace(/>/g, "\\u003e")
-            .replace(/&/g, "\\u0026"),
-        }}
+          dangerouslySetInnerHTML={{ __html: esc(tokenJsonLd) }}
         />
       )}
       {children}

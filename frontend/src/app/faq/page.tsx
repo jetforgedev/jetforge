@@ -1,89 +1,95 @@
-"use client";
-import React, { useState } from "react";
+import type { Metadata } from "next";
+import FaqAccordion from "./FaqAccordion";
 
-const FAQS = [
-  {
-    q: "What is JetForge?",
-    a: "JetForge is a decentralized token launchpad on Solana. Anyone can create a token with a bonding curve — a smart contract that automatically sets the price based on supply and demand. No presales, no VC allocations. Fair launch for everyone.",
-  },
-  {
-    q: "How does the bonding curve work?",
-    a: "We use a constant product formula (x × y = k). As more people buy, the price increases. As people sell, the price decreases. The curve starts at ~0.000028 SOL per token and rises as the market cap grows toward the 0.5 SOL graduation threshold.",
-  },
-  {
-    q: "What happens when a token graduates?",
-    a: "When a token raises 0.5 SOL on the bonding curve, it graduates to a DEX (Raydium/Orca). The SOL and reserve tokens are used to create a permanent liquidity pool. Trading then continues on the DEX at the market price. The token creator receives 5% of raised SOL (~0.025 SOL) as a graduation reward.",
-  },
-  {
-    q: "Can the token creator rug pull?",
-    a: "No. The bonding curve is immutable — creators cannot withdraw SOL from it. All tokens are minted to the bonding curve vault, not the creator's wallet. The only thing a creator can do is buy their own token early (visible in Dev Holdings on each token page).",
-  },
-  {
-    q: "What fees does JetForge charge?",
-    a: "Every trade has a 1% fee. This is split: 40% to the token creator, 40% to the platform treasury, and 20% to a buyback-and-burn vault. The buyback vault automatically burns tokens when it accumulates 0.5 SOL, reducing supply over time.",
-  },
-  {
-    q: "What wallet do I need?",
-    a: "JetForge supports Phantom wallet on Solana devnet. Install the Phantom browser extension, fund your wallet with devnet SOL (use Solana's faucet at faucet.solana.com), then connect via the 'Select Wallet' button.",
-  },
-  {
-    q: "How do I get devnet SOL for testing?",
-    a: "Visit faucet.solana.com, enter your wallet address, and request devnet SOL. You can also run `solana airdrop 2 YOUR_WALLET_ADDRESS --url devnet` in the terminal.",
-  },
-  {
-    q: "How much does it cost to create a token?",
-    a: "Creating a token costs approximately 0.025 SOL in Solana rent fees (for mint account, bonding curve state, token vaults, and metadata). This is a one-time cost paid to the Solana network, not to JetForge.",
-  },
-  {
-    q: "What is slippage and how do I set it?",
-    a: "Slippage is the maximum price difference you'll accept between when you submit a trade and when it executes. Default is 1%. You can adjust it in the trading panel. Higher slippage = more likely to succeed but potentially worse price.",
-  },
-  {
-    q: "Why did my transaction fail?",
-    a: "Common reasons: insufficient SOL balance (including fees), slippage exceeded (price moved before your tx confirmed), network congestion, or RPC issues. Try increasing slippage tolerance or waiting for the network to clear.",
-  },
-  {
-    q: "Is JetForge audited?",
-    a: "The smart contracts have not been formally audited by a third party yet. Use the platform with caution and only invest amounts you're comfortable losing. An audit is planned before mainnet launch.",
-  },
-  {
-    q: "When is mainnet launch?",
-    a: "JetForge is currently on Solana devnet for testing. Mainnet launch timing will be announced on our social channels after thorough testing and a security audit.",
-  },
-];
+export const dynamic = 'force-static';
 
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-[#1a1a1a] rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[#111] transition-colors"
-      >
-        <span className="text-white text-sm font-medium">{q}</span>
-        <span className={`text-[#555] text-lg transition-transform ${open ? "rotate-45" : ""}`}>+</span>
-      </button>
-      {open && (
-        <div className="px-5 pb-4 text-[#888] text-sm leading-relaxed border-t border-[#1a1a1a] pt-3">
-          {a}
-        </div>
-      )}
-    </div>
-  );
-}
+export const metadata: Metadata = {
+  title: "FAQ — JetForge Help & Common Questions",
+  description:
+    "Answers to the most common questions about JetForge: how bonding curves work, token creation, fees, wallet support, graduation, and trading on Solana.",
+  openGraph: {
+    title: "FAQ — JetForge Help & Common Questions",
+    description:
+      "Everything you need to know about launching and trading tokens on JetForge.",
+    url: "https://jetforge.io/faq",
+    siteName: "JetForge",
+    images: [{ url: "https://jetforge.io/og-image.jpg", width: 1200, height: 630 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FAQ — JetForge Help & Common Questions",
+    description: "Common questions about JetForge token launches on Solana.",
+    images: ["https://jetforge.io/og-image.jpg"],
+  },
+  alternates: { canonical: "https://jetforge.io/faq" },
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is JetForge?",
+      "acceptedAnswer": { "@type": "Answer", "text": "JetForge is a fair-launch token launchpad on Solana. Anyone can create and trade tokens using an automated bonding curve AMM, with no presales, no team allocations, and automatic graduation to Raydium at 85 SOL market cap." }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does it cost to launch a token on JetForge?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Launching a token costs approximately 0.025 SOL in Solana network rent. There are no listing fees or developer token allocations. JetForge charges a 1% trading fee on each buy and sell transaction on the bonding curve." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a bonding curve?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A bonding curve is an automated market maker (AMM) where the token price increases as more people buy and decreases as people sell. The price is determined mathematically by the ratio of SOL to tokens in the pool, ensuring a fair price discovery without order books." }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens when a token graduates?",
+      "acceptedAnswer": { "@type": "Answer", "text": "When a token reaches 85 SOL in market capitalization on the bonding curve, it automatically graduates to Raydium — Solana's largest decentralised exchange. JetForge provides the initial liquidity for the Raydium pool. The token can then be traded on Raydium by anyone." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is JetForge safe to use?",
+      "acceptedAnswer": { "@type": "Answer", "text": "JetForge is fully non-custodial — we never hold your funds or private keys. The platform uses open-source smart contracts deployed on Solana. Each token has an anti-rug score (0-100) based on creator history, whale concentration, and trading patterns. However, all token trading carries financial risk, and smart contracts have not been formally audited by a third party." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need coding experience to launch a token?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No coding experience is required. JetForge is a fully no-code platform. You only need a Solana wallet (Phantom or Solflare), at least 0.03 SOL to cover network fees, and a token name and symbol. The entire launch process takes under 60 seconds." }
+    },
+    {
+      "@type": "Question",
+      "name": "What wallets does JetForge support?",
+      "acceptedAnswer": { "@type": "Answer", "text": "JetForge supports all major Solana wallets including Phantom, Solflare, Backpack, Coinbase Wallet, and any wallet using the Solana Wallet Adapter standard. Both desktop browser extensions and mobile wallets are supported." }
+    },
+    {
+      "@type": "Question",
+      "name": "How is JetForge different from pump.fun?",
+      "acceptedAnswer": { "@type": "Answer", "text": "JetForge and pump.fun are both Solana bonding curve launchpads, but JetForge offers additional features including multi-interval price charts (1m, 5m, 15m, 1h, 4h), whale alerts, an anti-rug scoring system, creator leaderboards, and a portfolio PnL tracker. Both charge 1% trading fees. JetForge graduates tokens at 85 SOL market cap while pump.fun graduates at approximately 69 SOL bonding curve fill." }
+    }
+  ]
+};
 
 export default function FaqPage() {
   return (
-    <div className="max-w-3xl mx-auto py-10 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-2">Frequently Asked Questions</h1>
-        <p className="text-[#555] text-sm">Everything you need to know about JetForge</p>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <div className="max-w-3xl mx-auto py-10 space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Frequently Asked Questions
+          </h1>
+          <p className="text-[#555] text-sm">
+            Everything you need to know about JetForge and Solana token launches.
+          </p>
+        </div>
+        <FaqAccordion />
       </div>
-      <div className="space-y-3">
-        {FAQS.map((faq) => (
-          <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-        ))}
-      </div>
-    </div>
+    </>
   );
 }

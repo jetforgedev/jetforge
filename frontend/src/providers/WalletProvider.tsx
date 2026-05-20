@@ -7,24 +7,18 @@ import {
 } from "@solana/wallet-adapter-react";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { WalletModalProvider as _WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { clusterApiUrl } from "@solana/web3.js";
+import "@solana/wallet-adapter-react-ui/styles.css";
 
-// Cast to avoid React 18.3 / wallet-adapter FC return type mismatch
 const ConnectionProvider = _ConnectionProvider as React.ComponentType<any>;
 const WalletProvider = _WalletProvider as React.ComponentType<any>;
 const WalletModalProvider = _WalletModalProvider as React.ComponentType<any>;
-import { clusterApiUrl } from "@solana/web3.js";
 
-// Import wallet adapter CSS
-import "@solana/wallet-adapter-react-ui/styles.css";
-
-interface AppWalletProviderProps {
-  children: ReactNode;
-}
+interface AppWalletProviderProps { children: ReactNode; }
 
 export const AppWalletProvider: FC<AppWalletProviderProps> = ({ children }) => {
-  // DEVNET-TEST: defaults to Devnet when NEXT_PUBLIC_NETWORK is not set.
-  // BEFORE MAINNET: set NEXT_PUBLIC_NETWORK=mainnet-beta in frontend/.env.local
   const network =
     (process.env.NEXT_PUBLIC_NETWORK as WalletAdapterNetwork) ||
     WalletAdapterNetwork.Devnet;
@@ -37,7 +31,7 @@ export const AppWalletProvider: FC<AppWalletProviderProps> = ({ children }) => {
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
-      // Solflare auto-registers via Wallet Standard — no explicit adapter needed
+      new SolflareWalletAdapter(),
     ],
     []
   );

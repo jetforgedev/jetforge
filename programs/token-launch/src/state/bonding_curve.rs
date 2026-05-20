@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::errors::TokenLaunchError;
 
 /// Initial virtual SOL reserves (30 SOL in lamports)
 pub const INITIAL_VIRTUAL_SOL: u64 = 30_000_000_000;
@@ -18,9 +19,9 @@ pub const REAL_TOKEN_RESERVES_INIT: u64 = 700_000_000_000_000;
 pub const RESERVE_TOKEN_AMOUNT: u64 = 300_000_000_000_000;
 
 /// Graduation threshold in lamports.
-/// DEVNET-TEST: 0.5 SOL for rapid flow testing.
-/// BEFORE MAINNET: recompile with 85_000_000_000 (85 SOL) and redeploy program.
-pub const GRADUATION_THRESHOLD: u64 = 500_000_000;
+/// MAINNET-READY: 85 SOL graduation threshold.
+/// Matches pump.fun economics — tokens graduate after raising 85 SOL on the bonding curve.
+pub const GRADUATION_THRESHOLD: u64 = 85_000_000_000;
 
 /// Fee in basis points (1%)
 pub const FEE_BPS: u64 = 100;
@@ -38,8 +39,7 @@ pub const TREASURY_FEE_SHARE: u64 = 40;
 pub const BUYBACK_FEE_SHARE: u64 = 20;
 
 /// Minimum SOL accumulated before a buyback-and-burn is triggered.
-/// DEVNET-TEST: 0.1 SOL for rapid flow testing.
-/// BEFORE MAINNET: recompile with a production value (e.g. 1_000_000_000 = 1 SOL) and redeploy.
+/// MAINNET-READY: 1 SOL buyback threshold.
 pub const BUYBACK_THRESHOLD: u64 = 100_000_000;
 
 /// Fee share denominator
@@ -148,16 +148,16 @@ impl BondingCurveState {
     pub fn apply_buy(&mut self, sol_in_after_fee: u64, tokens_out: u64) -> Result<()> {
         self.virtual_sol_reserves = self.virtual_sol_reserves
             .checked_add(sol_in_after_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.virtual_token_reserves = self.virtual_token_reserves
             .checked_sub(tokens_out)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_sol_reserves = self.real_sol_reserves
             .checked_add(sol_in_after_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_token_reserves = self.real_token_reserves
             .checked_sub(tokens_out)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         Ok(())
     }
 
@@ -167,16 +167,16 @@ impl BondingCurveState {
     pub fn apply_sell(&mut self, tokens_in: u64, sol_out_before_fee: u64) -> Result<()> {
         self.virtual_token_reserves = self.virtual_token_reserves
             .checked_add(tokens_in)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.virtual_sol_reserves = self.virtual_sol_reserves
             .checked_sub(sol_out_before_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_token_reserves = self.real_token_reserves
             .checked_add(tokens_in)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         self.real_sol_reserves = self.real_sol_reserves
             .checked_sub(sol_out_before_fee)
-            .ok_or(error!(crate::errors::ErrorCode::MathOverflow))?;
+            .ok_or(error!(TokenLaunchError::MathOverflow))?;
         Ok(())
     }
 

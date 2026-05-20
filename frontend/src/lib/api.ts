@@ -56,6 +56,7 @@ export interface TokenData {
   symbol: string;
   description?: string;
   imageUrl?: string;
+  metadataUri?: string;
   websiteUrl?: string;
   twitterUrl?: string;
   telegramUrl?: string;
@@ -97,6 +98,7 @@ export interface TradeData {
     name: string;
     symbol: string;
     imageUrl?: string;
+  metadataUri?: string;
   };
 }
 
@@ -132,6 +134,7 @@ export interface CreateTokenPayload {
   symbol: string;
   description?: string;
   imageUrl?: string;
+  metadataUri?: string;
   websiteUrl?: string;
   twitterUrl?: string;
   telegramUrl?: string;
@@ -217,6 +220,42 @@ export async function getToken(mint: string): Promise<TokenData> {
 
 export async function getTokensByCreator(creator: string): Promise<TokensResponse> {
   return fetchApi(`/tokens?creator=${creator}&limit=50`);
+}
+
+// ─── Combined token asset upload (image + metadata JSON → Arweave) ────────────
+// Returns { imageUrl, metadataUri } — both permanent Arweave URLs.
+// metadataUri is used as the on-chain `uri` field (Metaplex standard).
+export async function uploadTokenAssets(
+  file: File | null,
+  meta: {
+    name: string;
+    symbol: string;
+    description: string;
+    creator: string;
+    websiteUrl?: string;
+    twitterUrl?: string;
+    telegramUrl?: string;
+  }
+): Promise<{ imageUrl: string; arweaveImageUrl: string; metadataUri: string }> {
+  const formData = new FormData();
+  if (file) formData.append("image", file);
+  formData.append("name",        meta.name);
+  formData.append("symbol",      meta.symbol);
+  formData.append("description", meta.description);
+  formData.append("creator",     meta.creator);
+  if (meta.websiteUrl)  formData.append("websiteUrl",  meta.websiteUrl);
+  if (meta.twitterUrl)  formData.append("twitterUrl",  meta.twitterUrl);
+  if (meta.telegramUrl) formData.append("telegramUrl", meta.telegramUrl);
+
+  const res = await fetch(`${API_URL}/upload/token`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? "Failed to upload token assets");
+  }
+  return res.json();
 }
 
 export async function createTokenRecord(

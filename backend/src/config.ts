@@ -48,9 +48,8 @@ export const BONDING_CURVE_CONSTANTS = {
   REAL_TOKEN_RESERVES_INIT: BigInt("700000000000000"),
   RESERVE_TOKEN_AMOUNT: BigInt("300000000000000"),
   TOTAL_SUPPLY: BigInt("1000000000000000"),
-  // DEVNET-TEST: 0.5 SOL threshold for fast flow testing.
-  // BEFORE MAINNET: recompile program with 85_000_000_000 (85 SOL) and update this value.
-  GRADUATION_THRESHOLD: BigInt("500000000"),
+  // MAINNET-READY: 85 SOL graduation threshold — matches on-chain program constant.
+  GRADUATION_THRESHOLD: BigInt("85000000000"),
   FEE_BPS: BigInt(100),
   BPS_DENOMINATOR: BigInt(10000),
 };

@@ -24,6 +24,34 @@ function ReputationBadge({ badge, label, color }: { badge: string; label: string
     </span>
   );
 }
+function ProfileAvatar({ wallet, avatarUrl, size = 32 }: { wallet: string; avatarUrl?: string | null; size?: number }) {
+  const colors = ["#00ff88", "#ff6b35", "#7b68ee", "#FFD700", "#00bfff"];
+  const color = colors[parseInt(wallet.slice(0, 8), 16) % colors.length] || "#00ff88";
+  const initials = wallet.slice(0, 2).toUpperCase();
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full flex items-center justify-center font-bold text-black flex-shrink-0"
+      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35 }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 
 function StatCard({ label, value, sub, usd }: { label: string; value: string | number; sub?: string; usd?: string | null }) {
   return (
@@ -46,6 +74,22 @@ export default function CreatorsPage() {
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
+
+  const [profiles, setProfiles] = React.useState<Record<string, { displayName?: string; avatarUrl?: string }>>({});
+  React.useEffect(() => {
+    if (!creators || creators.length === 0) return;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.jetforge.io";
+    Promise.all(
+      creators.map((c) =>
+        fetch(`${API_BASE}/api/creators/${c.wallet}/profile`)
+          .then((r) => r.json())
+          .then((d) => [c.wallet, { displayName: d.displayName, avatarUrl: d.avatarUrl }] as const)
+          .catch(() => [c.wallet, {}] as const)
+      )
+    ).then((entries) => {
+      setProfiles(Object.fromEntries(entries));
+    });
+  }, [creators]);
 
   const tabs: { key: Metric; label: string }[] = [
     { key: "volume", label: "By Volume" },
@@ -114,15 +158,11 @@ export default function CreatorsPage() {
                 <RankBadge rank={creator.rank} />
               </div>
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                {resolveImageUrl(creator.latestToken?.imageUrl) ? (
-                  <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                ) : (
-                  <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] shrink-0">
-                    {creator.wallet.slice(0, 2)}
-                  </div>
-                )}
+                <ProfileAvatar wallet={creator.wallet} avatarUrl={profiles[creator.wallet]?.avatarUrl} size={36} />
                 <div className="min-w-0">
-                  <div className="text-white text-xs font-mono truncate">{truncateAddress(creator.wallet, 6)}</div>
+                  <div className="text-white text-xs font-mono truncate">
+                    {profiles[creator.wallet]?.displayName || truncateAddress(creator.wallet, 6)}
+                  </div>
                   <ReputationBadge badge={creator.badge} label={creator.badgeLabel} color={creator.badgeColor} />
                 </div>
               </div>
@@ -180,15 +220,11 @@ export default function CreatorsPage() {
                       <RankBadge rank={creator.rank} />
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
-                      {resolveImageUrl(creator.latestToken?.imageUrl) ? (
-                        <img src={resolveImageUrl(creator.latestToken?.imageUrl)!} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xs text-[#555] flex-shrink-0">
-                          {creator.wallet.slice(0, 2)}
-                        </div>
-                      )}
+                      <ProfileAvatar wallet={creator.wallet} avatarUrl={profiles[creator.wallet]?.avatarUrl} size={32} />
                       <div className="min-w-0">
-                        <div className="text-white text-xs font-mono truncate">{truncateAddress(creator.wallet, 6)}</div>
+                        <div className="text-white text-xs font-mono truncate">
+                          {profiles[creator.wallet]?.displayName || truncateAddress(creator.wallet, 6)}
+                        </div>
                         {creator.latestToken && <div className="text-[#444] text-[10px] truncate">Latest: {creator.latestToken.symbol}</div>}
                       </div>
                     </div>

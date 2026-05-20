@@ -6,7 +6,7 @@ const YEAR = new Date().getFullYear();
 const communityLinks = [
   ["https://x.com/jetforgeDev", "X", "Twitter"],
   ["https://t.me/jetforgechat", "TG", "Telegram"],
-  ["https://github.com/jetforge", "GH", "GitHub"],
+  ["https://github.com/jetforgedev/jetforge", "GH", "GitHub"],
 ] as const;
 
 export function Footer() {
@@ -95,10 +95,16 @@ export function Footer() {
               <div className="space-y-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Resources</div>
                 <div className="space-y-3 text-sm text-white/48">
+                  <Link href="/about" className="block transition-colors hover:text-white/85">About</Link>
+                  <Link href="/press" className="block transition-colors hover:text-white/85">Press Kit</Link>
+                  <Link href="/blog" className="block transition-colors hover:text-white/85">Blog</Link>
                   <Link href="/faq" className="block transition-colors hover:text-white/85">FAQ</Link>
                   <Link href="/support" className="block transition-colors hover:text-white/85">Support</Link>
                   <a href="https://docs.solana.com" target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-white/85">
                     Solana Docs ↗
+                  </a>
+                  <a href="https://www.coingecko.com/en/exchanges/jetforge" target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-white/85">
+                    CoinGecko ↗
                   </a>
                 </div>
               </div>
@@ -107,6 +113,7 @@ export function Footer() {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Legal</div>
                 <div className="space-y-3 text-sm text-white/48">
                   <Link href="/terms" className="block transition-colors hover:text-white/85">Terms of Service</Link>
+                  <Link href="/privacy" className="block transition-colors hover:text-white/85">Privacy Policy</Link>
                   <Link href="/disclaimer" className="block transition-colors hover:text-white/85">Disclaimer</Link>
                 </div>
 
