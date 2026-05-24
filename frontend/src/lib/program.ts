@@ -377,6 +377,23 @@ export async function buildSellTransaction(params: SellParams): Promise<Transact
   return tx;
 }
 
+
+// ─── Vanity address grinder ────────────────────────────────────────────────────
+// Generates keypairs until the base58 public key ends with the given suffix.
+// "jet" (3 chars) → ~195K attempts on average, < 2s in a modern browser.
+export function grindVanityKeypair(suffix: string): Keypair {
+  const lower = suffix.toLowerCase();
+  let attempts = 0;
+  while (true) {
+    const kp = Keypair.generate();
+    attempts++;
+    if (kp.publicKey.toBase58().toLowerCase().endsWith(lower)) {
+      console.log("[grind] Found vanity address after " + attempts + " attempts");
+      return kp;
+    }
+  }
+}
+
 export interface CreateTokenParams {
   connection: Connection;
   wallet: AnchorWallet;

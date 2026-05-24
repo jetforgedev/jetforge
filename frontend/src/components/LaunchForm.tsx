@@ -5,7 +5,7 @@ import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapte
 import toast from "react-hot-toast";
 import { clsx } from "clsx";
 import { createTokenRecord, uploadImage, uploadTokenAssets } from "@/lib/api";
-import { buildCreateTokenTransaction } from "@/lib/program";
+import { buildCreateTokenTransaction, grindVanityKeypair } from "@/lib/program";
 
 // Minimum SOL needed to create a token (rent for mint + bonding curve + 4 vaults)
 const CREATE_TOKEN_MIN_SOL = 0.015;
@@ -157,8 +157,12 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       console.log("[LaunchForm] Arweave metadataUri:", uri);
       console.log("[LaunchForm] Arweave imageUrl:", arweaveImageUrl);
 
-      const { Keypair } = await import("@solana/web3.js");
-      const mintKeypairForUri = Keypair.generate();
+      // Grind for a vanity mint address ending in "jet" (~195K attempts, < 2s)
+      toast.loading("Generating vanity address...jet ✨", { id: loadingToast });
+      const mintKeypairForUri = await new Promise<import("@solana/web3.js").Keypair>((resolve) =>
+        setTimeout(() => resolve(grindVanityKeypair("jet")), 0)
+      );
+      console.log("[LaunchForm] Vanity mint:", mintKeypairForUri.publicKey.toBase58());
 
       // Build the on-chain createToken transaction
       toast.loading("Sending transaction...", { id: loadingToast });
