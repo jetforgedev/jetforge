@@ -100,6 +100,7 @@ export function Footer() {
                   <Link href="/blog" className="block transition-colors hover:text-white/85">Blog</Link>
                   <Link href="/faq" className="block transition-colors hover:text-white/85">FAQ</Link>
                   <Link href="/support" className="block transition-colors hover:text-white/85">Support</Link>
+                  <Link href="/docs/api" className="block transition-colors hover:text-white/85">API Docs</Link>
                   <a href="https://docs.solana.com" target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-white/85">
                     Solana Docs ↗
                   </a>

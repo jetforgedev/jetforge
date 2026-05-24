@@ -106,6 +106,41 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     const connection = new Connection(config.solana.rpcUrl, "confirmed");
     const mint = new PublicKey(mintStr);
     const bondingCurve = getBondingCurvePDA(mint);
+
+    // ── Pre-flight check: verify on-chain state before sending tx ──────────
+    // BondingCurveState layout offsets:
+    //   8  discriminator
+    //   32 mint
+    //   32 creator
+    //   8  virtualSolReserves
+    //   8  virtualTokenReserves
+    //   8  realSolReserves     ← offset 88
+    //   8  realTokenReserves
+    //   8  tokenTotalSupply
+    //   1  complete            ← offset 112
+    const curveInfo = await connection.getAccountInfo(bondingCurve);
+    if (!curveInfo || curveInfo.data.length < 113) {
+      console.warn(`[KEEPER] Bonding curve account missing for ${mintStr.slice(0, 8)}… — skipping`);
+      inFlight.delete(mintStr);
+      return;
+    }
+    const curveData      = Buffer.from(curveInfo.data);
+    const realSolOnChain = curveData.readBigUInt64LE(88);
+    const completeOnChain = curveData[112] === 1;
+    const GRAD_THRESHOLD  = BigInt("85000000000");
+
+    if (!completeOnChain) {
+      console.warn(`[KEEPER] Token ${mintStr.slice(0, 8)}… complete=false on-chain — skipping (may be indexer lag)`);
+      inFlight.delete(mintStr);
+      return;
+    }
+    if (realSolOnChain < GRAD_THRESHOLD) {
+      console.warn(`[KEEPER] Token ${mintStr.slice(0, 8)}… realSol=${realSolOnChain} < 85 SOL on-chain — skipping`);
+      inFlight.delete(mintStr);
+      return;
+    }
+    console.log(`[KEEPER] Pre-flight OK: complete=true, realSol=${realSolOnChain}`);
+    // ───────────────────────────────────────────────────────────────────────
     const tokenVault = getAssociatedTokenAddressSync(mint, bondingCurve, true);
     const reserveVault = getReserveVaultPDA(mint);
     const treasuryTokenAccount = getAssociatedTokenAddressSync(mint, TREASURY_PUBKEY, false);
