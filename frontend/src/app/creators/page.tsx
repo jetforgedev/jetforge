@@ -19,7 +19,7 @@ function ReputationBadge({ badge, label, color }: { badge: string; label: string
   return (
     <span
       className={
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border " +
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap " +
         (isRocket ? "shadow-[0_0_8px_rgba(255,215,0,0.35)]" : "")
       }
       style={{
@@ -189,7 +189,7 @@ export default function CreatorsPage() {
         <div className="hidden sm:block overflow-x-auto rounded-xl">
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden min-w-[580px]">
             {/* Table header */}
-            <div className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
+            <div className="grid grid-cols-[32px_1fr_130px_60px_60px_90px_100px] gap-2 px-4 py-2.5 border-b border-[#1a1a1a] text-[#444] text-xs uppercase tracking-wider">
               <div>#</div>
               <div>Creator</div>
               <div className="text-right">Reputation</div>
@@ -202,7 +202,7 @@ export default function CreatorsPage() {
             {isLoading ? (
               <div>
                 {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 animate-pulse">
+                  <div key={i} className="grid grid-cols-[32px_1fr_130px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 animate-pulse">
                     <div className="w-5 h-4 bg-[#1a1a1a] rounded" />
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-[#1a1a1a]" />
@@ -222,7 +222,7 @@ export default function CreatorsPage() {
                   <Link
                     key={creator.wallet}
                     href={`/creators/${creator.wallet}`}
-                    className="grid grid-cols-[32px_1fr_90px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
+                    className="grid grid-cols-[32px_1fr_130px_60px_60px_90px_100px] gap-2 px-4 py-3 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors items-center"
                   >
                     <div className="flex items-center justify-center">
                       <RankBadge rank={creator.rank} />
