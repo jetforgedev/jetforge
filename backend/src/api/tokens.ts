@@ -9,24 +9,6 @@ export const tokensRouter = Router();
 
 const PAGE_SIZE = 20;
 
-// ─── SOL/USD price cache (shared within this module) ─────────────────────────
-let _cachedSolUsd = 150;
-let _lastSolFetch = 0;
-async function getSolPriceUsd(): Promise<number> {
-  if (Date.now() - _lastSolFetch < 10 * 60 * 1000) return _cachedSolUsd;
-  try {
-    const r = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
-    );
-    if (r.ok) {
-      const d = (await r.json()) as { solana?: { usd?: number } };
-      _cachedSolUsd = d?.solana?.usd ?? _cachedSolUsd;
-      _lastSolFetch = Date.now();
-    }
-  } catch {}
-  return _cachedSolUsd;
-}
-
 // Validation schemas
 const createTokenSchema = z.object({
   mint: z.string().min(32).max(44),
@@ -34,7 +16,6 @@ const createTokenSchema = z.object({
   symbol: z.string().min(1).max(10),
   description: z.string().max(500).optional(),
   imageUrl: z.string().url().optional(),
-  metadataUri: z.string().url().optional(),
   websiteUrl: z.string().url().optional(),
   twitterUrl: z.string().url().optional(),
   telegramUrl: z.string().url().optional(),
@@ -47,9 +28,11 @@ function computeMarketCap(
   totalSupply: bigint
 ): number {
   if (virtualTokenReserves === 0n) return 0;
+  // price = virtualSol / virtualToken (in lamports per token unit)
+  // marketCap = price * totalSupply / 1e6 (convert to SOL)
   const marketCapLamports =
     (virtualSolReserves * totalSupply) / virtualTokenReserves;
-  return Number(marketCapLamports) / 1e9;
+  return Number(marketCapLamports) / 1e9; // Convert to SOL
 }
 
 function computePrice(
@@ -61,12 +44,18 @@ function computePrice(
 }
 
 // ─── Shared token enrichment ─────────────────────────────────────────────────
+// Fetches per-mint aggregates (holder count, trades in last 15 min, last trade
+// timestamp) and formats bigint fields to strings. Used by both the list
+// endpoint and the ?mints= batch endpoint so the shape is always identical.
+
 async function enrichTokens(tokens: any[]): Promise<any[]> {
   if (tokens.length === 0) return [];
   const mints = tokens.map((t: any) => t.mint);
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-  const [holderRows, recentTradeRows, lastTradeRows, solPriceUsd] = await Promise.all([
+  const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
+    // Holder count: indexed Holder table grouped by mint — O(log n) per mint,
+    // much faster than trade.groupBy which scans all trades for every mint.
     (prisma as any).holder.groupBy({
       by: ["mint"],
       where: { mint: { in: mints }, balance: { gt: 0n } },
@@ -83,7 +72,6 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
       distinct: ["mint"],
       select: { mint: true, timestamp: true },
     }),
-    getSolPriceUsd(),
   ]);
 
   const holderCountByMint: Record<string, number> = {};
@@ -101,8 +89,6 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
 
   return tokens.map((token: any) => {
     const { id: _id, _count, ...rest } = token;
-    const currentPrice = computePrice(token.virtualSolReserves, token.virtualTokenReserves);
-    const marketCapSol = computeMarketCap(token.virtualSolReserves, token.virtualTokenReserves, token.totalSupply);
     return {
       ...rest,
       virtualSolReserves: token.virtualSolReserves.toString(),
@@ -110,17 +96,11 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
       realSolReserves: token.realSolReserves.toString(),
       realTokenReserves: token.realTokenReserves.toString(),
       totalSupply: token.totalSupply.toString(),
-      // Recompute marketCapSol live (same formula as before)
-      marketCapSol,
-      // Compute priceUsd dynamically — never serve the stale DB value
-      priceUsd: currentPrice * solPriceUsd,
-      // marketCapUsd for convenience
-      marketCapUsd: marketCapSol * solPriceUsd,
       trades: _count.tradeHistory,
       holders: holderCountByMint[token.mint] ?? 0,
       trades15m: trades15mByMint[token.mint] ?? 0,
       lastTradeAt: lastTradeByMint[token.mint] ?? null,
-      currentPrice,
+      currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
       graduationProgress:
         (Number(token.realSolReserves) /
           Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) *
@@ -132,32 +112,52 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
 // GET /api/tokens - list tokens with sorting, OR batch lookup by ?mints=a,b,c
 tokensRouter.get("/", async (req: Request, res: Response) => {
   try {
+    // ── Batch lookup by explicit mint addresses ────────────────────────────
+    // Used by the watchlist tab so that watched tokens are always returned
+    // regardless of recency — the old approach (filter client-side from the
+    // newest-50 list) silently dropped any watchlisted token older than #50.
+    //
+    // Guard: check !== undefined rather than truthiness so that ?mints= (empty
+    // value, which trims to "") does not fall through to the list path.
     if (req.query.mints !== undefined) {
       const mintsParam = (req.query.mints as string).trim();
+
+      // ?mints= or ?mints=   → return empty cleanly.
       if (!mintsParam) {
         return res.json({ tokens: [], pagination: { page: 1, limit: 0, total: 0, pages: 1 } });
       }
+
+      // Validate each segment: base58 public keys are 32–44 chars, alphanumeric.
       const mintList = mintsParam
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length >= 32 && s.length <= 44)
-        .slice(0, 100);
+        .slice(0, 100); // cap to prevent accidental large queries
+
+      // ?mints=,,, or all segments too short/long → return empty cleanly.
       if (mintList.length === 0) {
         return res.json({ tokens: [], pagination: { page: 1, limit: 0, total: 0, pages: 1 } });
       }
+
       const rows = await prisma.token.findMany({
         where: { mint: { in: mintList } },
         include: { _count: { select: { tradeHistory: true } } },
       });
+
       const enriched = await enrichTokens(rows);
+
+      // Restore the caller's mint order — Prisma findMany({ in: [...] }) does not
+      // preserve input order. Mints absent from the DB are silently dropped.
       const byMint = new Map(enriched.map((t) => [t.mint, t]));
       const formattedTokens = mintList.map((m) => byMint.get(m)).filter(Boolean);
+
       return res.json({
         tokens: formattedTokens,
         pagination: { page: 1, limit: mintList.length, total: formattedTokens.length, pages: 1 },
       });
     }
 
+    // ── Regular paginated list ─────────────────────────────────────────────
     const sort = (req.query.sort as string) || "new";
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || PAGE_SIZE));
@@ -178,6 +178,8 @@ tokensRouter.get("/", async (req: Request, res: Response) => {
 
     switch (sort) {
       case "trending":
+        // Non-graduated (isGraduated=false) sorts before graduated (true asc),
+        // then most trades first, then volume as tiebreaker
         orderBy = [{ isGraduated: "asc" }, { trades: "desc" }, { volume24h: "desc" }];
         break;
       case "marketcap":
@@ -247,6 +249,10 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Token not found" });
     }
 
+    // ── Live chain sync ─────────────────────────────────────────────────────
+    // The public devnet WebSocket drops events. Always read bonding curve state
+    // from chain when the token is active (not graduated) or DB looks stale.
+    // Rate-limited: re-read only if DB hasn't been updated in the last 15s.
     let liveVirtualSol     = token.virtualSolReserves;
     let liveVirtualTokens  = token.virtualTokenReserves;
     let liveRealSol        = token.realSolReserves;
@@ -280,6 +286,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
           liveTotalVolumeSol = readU64(121);
           liveTotalTrades    = readU64(129);
 
+          // Persist so DB reflects chain state
           await prisma.token.update({
             where: { mint },
             data: {
@@ -293,6 +300,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
             },
           });
 
+          // If token just graduated, trigger the graduate instruction
           if (liveIsGraduated && !token.isGraduated) {
             const { callGraduateInstruction } = await import("../services/graduateKeeper");
             callGraduateInstruction(mint).catch((e: any) =>
@@ -305,23 +313,18 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       }
     }
 
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [recentTrades, holdersCount, solPriceUsd] = await Promise.all([
-      prisma.trade.aggregate({
-        where: { mint, timestamp: { gte: oneDayAgo } },
-        _sum: { solAmount: true },
-        _count: true,
-      }),
-      (prisma as any).holder.count({ where: { mint, balance: { gt: 0n } } }),
-      getSolPriceUsd(),
-    ]);
+    // Holder count via indexed Holder table (O(log n), < 5 ms).
+    // volume24h is kept up to date by the indexer via TradeVolumeBucket — no
+    // per-request Trade scan needed.
+    const holdersCount = await (prisma as any).holder.count({
+      where: { mint, balance: { gt: 0n } },
+    });
 
     const marketCapSol = computeMarketCap(
       liveVirtualSol,
       liveVirtualTokens,
       token.totalSupply
     );
-    const currentPrice = computePrice(liveVirtualSol, liveVirtualTokens);
 
     const { id: _id, _count, ...tokenRest } = token as any;
     const formatted = {
@@ -332,12 +335,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       realTokenReserves: liveRealTokens.toString(),
       totalSupply: token.totalSupply.toString(),
       marketCapSol,
-      marketCapUsd: marketCapSol * solPriceUsd,
-      // Always compute priceUsd dynamically — DB value is stale between trades
-      priceUsd: currentPrice * solPriceUsd,
-      volume24h: recentTrades._sum.solAmount
-        ? Number(recentTrades._sum.solAmount) / 1e9
-        : Number(liveTotalVolumeSol) / 1e9,
+      volume24h: token.volume24h,
       holders: holdersCount,
       trades: _count.tradeHistory || Number(liveTotalTrades),
       totalTrades: _count.tradeHistory || Number(liveTotalTrades),
@@ -345,7 +343,7 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
       graduationProgress: Math.min(100,
         (Number(liveRealSol) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100
       ),
-      currentPrice,
+      currentPrice: computePrice(liveVirtualSol, liveVirtualTokens),
     };
 
     res.json(formatted);
@@ -355,11 +353,13 @@ tokensRouter.get("/:mint", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/tokens - create token record
+// POST /api/tokens - create token record (called after on-chain creation)
+// Verifies the creator matches the on-chain bonding curve PDA to prevent spoofing
 tokensRouter.post("/", async (req: Request, res: Response) => {
   try {
     const data = createTokenSchema.parse(req.body);
 
+    // Verify creator matches on-chain bonding curve state
     try {
       const mintPk = new PublicKey(data.mint);
       const programId = new PublicKey(config.solana.programId);
@@ -372,6 +372,7 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
       if (!info) {
         return res.status(400).json({ error: "Token not found on-chain" });
       }
+      // Creator pubkey is stored at offset 8 (discriminator) + 32 (mint) = 40
       const onChainCreator = new PublicKey(info.data.slice(40, 72)).toBase58();
       if (onChainCreator !== data.creator) {
         return res.status(403).json({ error: "Creator mismatch — not the token creator" });
@@ -386,7 +387,6 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
       symbol: data.symbol,
       description: data.description,
       imageUrl: data.imageUrl,
-      metadataUri: data.metadataUri,
       websiteUrl: data.websiteUrl,
       twitterUrl: data.twitterUrl,
       telegramUrl: data.telegramUrl,
@@ -406,7 +406,6 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
         symbol: data.symbol,
         description: data.description ?? undefined,
         imageUrl: data.imageUrl ?? undefined,
-        metadataUri: data.metadataUri ?? undefined,
         websiteUrl: data.websiteUrl ?? undefined,
         twitterUrl: data.twitterUrl ?? undefined,
         telegramUrl: data.telegramUrl ?? undefined,
@@ -430,8 +429,11 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
   }
 });
 
+// Shared cache — defined in holdersCache.ts so the indexer can invalidate it
+// immediately after each trade without creating a circular import.
 import { holdersCache, HOLDERS_TTL } from "../holdersCache";
 
+// Compute holders from trade history in DB (fallback when RPC is unavailable)
 async function getHoldersFromDB(mint: string, totalSupplyUi: number) {
   const rows = await prisma.$queryRaw<{ wallet: string; balance: bigint }[]>`
     SELECT trader AS wallet,
@@ -451,10 +453,14 @@ async function getHoldersFromDB(mint: string, totalSupplyUi: number) {
 }
 
 // GET /api/tokens/:mint/holders
+// Fast path: Holder table (indexed DB read, maintained per-trade by indexer, ~5ms).
+// Fallback: RPC → legacy SQL scan (pre-migration tokens / edge cases).
 tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
   try {
     const { mint } = req.params;
 
+    // Burst-absorb cache — indexer deletes this entry after every trade so the
+    // first post-trade request always misses and gets fresh data.
     const cached = holdersCache.get(mint);
     if (cached && Date.now() - cached.ts < HOLDERS_TTL) {
       return res.json(cached.data);
@@ -468,6 +474,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       ? Number(tokenRecord.totalSupply) / 1e6
       : Number(BONDING_CURVE_CONSTANTS.TOTAL_SUPPLY) / 1e6;
 
+    // ── Primary: indexed Holder table (O(log n), < 10 ms) ──────────────────────
     const holderRows = await (prisma as any).holder.findMany({
       where: { mint, balance: { gt: 0n } },
       orderBy: { balance: "desc" },
@@ -487,6 +494,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       return res.json(result);
     }
 
+    // ── Fallback A: RPC (accurate for tokens that pre-date the Holder table) ──
     try {
       const mintPubkey = new PublicKey(mint);
       const connection = getSolanaConnection();
@@ -513,6 +521,7 @@ tokensRouter.get("/:mint/holders", async (req: Request, res: Response) => {
       console.warn(`RPC holders failed for ${mint}, falling back to SQL:`, (rpcErr as Error).message);
     }
 
+    // ── Fallback B: legacy trade-history SQL scan ──────────────────────────────
     const holders = await getHoldersFromDB(mint, totalSupplyUi);
     const result = { holders, source: "db-legacy" };
     holdersCache.set(mint, { data: result, ts: Date.now() });
@@ -530,6 +539,7 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
     const interval = (req.query.interval as string) || "5m";
     const limit = Math.min(500, parseInt(req.query.limit as string) || 200);
 
+    // Map interval to milliseconds
     const intervalMap: Record<string, number> = {
       "1s":  1000,
       "1m":  60 * 1000,
@@ -541,18 +551,26 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
     };
     const intervalMs = intervalMap[interval] || intervalMap["5m"];
 
+    // Fetch a recent time window rather than scanning arbitrary historical rows.
+    // We overshoot the window by 2× to ensure we have enough raw trades to
+    // build `limit` candles even for sparse trading periods.
+    const windowMs = Math.max(intervalMs * limit * 2, 60_000); // at least 1 minute
+    const windowStart = new Date(Date.now() - windowMs);
+
     const trades = await prisma.trade.findMany({
-      where: { mint },
+      where: { mint, timestamp: { gte: windowStart } },
       orderBy: { timestamp: "desc" },
-      take: limit * 10,
+      take: limit * 10, // cap raw trades to keep JS aggregation bounded
     });
 
     if (trades.length === 0) {
       return res.json([]);
     }
 
+    // Aggregate in chronological order.
     trades.reverse();
 
+    // Aggregate into OHLCV candles
     const candles = new Map<number, {
       time: number;
       open: number;
@@ -562,6 +580,8 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
       volume: number;
     }>();
 
+    // Seed prevClose with the bonding-curve launch price so the very first
+    // candle has a non-zero body (open = launch price, close = post-trade price).
     const LAUNCH_PRICE =
       Number(BONDING_CURVE_CONSTANTS.INITIAL_VIRTUAL_SOL) /
       Number(BONDING_CURVE_CONSTANTS.INITIAL_VIRTUAL_TOKENS);
@@ -573,9 +593,11 @@ tokensRouter.get("/:mint/ohlcv", async (req: Request, res: Response) => {
       const price = trade.price;
 
       if (!candles.has(candleTime)) {
+        // Use the previous candle's close as open so single-trade candles
+        // have a visible body instead of rendering as a zero-height doji.
         const open = prevClose;
         candles.set(candleTime, {
-          time: candleTime / 1000,
+          time: candleTime / 1000, // Unix seconds for lightweight-charts
           open,
           high: Math.max(open, price),
           low:  Math.min(open, price),

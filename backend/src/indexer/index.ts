@@ -72,6 +72,7 @@ async function creditReferral(traderWallet: string, feeLamports: bigint): Promis
 
 
 import { getSolanaConnection } from "../solana/connection";
+import { getMinuteBucketStart } from "../utils/timeBucket";
 
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD);
@@ -212,9 +213,10 @@ async function handleBuyEvent(
       timestamp,
     });
 
-    // DB writes — trade insert and 24h volume aggregation run in parallel.
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [, vol24hResult] = await Promise.all([
+    // Trade insert + bucket upsert run in parallel (independent writes).
+    const tradeTs = new Date(timestamp * 1000);
+    const bucketStart = getMinuteBucketStart(tradeTs);
+    await Promise.all([
       prisma.trade.create({
         data: {
           signature,
@@ -225,15 +227,23 @@ async function handleBuyEvent(
           tokenAmount,
           price,
           fee,
-          timestamp: new Date(timestamp * 1000),
+          timestamp: tradeTs,
         },
       }),
-      prisma.trade.aggregate({
-        where: { mint, timestamp: { gte: oneDayAgo } },
-        _sum: { solAmount: true },
+      (prisma as any).tradeVolumeBucket.upsert({
+        where: { mint_bucketStart: { mint, bucketStart } },
+        update: { volumeLamports: { increment: solAmount }, trades: { increment: 1 } },
+        create: { mint, bucketStart, volumeLamports: solAmount, trades: 1 },
       }),
     ]);
-    const volume24h = Number(vol24hResult._sum.solAmount ?? 0n) / 1e9;
+
+    // Sum last 24h buckets — ≤1440 rows, indexed, no full table scan.
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
+      where: { mint, bucketStart: { gte: oneDayAgo } },
+      _sum: { volumeLamports: true },
+    });
+    const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
 
     // Credit referral earnings (non-blocking)
     creditReferral(buyer, fee).catch(() => {});
@@ -372,9 +382,10 @@ async function handleSellEvent(
       timestamp,
     });
 
-    // Trade insert and 24h volume aggregation in parallel.
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [, vol24hResult] = await Promise.all([
+    // Trade insert + bucket upsert run in parallel (independent writes).
+    const tradeTs = new Date(timestamp * 1000);
+    const bucketStart = getMinuteBucketStart(tradeTs);
+    await Promise.all([
       prisma.trade.create({
         data: {
           signature,
@@ -385,15 +396,23 @@ async function handleSellEvent(
           tokenAmount,
           price,
           fee,
-          timestamp: new Date(timestamp * 1000),
+          timestamp: tradeTs,
         },
       }),
-      prisma.trade.aggregate({
-        where: { mint, timestamp: { gte: oneDayAgo } },
-        _sum: { solAmount: true },
+      (prisma as any).tradeVolumeBucket.upsert({
+        where: { mint_bucketStart: { mint, bucketStart } },
+        update: { volumeLamports: { increment: solAmount }, trades: { increment: 1 } },
+        create: { mint, bucketStart, volumeLamports: solAmount, trades: 1 },
       }),
     ]);
-    const volume24h = Number(vol24hResult._sum.solAmount ?? 0n) / 1e9;
+
+    // Sum last 24h buckets — ≤1440 rows, indexed, no full table scan.
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const bucketSum = await (prisma as any).tradeVolumeBucket.aggregate({
+      where: { mint, bucketStart: { gte: oneDayAgo } },
+      _sum: { volumeLamports: true },
+    });
+    const volume24h = Number(bucketSum._sum.volumeLamports ?? 0n) / 1e9;
 
     // Credit referral earnings (non-blocking)
     creditReferral(seller, fee).catch(() => {});
