@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import * as telegram from "../services/telegramService";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -118,6 +119,35 @@ const upload = multer({
     ok.includes(file.mimetype) ? cb(null, true) : cb(new Error("Only JPEG, PNG, GIF and WebP allowed"));
   },
 });
+
+// ─── Arweave balance monitor ─────────────────────────────────────────────────
+const ARWEAVE_WALLET = "4lWeUCmse28Ps6AkpJdMGw49YHJegYp5ox5o2R9YimU";
+const LOW_BALANCE_THRESHOLD = 20; // alert when fewer than 20 launches remain
+let lastAlertAt = 0;
+
+async function checkArweaveBalance(): Promise<void> {
+  try {
+    const irys = await getIrys();
+    const balance = await irys.getLoadedBalance();
+    const pricePerLaunch = await irys.getPrice(51200 + 2048);
+    const launches = Math.floor(Number(balance) / Number(pricePerLaunch));
+    const balanceAR = (Number(balance) / 1e12).toFixed(6);
+    console.log(`[arweave] Balance: ${balanceAR} AR (~${launches} launches left)`);
+    const now = Date.now();
+    if (launches < LOW_BALANCE_THRESHOLD && now - lastAlertAt > 12 * 3_600_000) {
+      lastAlertAt = now;
+      await telegram.notifyLowArweaveBalance({ balanceAR, estimatedLaunches: launches, walletAddress: ARWEAVE_WALLET });
+      console.log(`[arweave] Low balance Telegram alert sent (${launches} launches left)`);
+    }
+  } catch (err: any) {
+    console.warn("[arweave] Balance check failed:", err.message?.slice(0, 80));
+  }
+}
+
+// Check every 6 hours
+setInterval(() => { checkArweaveBalance().catch(() => {}); }, 6 * 60 * 60 * 1000);
+// First check 30s after startup
+setTimeout(() => { checkArweaveBalance().catch(() => {}); }, 30_000);
 
 export const uploadRouter = Router();
 

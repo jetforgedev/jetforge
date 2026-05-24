@@ -145,3 +145,24 @@ export async function notifyGraduation(params: {
 
   await sendMessage(msg);
 }
+
+
+// -- Low Arweave balance alert ---------------------------------------------
+export async function notifyLowArweaveBalance(params: {
+  balanceAR: string;
+  estimatedLaunches: number;
+  walletAddress: string;
+}): Promise<void> {
+  const { balanceAR, estimatedLaunches, walletAddress } = params;
+
+  const msg =
+    `⚠️ <b>Low Arweave Balance Warning!</b>\n\n` +
+    `JetForge permanent image storage is running low.\n\n` +
+    `💰 Balance: <b>${balanceAR} AR</b>\n` +
+    `🚀 Launches remaining: <b>~${estimatedLaunches}</b>\n\n` +
+    `Top up wallet to keep token images permanent on Arweave:\n` +
+    `<code>${walletAddress}</code>\n\n` +
+    `Send AR to the address above to restore capacity.`;
+
+  await sendMessage(msg);
+}
