@@ -315,9 +315,6 @@ export async function getTopTokens(
   period: "24h" | "7d" | "30d" | "all" = "24h"
 ): Promise<any[]> {
   return fetchApi(`/leaderboard/tokens?metric=${metric}&limit=${limit}&period=${period}`);
-});
-  if (excludeGraduated) params.set("excludeGraduated", "true");
-  return fetchApi(`/leaderboard/tokens?${params}`);
 }
 
 export interface TraderData {
@@ -338,7 +335,6 @@ export async function getTopTraders(
   period: "24h" | "7d" | "30d" | "all" = "24h"
 ): Promise<TraderData[]> {
   return fetchApi(`/leaderboard/traders?metric=${metric}&limit=${limit}&period=${period}`);
-}&limit=${limit}&period=${period}`);
 }
 
 // Creator endpoints
