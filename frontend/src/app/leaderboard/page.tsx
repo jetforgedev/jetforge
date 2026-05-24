@@ -35,15 +35,19 @@ function PnlBadge({ value }: { value: string }) {
 
 function GradProgress({ pct }: { pct: number }) {
   const clamped = Math.min(100, Math.max(0, pct));
+  // Give tiny values a minimum visible bar width (2%) so the fill is always visible
+  const barWidth = clamped > 0 ? Math.max(2, clamped) : 0;
+  // Show "<1%" for values between 0 and 1 so we don't mislead with "0%"
+  const label = clamped === 0 ? "0%" : clamped < 1 ? "<1%" : `${clamped.toFixed(0)}%`;
   return (
     <div className="flex items-center gap-1.5">
       <div className="w-12 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden flex-shrink-0">
         <div
           className="h-full bg-[#00ff88] rounded-full transition-all"
-          style={{ width: `${clamped}%` }}
+          style={{ width: `${barWidth}%` }}
         />
       </div>
-      <span className="text-[#555] text-[10px] font-mono whitespace-nowrap">{clamped.toFixed(0)}%</span>
+      <span className="text-[#555] text-[10px] font-mono whitespace-nowrap">{label}</span>
     </div>
   );
 }
