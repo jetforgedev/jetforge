@@ -20,6 +20,7 @@ pub struct Graduate<'info> {
 
     #[account(
         mut,
+        close = treasury,  // reclaims rent (~0.002 SOL) to treasury after graduation; Anchor runs this after instruction body
         seeds = [b"bonding_curve", mint.key().as_ref()],
         bump = bonding_curve.bump,
         has_one = mint,
@@ -36,11 +37,13 @@ pub struct Graduate<'info> {
     pub token_vault: Account<'info, TokenAccount>,
 
     /// Reserve vault — holds the 30% (300M) reserved for Raydium liquidity
+    /// Security note: `token::mint = mint` validates reserve_vault.mint == mint.key(),
+    /// providing equivalent protection to `has_one = mint` for SPL token accounts.
     #[account(
         mut,
         seeds = [b"reserve_vault", mint.key().as_ref()],
         bump,
-        token::mint = mint,
+        token::mint = mint,           // validates reserve_vault.mint == mint.key()
         token::authority = bonding_curve,
     )]
     pub reserve_vault: Account<'info, TokenAccount>,
@@ -128,7 +131,11 @@ pub fn graduate(ctx: Context<Graduate>) -> Result<()> {
         .ok_or(TokenLaunchError::MathOverflow)?
         .checked_div(BPS_DENOMINATOR)
         .ok_or(TokenLaunchError::MathOverflow)?;
-    let liquidity_sol = total_sol.saturating_sub(treasury_cut).saturating_sub(creator_bonus);
+    let liquidity_sol = total_sol
+        .checked_sub(treasury_cut)
+        .ok_or(TokenLaunchError::MathOverflow)?
+        .checked_sub(creator_bonus)
+        .ok_or(TokenLaunchError::MathOverflow)?;
 
     msg!("[graduate] treasury_cut={} creator_bonus={} liquidity_sol={}",
         treasury_cut, creator_bonus, liquidity_sol);
