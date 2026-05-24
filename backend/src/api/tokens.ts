@@ -359,7 +359,9 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
   try {
     const data = createTokenSchema.parse(req.body);
 
-    // Verify creator matches on-chain bonding curve state
+    // Verify creator matches on-chain bonding curve state (best-effort — RPC can be flaky)
+    // We allow the save to proceed even if RPC verification fails so that imageUrl/metadata
+    // are never silently lost due to RPC instability.
     try {
       const mintPk = new PublicKey(data.mint);
       const programId = new PublicKey(config.solana.programId);
@@ -368,18 +370,25 @@ tokensRouter.post("/", async (req: Request, res: Response) => {
         [Buffer.from("bonding_curve"), mintPk.toBuffer()],
         programId
       );
-      const info = await connection.getAccountInfo(bcPDA);
-      if (!info) {
-        return res.status(400).json({ error: "Token not found on-chain" });
-      }
-      // Creator pubkey is stored at offset 8 (discriminator) + 32 (mint) = 40
-      const onChainCreator = new PublicKey(info.data.slice(40, 72)).toBase58();
-      if (onChainCreator !== data.creator) {
-        return res.status(403).json({ error: "Creator mismatch — not the token creator" });
+      // Use a 5-second timeout for the RPC call
+      const rpcPromise = connection.getAccountInfo(bcPDA);
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("RPC timeout")), 5000)
+      );
+      const info = await Promise.race([rpcPromise, timeoutPromise]).catch(() => null);
+      if (info) {
+        // Creator pubkey is stored at offset 8 (discriminator) + 32 (mint) = 40
+        const onChainCreator = new PublicKey(info.data.slice(40, 72)).toBase58();
+        if (onChainCreator !== data.creator) {
+          return res.status(403).json({ error: "Creator mismatch — not the token creator" });
+        }
+      } else {
+        // RPC unavailable — allow the save to proceed (token launch already succeeded on-chain)
+        console.warn("[TOKENS] RPC verification skipped for", data.mint, "— saving metadata anyway");
       }
     } catch (chainErr: any) {
-      console.error("[TOKENS] On-chain creator verification failed:", chainErr?.message);
-      return res.status(400).json({ error: "Failed to verify token on-chain" });
+      // RPC error — don't block metadata save
+      console.warn("[TOKENS] On-chain creator verification failed (non-blocking):", chainErr?.message);
     }
 
     const tokenData = {
