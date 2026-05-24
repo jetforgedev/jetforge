@@ -15,10 +15,18 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 function ReputationBadge({ badge, label, color }: { badge: string; label: string; color: string }) {
+  const isRocket = label === "Rocket Creator";
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-      style={{ borderColor: color + "40", backgroundColor: color + "15", color }}
+      className={
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border " +
+        (isRocket ? "shadow-[0_0_8px_rgba(255,215,0,0.35)]" : "")
+      }
+      style={{
+        borderColor: isRocket ? "#FFD70060" : color + "40",
+        backgroundColor: isRocket ? "#FFD70020" : color + "15",
+        color,
+      }}
     >
       {badge} {label}
     </span>
@@ -266,8 +274,8 @@ export default function CreatorsPage() {
         <div className="text-white text-sm font-semibold mb-4">Reputation Badges</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {[
-            { badge: "🚀", label: "Rocket Creator", color: "#00ff88", desc: "3+ graduated or 500+ SOL volume" },
-            { badge: "⭐", label: "Rising Star", color: "#FFD700", desc: "1+ graduated or 100+ SOL volume" },
+            { badge: "🚀", label: "Rocket Creator", color: "#FFD700", desc: "3+ graduated or 500+ SOL volume" },
+            { badge: "⭐", label: "Rising Star", color: "#f97316", desc: "1+ graduated or 100+ SOL volume" },
             { badge: "🔥", label: "Hot Creator", color: "#ff6b35", desc: "5+ tokens or 20+ SOL volume" },
             { badge: "💎", label: "Builder", color: "#7b68ee", desc: "2+ tokens or 5+ SOL volume" },
             { badge: "🌱", label: "Newcomer", color: "#888", desc: "Just getting started" },

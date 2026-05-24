@@ -31,10 +31,10 @@ function getCreatorBadge(tokensLaunched: number, totalVolumeSol: number, graduat
   color: string;
 } {
   if (graduatedCount >= 3 || totalVolumeSol >= 500) {
-    return { badge: "🚀", label: "Rocket Creator", color: "#00ff88" };
+    return { badge: "🚀", label: "Rocket Creator", color: "#FFD700" };
   }
   if (graduatedCount >= 1 || totalVolumeSol >= 100) {
-    return { badge: "⭐", label: "Rising Star", color: "#FFD700" };
+    return { badge: "⭐", label: "Rising Star", color: "#f97316" };
   }
   if (tokensLaunched >= 5 || totalVolumeSol >= 20) {
     return { badge: "🔥", label: "Hot Creator", color: "#ff6b35" };
