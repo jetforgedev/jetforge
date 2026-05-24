@@ -14,6 +14,7 @@ import { useSolPrice, solToUsd } from "@/hooks/useSolPrice";
 
 type TokenTab = "volume" | "marketcap" | "trades" | "new";
 type TraderTab = "volume" | "trades";
+type Period = "24h" | "7d" | "30d" | "all";
 
 function TokenRankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-[#FFD700] font-bold text-sm">🥇</span>;
@@ -64,18 +65,19 @@ function fmtPnl(pnl: string): string {
 export default function LeaderboardPage() {
   const [tokenTab, setTokenTab] = useState<TokenTab>("volume");
   const [traderTab, setTraderTab] = useState<TraderTab>("volume");
+  const [period, setPeriod] = useState<Period>("24h");
   const solPrice = useSolPrice();
 
   const { data: tokens, isLoading: loadingTokens } = useQuery({
-    queryKey: ["leaderboard-tokens", tokenTab],
-    queryFn: () => getTopTokens(tokenTab, 20),
+    queryKey: ["leaderboard-tokens", tokenTab, period],
+    queryFn: () => getTopTokens(tokenTab, 20, period),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
 
   const { data: traders, isLoading: loadingTraders } = useQuery({
-    queryKey: ["leaderboard-traders", traderTab],
-    queryFn: () => getTopTraders(traderTab, 20),
+    queryKey: ["leaderboard-traders", traderTab, period],
+    queryFn: () => getTopTraders(traderTab, 20, period),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
@@ -85,6 +87,13 @@ export default function LeaderboardPage() {
     { key: "marketcap", label: "Market Cap" },
     { key: "trades", label: "Trades" },
     { key: "new", label: "Newest" },
+  ];
+
+  const periods: { key: Period; label: string }[] = [
+    { key: "24h", label: "24H" },
+    { key: "7d",  label: "7D"  },
+    { key: "30d", label: "30D" },
+    { key: "all", label: "All" },
   ];
 
   const traderTabs: { key: TraderTab; label: string }[] = [
@@ -98,6 +107,26 @@ export default function LeaderboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">Leaderboard</h1>
         <p className="text-[#555] text-sm">Top tokens and traders on JetForge</p>
+      </div>
+
+      {/* Period selector */}
+      <div className="flex items-center gap-3">
+        <span className="text-[#555] text-xs font-medium">Time period:</span>
+        <div className="flex gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-1">
+          {periods.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                period === p.key
+                  ? "bg-[#00ff88] text-black"
+                  : "text-[#555] hover:text-white"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -129,7 +158,7 @@ export default function LeaderboardPage() {
                 <div>#</div>
                 <div>Token</div>
                 <div className="text-right">MCap</div>
-                <div className="text-right">Vol 24h</div>
+                <div className="text-right">Vol {period.toUpperCase()}</div>
                 <div className="text-right">Progress</div>
               </div>
 
@@ -193,7 +222,7 @@ export default function LeaderboardPage() {
                         <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
                       </div>
                       <div className="text-right font-mono">
-                        <span className="text-[#888] text-xs">{fmtVol(Number(token.volume24h))}</span>
+                        <span className="text-[#888] text-xs">{fmtVol(Number((token as any).volumePeriod ?? token.volume24h))}</span>
                         <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
                       </div>
                       <div className="flex justify-end">

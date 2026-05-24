@@ -333,9 +333,10 @@ export interface TraderData {
 
 export async function getTopTraders(
   metric: "volume" | "trades" = "volume",
-  limit = 20
+  limit = 20,
+  period: "24h" | "7d" | "30d" | "all" = "24h"
 ): Promise<TraderData[]> {
-  return fetchApi(`/leaderboard/traders?metric=${metric}&limit=${limit}`);
+  return fetchApi(`/leaderboard/traders?metric=${metric}&limit=${limit}&period=${period}`);
 }
 
 // Creator endpoints

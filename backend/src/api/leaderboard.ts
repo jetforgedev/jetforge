@@ -28,83 +28,119 @@ const MAX_TRADES_FOR_PNL = 50_000; // across all top-N wallets combined
 
 export const leaderboardRouter = Router();
 
+// Period helper — returns Date cutoff or null for "all time"
+function periodSince(period: string): Date | null {
+  const hours: Record<string, number> = { "24h": 24, "7d": 168, "30d": 720 };
+  const h = hours[period];
+  return h ? new Date(Date.now() - h * 3_600_000) : null;
+}
+
 // GET /api/leaderboard/tokens - top tokens
 leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
   try {
     const metric = (req.query.metric as string) || "volume";
+    const period = (req.query.period as string) || "24h";
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
     const excludeGraduated = req.query.excludeGraduated === "true";
-    const cacheKey = `${metric}:${limit}:${excludeGraduated}`;
+    const cacheKey = `${metric}:${period}:${limit}:${excludeGraduated}`;
 
     const cached = getLBCache(tokenLBCache, cacheKey, TOKEN_LB_CACHE_TTL_MS);
     if (cached) return res.json(cached);
 
-    let orderBy: any;
-    switch (metric) {
-      case "marketcap":
-        orderBy = [{ marketCapSol: "desc" }, { createdAt: "desc" }];
-        break;
-      case "trades":
-        // Sort by the same relation count that is displayed in the response
-        // (token._count.tradeHistory) so rank and displayed number are always
-        // in sync. token.trades is a denormalized cache that can drift.
-        orderBy = [{ tradeHistory: { _count: "desc" } }, { createdAt: "desc" }];
-        break;
-      case "new":
-        orderBy = { createdAt: "desc" };
-        break;
-      case "volume":
-      default:
-        orderBy = [{ volume24h: "desc" }, { createdAt: "desc" }];
-        break;
+    const since = periodSince(period);
+    const baseWhere = excludeGraduated ? { isGraduated: false } : {};
+    const tokenSelect = {
+      mint: true, name: true, symbol: true, imageUrl: true,
+      creator: true, createdAt: true, marketCapSol: true,
+      volume24h: true, trades: true, isGraduated: true,
+      realSolReserves: true, virtualSolReserves: true, virtualTokenReserves: true,
+      _count: { select: { tradeHistory: true } },
+    };
+
+    let tokens: any[];
+
+    // For volume sort with a non-24h period: aggregate from Trade table
+    if (metric === "volume" && period !== "24h") {
+      const tradeWhere: any = since ? { timestamp: { gte: since } } : {};
+      if (excludeGraduated) {
+        // filter mints to non-graduated only via subquery approach
+        const graduated = await prisma.token.findMany({
+          where: { isGraduated: true }, select: { mint: true },
+        });
+        const gradMints = graduated.map((t: any) => t.mint);
+        if (gradMints.length > 0) tradeWhere.mint = { notIn: gradMints };
+      }
+
+      const volumeByMint = await prisma.trade.groupBy({
+        by: ["mint"],
+        where: tradeWhere,
+        _sum: { solAmount: true },
+        orderBy: { _sum: { solAmount: "desc" } },
+        take: limit,
+      });
+
+      const mints = volumeByMint.map((r: any) => r.mint);
+      const volMap = new Map(volumeByMint.map((r: any) => [r.mint, Number(r._sum.solAmount || 0n)]));
+
+      const rows = await prisma.token.findMany({
+        where: { mint: { in: mints }, ...baseWhere },
+        select: tokenSelect,
+      });
+
+      // Restore trade-sorted order
+      const rowMap = new Map(rows.map((r: any) => [r.mint, r]));
+      tokens = mints.map((m: string) => rowMap.get(m)).filter(Boolean).map((t: any, i: number) => ({
+        rank: i + 1, mint: t.mint, name: t.name, symbol: t.symbol,
+        imageUrl: t.imageUrl, creator: t.creator, createdAt: t.createdAt,
+        marketCapSol: t.marketCapSol,
+        volumePeriod: volMap.get(t.mint) ?? 0,
+        volume24h: t.volume24h,
+        trades: t._count.tradeHistory, isGraduated: t.isGraduated,
+        realSolReserves: t.realSolReserves.toString(),
+        virtualSolReserves: t.virtualSolReserves.toString(),
+        virtualTokenReserves: t.virtualTokenReserves.toString(),
+        graduationProgress: (Number(t.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
+      }));
+    } else {
+      let orderBy: any;
+      switch (metric) {
+        case "marketcap": orderBy = [{ marketCapSol: "desc" }, { createdAt: "desc" }]; break;
+        case "trades":    orderBy = [{ tradeHistory: { _count: "desc" } }, { createdAt: "desc" }]; break;
+        case "new":       orderBy = { createdAt: "desc" }; break;
+        default:          orderBy = [{ volume24h: "desc" }, { createdAt: "desc" }]; break;
+      }
+
+      const rows = await prisma.token.findMany({
+        where: baseWhere, orderBy, take: limit, select: tokenSelect,
+      });
+
+      // For non-volume sorts: still compute volumePeriod from trades if period != 24h
+      let periodVolMap = new Map<string, number>();
+      if (period !== "24h" && rows.length > 0) {
+        const tradeWhere: any = { mint: { in: rows.map((r: any) => r.mint) } };
+        if (since) tradeWhere.timestamp = { gte: since };
+        const vols = await prisma.trade.groupBy({
+          by: ["mint"], where: tradeWhere, _sum: { solAmount: true },
+        });
+        periodVolMap = new Map(vols.map((v: any) => [v.mint, Number(v._sum.solAmount || 0n)]));
+      }
+
+      tokens = rows.map((t: any, i: number) => ({
+        rank: i + 1, mint: t.mint, name: t.name, symbol: t.symbol,
+        imageUrl: t.imageUrl, creator: t.creator, createdAt: t.createdAt,
+        marketCapSol: t.marketCapSol,
+        volumePeriod: period === "24h" ? Number(t.volume24h) : (periodVolMap.get(t.mint) ?? 0),
+        volume24h: t.volume24h,
+        trades: t._count.tradeHistory, isGraduated: t.isGraduated,
+        realSolReserves: t.realSolReserves.toString(),
+        virtualSolReserves: t.virtualSolReserves.toString(),
+        virtualTokenReserves: t.virtualTokenReserves.toString(),
+        graduationProgress: (Number(t.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
+      }));
     }
 
-    // KotH uses excludeGraduated=true so only tradeable tokens appear
-    const whereClause = excludeGraduated ? { isGraduated: false } : {};
-
-    const tokens = await prisma.token.findMany({
-      where: whereClause,
-      orderBy,
-      take: limit,
-      select: {
-        mint: true,
-        name: true,
-        symbol: true,
-        imageUrl: true,
-        creator: true,
-        createdAt: true,
-        marketCapSol: true,
-        volume24h: true,
-        trades: true,
-        isGraduated: true,
-        realSolReserves: true,
-        virtualSolReserves: true,
-        virtualTokenReserves: true,
-        _count: { select: { tradeHistory: true } },
-      },
-    });
-
-    const formatted = tokens.map((token, index) => ({
-      rank: index + 1,
-      mint: token.mint,
-      name: token.name,
-      symbol: token.symbol,
-      imageUrl: token.imageUrl,
-      creator: token.creator,
-      createdAt: token.createdAt,
-      marketCapSol: token.marketCapSol,
-      volume24h: token.volume24h,
-      trades: token._count.tradeHistory,
-      isGraduated: token.isGraduated,
-      realSolReserves: token.realSolReserves.toString(),
-      virtualSolReserves: token.virtualSolReserves.toString(),
-      virtualTokenReserves: token.virtualTokenReserves.toString(),
-      graduationProgress:
-        (Number(token.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
-    }));
-
-    setLBCache(tokenLBCache, cacheKey, formatted);
-    res.json(formatted);
+    setLBCache(tokenLBCache, cacheKey, tokens);
+    res.json(tokens);
   } catch (error) {
     console.error("GET /leaderboard/tokens error:", error);
     res.status(500).json({ error: "Failed to fetch token leaderboard" });
@@ -115,15 +151,20 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
 leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
   try {
     const metric = (req.query.metric as string) || "volume";
+    const period = (req.query.period as string) || "24h";
     const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
-    const cacheKey = `${metric}:${limit}`;
+    const cacheKey = `${metric}:${period}:${limit}`;
 
     const cached = getLBCache(traderLBCache, cacheKey, TRADER_LB_CACHE_TTL_MS);
     if (cached) return res.json(cached);
 
+    const since = periodSince(period);
+    const tradeWhere: any = since ? { timestamp: { gte: since } } : {};
+
     // Aggregate by trader
     const traderStats = await prisma.trade.groupBy({
       by: ["trader"],
+      where: tradeWhere,
       _sum: {
         solAmount: true,
         tokenAmount: true,
@@ -146,7 +187,7 @@ leaderboardRouter.get("/traders", async (req: Request, res: Response) => {
     // when top traders have very large trade histories.
     const walletList = traderStats.map((t) => t.trader);
     const allTrades = await prisma.trade.findMany({
-      where: { trader: { in: walletList } },
+      where: { trader: { in: walletList }, ...tradeWhere },
       orderBy: { timestamp: "asc" },
       take: MAX_TRADES_FOR_PNL,
       select: { trader: true, mint: true, type: true, solAmount: true, tokenAmount: true },
