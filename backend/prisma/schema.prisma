@@ -127,3 +127,77 @@ model Follow {
   @@index([follower])
   @@index([following])
 }
+
+model CreatorProfile {
+  wallet      String   @id
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  twitterUrl  String?
+  websiteUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       CreatorPost[]
+}
+
+model CreatorPost {
+  id        String   @id @default(cuid())
+  wallet    String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  creator   CreatorProfile @relation(fields: [wallet], references: [wallet], onDelete: Cascade)
+}
+
+model ReferralAccount {
+  wallet          String   @id
+  referralCode    String   @unique
+  pendingBalance  Float    @default(0)
+  totalEarned     Float    @default(0)
+  totalReferrals  Int      @default(0)
+  lastWithdrawnAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ReferralLink {
+  id              String   @id @default(cuid())
+  referredWallet  String   @unique
+  referrerWallet  String
+  cashbackBalance Float    @default(0)
+  cashbackEarned  Float    @default(0)
+  createdAt       DateTime @default(now())
+}
+
+
+model TelegramUser {
+  id            Int      @id @default(autoincrement())
+  telegramId    String   @unique
+  username      String?
+  firstName     String?
+  encryptedKey  String
+  walletAddress String
+  slippageBps   Int      @default(300)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+
+model BotAlert {
+  id           Int      @id @default(autoincrement())
+  telegramId   String
+  chatId       String
+  mint         String
+  symbol       String   @default("TOKEN")
+  alertType    String   // price_above | price_below | stop_loss | take_profit
+  triggerPrice Float
+  tokenAmount  String?
+  triggered    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([isActive])
+  @@index([telegramId])
+  @@index([mint, isActive])
+}
+

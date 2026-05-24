@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { createPublicApiRouter } from "./publicApi";
 import { tokensRouter } from "./tokens";
 import { tradesRouter } from "./trades";
 import { leaderboardRouter } from "./leaderboard";
@@ -29,6 +30,9 @@ export function createRouter(): Router {
   router.use("/coingecko", coingeckoRouter);
   router.use("/auth", authRouter);
   router.use("/referral", referralRouter);
+
+  // Public API v1 — for third-party integrations
+  router.use("/v1", createPublicApiRouter());
 
   return router;
 }

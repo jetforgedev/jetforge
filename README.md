@@ -2,7 +2,7 @@
 
 JetForge is a permissionless, fair-launch token launchpad built on Solana. Launch any token instantly with a built-in bonding curve, automatic Raydium liquidity at graduation, and a transparent on-chain fee model.
 
-Live at **[https://jetforge.io](https://jetforge.io)**
+Live at **[https://jetforge.io](https://jetforge.io)** · **[API Docs](https://jetforge.io/docs/api)** · **[Telegram Bot](https://t.me/jetforgechat)**
 
 ## Architecture Overview
 
@@ -146,13 +146,16 @@ jetforge/
 |       +-- state/             # BondingCurveState + constants
 |       +-- errors.rs          # Custom error codes
 +-- backend/                   # Node.js API server
-|   +-- prisma/schema.prisma   # Database schema (Token, Trade)
+|   +-- prisma/schema.prisma   # Database schema (Token, Trade, TelegramUser, BotAlert)
 |   +-- src/
-|       +-- index.ts           # Express server + Socket.io
+|       +-- index.ts           # Express server + Socket.io + startTradingBot()
 |       +-- config.ts          # Config + startup validation
 |       +-- indexer/           # Solana event indexer (WS + polling fallback)
 |       +-- api/               # REST API routes
+|       |   +-- publicApi.ts   # Public REST API v1 (/api/v1/*)
+|       |   +-- router.ts      # Mounts publicApi at /api/v1
 |       +-- services/          # graduateKeeper, raydiumService
+|       |   +-- telegramTradingBot.ts  # Telegram bot + alert checker
 +-- frontend/                  # Next.js 16 frontend
     +-- src/
         +-- app/               # App Router pages
@@ -227,6 +230,10 @@ SOLANA_WS_URL=wss://api.devnet.solana.com
 PROGRAM_ID=7rXDkm484DDp2YoPkLBBLtGMzuwrxysFGUgPUc4EpDmk
 TREASURY_ADDRESS=<your treasury wallet pubkey>
 FRONTEND_URL=https://jetforge.io
+
+# Telegram Trading Bot (optional — omit to disable)
+TELEGRAM_BOT_TOKEN=<from @BotFather>
+TELEGRAM_ENCRYPTION_KEY=<32-byte hex: openssl rand -hex 32>
 ```
 
 ### Frontend `.env.local`
@@ -291,6 +298,116 @@ GET  /api/stats                          # Platform stats (total tokens, 24h vol
 - `feed_trade` -- Any trade across all tokens (global feed)
 - `token_created` -- New token launched
 - `token_graduated` -- Token reached 85 SOL graduation threshold
+
+---
+
+## Public REST API v1
+
+JetForge exposes a **free, unauthenticated REST API** for third-party integrations — trading bots, aggregators, and portfolio trackers.
+
+**Base URL:** `https://jetforge.io/api/v1`  
+**Auth:** None required · **Rate limit:** 60 req/min per IP  
+**Full docs:** [jetforge.io/docs/api](https://jetforge.io/docs/api)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/health` | API status, current slot, network, program ID |
+| `GET` | `/api/v1/markets` | Live token list with on-chain bonding curve state |
+| `GET` | `/api/v1/quote` | Real-time buy/sell quote from chain |
+| `POST` | `/api/v1/trade/prepare` | Build an unsigned Solana transaction |
+| `GET` | `/api/v1/wallet/:address` | SOL balance + SPL token positions |
+
+### Query parameters
+
+**`/markets`** — `limit` (default 50, max 200), `sort` (`new` | `trending` | `graduating`)
+
+**`/quote`** — `mint` (required), `side` (`buy` | `sell`, required), `amount` (lamports for buy / token base units for sell, required), `slippageBps` (default 300)
+
+**`/trade/prepare`** body — `{ mint, side, amount, walletPublicKey, slippageBps? }`
+
+### Quick example
+
+```bash
+# Health check
+curl https://jetforge.io/api/v1/health
+
+# Get a buy quote — 0.1 SOL (100,000,000 lamports)
+curl "https://jetforge.io/api/v1/quote?mint=<MINT>&side=buy&amount=100000000"
+
+# Prepare an unsigned transaction
+curl -X POST https://jetforge.io/api/v1/trade/prepare \
+  -H "Content-Type: application/json" \
+  -d '{"mint":"<MINT>","side":"buy","amount":"100000000","walletPublicKey":"<YOUR_PUBKEY>"}'
+```
+
+The `/trade/prepare` response includes a **base64 unsigned transaction**. Sign it with your own wallet and broadcast — JetForge never receives or touches your private key.
+
+```typescript
+// Sign and broadcast (TypeScript / Solana wallet adapter)
+const { transaction: txBase64 } = await fetch("/api/v1/trade/prepare", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ mint, side: "buy", amount: "100000000", walletPublicKey }),
+}).then(r => r.json());
+
+const tx = Transaction.from(Buffer.from(txBase64, "base64"));
+const signed = await wallet.signTransaction(tx);
+const sig = await connection.sendRawTransaction(signed.serialize());
+```
+
+---
+
+## Telegram Trading Bot
+
+JetForge includes a Telegram trading bot where each user gets a bot-managed Solana wallet. Private keys are stored encrypted with **AES-256-GCM** — the bot never exposes them.
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Create your bot-managed trading wallet |
+| `/wallet` | SOL balance + all token holdings |
+| `/markets` | Browse active tokens (inline keyboard) |
+| `/buy <mint> <sol>` | Buy a token with SOL |
+| `/sell` | Sell positions via inline keyboard (25% / 50% / 100%) |
+| `/positions` | View holdings with live SOL value |
+| `/price <mint>` | Price, market cap, bonding curve progress, buy quotes |
+| `/alert <mint> above\|below <price>` | Notify when price crosses a level |
+| `/stoploss <mint> <percent>` | Auto-sell 100% of position if price drops X% |
+| `/tp <mint> <percent>` | Auto-sell 100% of position if price rises X% |
+| `/alerts` | List all active alerts with inline cancel buttons |
+| `/cancelalert <id>` | Cancel a specific alert |
+| `/withdraw <address> <sol>` | Send SOL to an external wallet |
+| `/settings` | Configure slippage tolerance (1% / 3% / 5% / 10%) |
+| `/help` | Full command reference |
+
+### Alert system
+
+A background loop checks all active alerts every **30 seconds**:
+
+- `price_above` / `price_below` — sends a Telegram notification with buy/sell buttons
+- `stop_loss` / `take_profit` — automatically executes an on-chain sell, then notifies with the transaction link
+
+Double-fire protection: each alert is marked `triggered` before execution.
+
+### Architecture
+
+```
+Telegram user
+      │  /buy WIF 0.5
+      ▼
+TelegramBot (node-telegram-bot-api, polling)
+      │  getOrCreateUser() — AES-256-GCM encrypted keypair in PostgreSQL
+      ▼
+executeBuy() — builds + signs tx with bot-managed keypair
+      ▼
+Solana RPC — sendAndConfirmTransaction
+      │
+      └── Alert checker (30s loop)
+              ├── checkAlerts() — reads BotAlert table
+              ├── getAccountInfo(bondingCurvePDA) — on-chain price
+              └── executeSell() if stop_loss / take_profit triggered
+```
 
 ---
 

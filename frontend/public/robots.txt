@@ -6,6 +6,10 @@ Disallow: /api/
 Disallow: /_next/static/
 Disallow: /uploads/
 
+# Block parameterized URLs that aren't real pages
+Disallow: /*?q=
+Disallow: /*?ref=
+
 # Allow important crawlable pages
 Allow: /token/
 Allow: /creators/
@@ -17,6 +21,7 @@ Allow: /faq
 Allow: /terms
 Allow: /disclaimer
 Allow: /support
+Allow: /referral
 
 # AI crawlers — explicitly permitted for indexing and training
 User-agent: GPTBot
@@ -41,3 +46,4 @@ User-agent: Bingbot
 Allow: /
 
 Sitemap: https://jetforge.io/sitemap.xml
+

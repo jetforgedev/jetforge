@@ -11,6 +11,7 @@ import { config } from "./config";
 import { createRouter } from "./api/router";
 import { initWebSocket } from "./websocket/index";
 import { startIndexer } from "./indexer/index";
+import { startTradingBot } from "./services/telegramTradingBot";
 
 dotenv.config();
 
@@ -130,6 +131,9 @@ const start = async () => {
     } else {
       console.log(`[Indexer] Skipping on cluster instance ${instanceId} — instance 0 handles indexing`);
     }
+
+    // Telegram trading bot (runs on all instances — it handles its own dedup via Telegram)
+    startTradingBot();
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
