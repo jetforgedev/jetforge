@@ -312,9 +312,12 @@ export async function getTopHolders(mint: string): Promise<{ holders: { wallet: 
 export async function getTopTokens(
   metric: "volume" | "marketcap" | "trades" | "new" = "volume",
   limit = 20,
-  period: "24h" | "7d" | "30d" | "all" = "24h"
+  period: "24h" | "7d" | "30d" | "all" = "24h",
+  excludeGraduated = false
 ): Promise<any[]> {
-  return fetchApi(`/leaderboard/tokens?metric=${metric}&limit=${limit}&period=${period}`);
+  const params = new URLSearchParams({ metric, limit: String(limit), period });
+  if (excludeGraduated) params.set("excludeGraduated", "true");
+  return fetchApi(`/leaderboard/tokens?${params}`);
 }
 
 export interface TraderData {
