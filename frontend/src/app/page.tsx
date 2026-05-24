@@ -181,7 +181,7 @@ function KingOfTheHill() {
   const countdown = useKothCountdown();
   const { data } = useQuery({
     queryKey: ["king-of-hill"],
-    queryFn: () => getTopTokens("volume", 1, true),
+    queryFn: () => getTopTokens("volume", 1, "24h", true),
     staleTime: 8_000,
     refetchInterval: 10_000,
   });
