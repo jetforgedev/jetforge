@@ -122,7 +122,7 @@ function HoldersTable({ mint, creator }: { mint: string; creator: string }) {
           No holders yet — be the first to buy!
         </div>
       ) : (
-        <div className="divide-y divide-[#0f0f0f]">
+        <div className="divide-y divide-[#0f0f0f] overflow-y-auto max-h-[480px] scrollbar-thin scrollbar-track-[#111] scrollbar-thumb-[#2a2a2a]">
           {holders.map((h, i) => {
             const isCreator = h.wallet === creator;
             const barColor =
