@@ -42,16 +42,36 @@ function fmtMcapSol(val: number): string {
   return `${val.toFixed(2)} SOL`;
 }
 
-// Fix #2: dynamic price format precision based on value magnitude
+// Dynamic price format precision — covers everything from sub-nano-dollar
+// per-token prices up to six-figure market caps.
 function computePriceFormat(maxVal: number): { type: "price"; precision: number; minMove: number } {
-  if (maxVal <= 0 || !isFinite(maxVal)) return { type: "price", precision: 8, minMove: 0.00000001 };
-  if (maxVal < 0.0001)  return { type: "price", precision: 8, minMove: 0.00000001 };
-  if (maxVal < 0.001)   return { type: "price", precision: 7, minMove: 0.0000001 };
-  if (maxVal < 0.01)    return { type: "price", precision: 6, minMove: 0.000001 };
-  if (maxVal < 0.1)     return { type: "price", precision: 5, minMove: 0.00001 };
-  if (maxVal < 1)       return { type: "price", precision: 4, minMove: 0.0001 };
-  if (maxVal < 1_000)   return { type: "price", precision: 2, minMove: 0.01 };
+  if (maxVal <= 0 || !isFinite(maxVal)) return { type: "price", precision: 10, minMove: 0.0000000001 };
+  if (maxVal < 0.000000001) return { type: "price", precision: 12, minMove: 0.000000000001 };
+  if (maxVal < 0.00000001)  return { type: "price", precision: 10, minMove: 0.0000000001 };
+  if (maxVal < 0.0000001)   return { type: "price", precision: 9,  minMove: 0.000000001 };
+  if (maxVal < 0.000001)    return { type: "price", precision: 8,  minMove: 0.00000001 };
+  if (maxVal < 0.0001)      return { type: "price", precision: 7,  minMove: 0.0000001 };
+  if (maxVal < 0.001)       return { type: "price", precision: 6,  minMove: 0.000001 };
+  if (maxVal < 0.01)        return { type: "price", precision: 5,  minMove: 0.00001 };
+  if (maxVal < 0.1)         return { type: "price", precision: 4,  minMove: 0.0001 };
+  if (maxVal < 1)           return { type: "price", precision: 3,  minMove: 0.001 };
+  if (maxVal < 1_000)       return { type: "price", precision: 2,  minMove: 0.01 };
   return { type: "price", precision: 0, minMove: 1 };
+}
+
+// Adaptive formatter for the header price display.
+// Shows enough significant figures for any magnitude — never collapses to "$0.00000000".
+function fmtPrice(val: number, currency: "usd" | "sol"): string {
+  if (!isFinite(val) || val === 0) return currency === "usd" ? "$0" : "0 SOL";
+  const abs = Math.abs(val);
+  let decimals: number;
+  if (abs >= 1)            decimals = 4;
+  else if (abs >= 0.001)   decimals = 6;
+  else if (abs >= 0.000001)decimals = 8;
+  else if (abs >= 1e-10)   decimals = 12;
+  else                     decimals = 14;
+  const str = val.toFixed(decimals).replace(/\.?0+$/, "") || "0";
+  return currency === "usd" ? `$${str}` : `${str} SOL`;
 }
 
 interface OHLC { time: number; open: number; high: number; low: number; close: number; }
@@ -170,15 +190,25 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
   const entryTokenBalance = entryHolding?.tokenBalance ?? 0;
 
   // Compute display multiplier based on mode.
-  // ohlcv price values are in "SOL per token × 1e6" units (mcap-scale).
-  // Original working formula for MCap USD was: solPrice * 1_000_000
+  //
+  // OHLCV raw price = virtualSol_lamports / virtualToken_microtokens
+  //
+  // Unit conversions:
+  //   SOL per token  = rawPrice × (1e6 micro-tokens/token) / (1e9 lamports/SOL)
+  //                  = rawPrice / 1_000
+  //   MCap in SOL    = (SOL per token) × totalSupply_tokens (1e9)
+  //                  = rawPrice × 1e6
+  //   MCap in USD    = MCap_SOL × solUsd   → mult = solUsd × 1_000_000  ✓
+  //   MCap in SOL    =                     → mult = 1_000_000            ✓
+  //   Price in USD   = (rawPrice / 1_000) × solUsd → mult = solUsd / 1_000
+  //   Price in SOL   = rawPrice / 1_000             → mult = 1 / 1_000 = 0.001
   const getMultiplier = useCallback((sp: number | null) => {
     const solUsd = sp ?? 0;
     if (priceMode === "mcap") {
       return currencyMode === "usd" ? solUsd * 1_000_000 : 1_000_000;
     } else {
-      // Per-token price: mcap_value / total_supply (1B) = value / 1000
-      return currencyMode === "usd" ? solUsd * 1_000 : 1_000;
+      // Per-token price in display currency
+      return currencyMode === "usd" ? solUsd / 1_000 : 1 / 1_000;
     }
   }, [priceMode, currencyMode]);
 
@@ -458,7 +488,8 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     // to 0 and corrupts the y-axis. Fall back to SOL-based units so the chart
     // is never blank. The effect re-runs when solPrice arrives (it's in deps),
     // at which point the correct USD scale is applied.
-    const mult = getMultiplier(solPrice) || (priceMode === "mcap" ? 1_000_000 : 1_000);
+    // SOL fallback: MCap=1_000_000, Price=0.001 (= 1/1_000 SOL per token)
+    const mult = getMultiplier(solPrice) || (priceMode === "mcap" ? 1_000_000 : 0.001);
 
     const candles = ohlcv.map((d) => ({
       time: d.time as any,
@@ -949,9 +980,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <span className="text-white text-sm font-bold font-mono truncate">
               {priceMode === "mcap"
                 ? (currencyMode === "usd" ? fmtMcap(currentVal) : fmtMcapSol(currentVal))
-                : (currencyMode === "usd"
-                    ? `$${currentVal.toFixed(8)}`
-                    : `${currentVal.toFixed(8)} SOL`)}
+                : fmtPrice(currentVal, currencyMode)}
             </span>
           )}
         </div>
@@ -962,7 +991,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
               <span className="text-[#888]">
                 {priceMode === "mcap"
                   ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
-                  : (currencyMode === "usd" ? `$${athDisplay.toFixed(8)}` : `${athDisplay.toFixed(8)} SOL`)}
+                  : fmtPrice(athDisplay, currencyMode)}
               </span>
             </span>
           )}
