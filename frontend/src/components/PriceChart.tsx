@@ -42,6 +42,43 @@ function fmtMcapSol(val: number): string {
   return `${val.toFixed(2)} SOL`;
 }
 
+// ── Subscript-zero price notation ─────────────────────────────────────────────
+// Converts tiny prices to compact form: 0.0000000024 → $0.0₈2.4
+const SUBSCRIPT_DIGITS = ['₀','₁','₂','₃','₄','₅','₆','₇','₈','₉'];
+function toSubscript(n: number): string {
+  return String(n).split('').map(c => SUBSCRIPT_DIGITS[parseInt(c)] ?? c).join('');
+}
+// Number of leading zeros after the decimal point (e.g. 0.0000000024 → 8)
+function countLeadingZeros(val: number): number {
+  if (val <= 0 || !isFinite(val)) return 0;
+  return -Math.floor(Math.log10(val)) - 1;
+}
+// Significant digits string after the leading zeros (e.g. 0.0000000024, zeros=8 → "2.4")
+function getSigPart(val: number, zeros: number): string {
+  const shifted = val * Math.pow(10, zeros + 1);
+  return parseFloat(shifted.toPrecision(3)).toString();
+}
+// Plain-text formatter for chart Y-axis labels — uses Unicode subscript digits
+// so the label is self-contained text (no HTML). Examples:
+//   0.0000000024 USD  →  $0.0₈2.4
+//   0.000042 SOL      →  0.0₄42 SOL
+//   0.0031 USD        →  $0.0031   (< 3 leading zeros → no subscript)
+function fmtPriceCompact(val: number, currency: "usd" | "sol"): string {
+  if (!isFinite(val) || val === 0) return currency === "usd" ? "$0" : "0 SOL";
+  const abs = Math.abs(val);
+  const prefix = currency === "usd" ? "$" : "";
+  const suffix = currency === "sol" ? " SOL" : "";
+  if (abs < 0.001) {
+    const zeros = countLeadingZeros(abs);
+    if (zeros >= 3) {
+      return `${prefix}0.0${toSubscript(zeros)}${getSigPart(abs, zeros)}${suffix}`;
+    }
+  }
+  if (abs >= 1)    return `${prefix}${abs.toFixed(4)}${suffix}`;
+  if (abs >= 0.01) return `${prefix}${abs.toFixed(5)}${suffix}`;
+  return `${prefix}${abs.toFixed(6)}${suffix}`;
+}
+
 // Dynamic price format precision — covers everything from sub-nano-dollar
 // per-token prices up to six-figure market caps.
 function computePriceFormat(maxVal: number): { type: "price"; precision: number; minMove: number } {
@@ -89,6 +126,32 @@ function toHeikinAshi(candles: OHLC[]): OHLC[] {
     ha.push({ time: c.time, open: haOpen, high: haHigh, low: haLow, close: haClose });
   }
   return ha;
+}
+
+// React component that renders a price with subscript-zero notation in the header.
+// Small prices (< 0.001) are shown as e.g. $0.0<sub>8</sub>2.4 using a small
+// inline span for the zero count.  Larger prices fall back to fmtPrice().
+function PriceDisplay({ val, currency }: { val: number; currency: "usd" | "sol" }) {
+  if (!isFinite(val) || val === 0) {
+    return <>{currency === "usd" ? "$0" : "0 SOL"}</>;
+  }
+  const abs = Math.abs(val);
+  if (abs < 0.001) {
+    const zeros = countLeadingZeros(abs);
+    if (zeros >= 3) {
+      const sig = getSigPart(abs, zeros);
+      const prefix = currency === "usd" ? "$" : "";
+      const suffix = currency === "sol" ? " SOL" : "";
+      return (
+        <>
+          {prefix}0.0
+          <span className="text-[9px] align-sub leading-none opacity-80">{zeros}</span>
+          {sig}{suffix}
+        </>
+      );
+    }
+  }
+  return <>{fmtPrice(val, currency)}</>;
 }
 
 export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onFullscreenChange }: PriceChartProps) {
@@ -508,9 +571,14 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
     }));
     const lineData = candles.map((c) => ({ time: c.time as any, value: c.close }));
 
-    // Dynamic price format based on display-unit magnitude
+    // Dynamic price format based on display-unit magnitude.
+    // Price mode: use the subscript-zero custom formatter so tiny per-token
+    // prices like 0.0000000024 render as "$0.0₈2.4" instead of a long decimal.
+    // MCap mode: keep the existing precision-based format (values are always ≥$1K).
     const maxHigh = Math.max(...candles.map((c) => c.high));
-    const fmt = computePriceFormat(maxHigh);
+    const fmt = (priceMode === "price")
+      ? { type: "custom" as const, formatter: (v: number) => fmtPriceCompact(v, currencyMode), minMove: 0.000000000001 }
+      : computePriceFormat(maxHigh);
     candleSeriesRef.current?.applyOptions({ priceFormat: fmt });
     lineSeriesRef.current?.applyOptions({ priceFormat: fmt });
     areaSeriesRef.current?.applyOptions({ priceFormat: fmt });
@@ -980,7 +1048,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
             <span className="text-white text-sm font-bold font-mono truncate">
               {priceMode === "mcap"
                 ? (currencyMode === "usd" ? fmtMcap(currentVal) : fmtMcapSol(currentVal))
-                : fmtPrice(currentVal, currencyMode)}
+                : <PriceDisplay val={currentVal} currency={currencyMode} />}
             </span>
           )}
         </div>
@@ -991,7 +1059,7 @@ export function PriceChart({ mint, symbol, solPrice, creator, floatingPanel, onF
               <span className="text-[#888]">
                 {priceMode === "mcap"
                   ? (currencyMode === "usd" ? fmtMcap(athDisplay) : fmtMcapSol(athDisplay))
-                  : fmtPrice(athDisplay, currencyMode)}
+                  : <PriceDisplay val={athDisplay} currency={currencyMode} />}
               </span>
             </span>
           )}
