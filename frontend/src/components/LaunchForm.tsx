@@ -239,7 +239,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // ── Phase 1: Upload image + metadata to Arweave ──────────────────────────
       setLaunchPhase("uploading");
       toast.loading("Uploading to Arweave...", { id: loadingToast });
-      const { imageUrl: arweaveImageUrl, metadataUri } = await uploadTokenAssets(
+      const { arweaveImageUrl, metadataUri } = await uploadTokenAssets(
         imageFile,
         {
           name,
