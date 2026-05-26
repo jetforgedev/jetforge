@@ -621,8 +621,38 @@ Timestamp: ${Date.now()}`;
           </div>
         </div>
         {referralStats.referralCode && (
-          <div className="mt-3 text-xs text-gray-500">
-            Referral code: <span className="text-[#00ff88] font-mono">{referralStats.referralCode}</span>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs text-gray-500">
+              Referral code: <span className="text-[#00ff88] font-mono">{referralStats.referralCode}</span>
+            </div>
+            {/* Shareable link with copy + X/Telegram share */}
+            <div className="flex items-center gap-2 bg-[#0f1a0f] border border-[#1a2a1a] rounded-lg px-3 py-2">
+              <code className="text-[#00ff88] text-xs font-mono flex-1 truncate">
+                jetforge.io/r/{referralStats.referralCode}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://jetforge.io/r/${referralStats.referralCode}`);
+                  alert('Referral link copied!');
+                }}
+                className="text-gray-400 hover:text-white text-xs px-2.5 py-1 border border-[#1a2a1a] rounded hover:border-[#00ff88] transition-all whitespace-nowrap"
+              >
+                📋 Copy
+              </button>
+              <button
+                onClick={() => {
+                  const link = `https://jetforge.io/r/${referralStats.referralCode}`;
+                  const text = encodeURIComponent(`💰 Use my JetForge referral link → get 10% cashback on every trade for 30 days!\n\n${link}`);
+                  window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+                }}
+                className="text-gray-400 hover:text-white text-xs px-2.5 py-1 border border-[#1a2a1a] rounded hover:border-white transition-all whitespace-nowrap"
+                title="Share on X"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="inline">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -655,7 +685,14 @@ Timestamp: ${Date.now()}`;
           </button>
         </div>
       )}
-      {isOwn && hasToken && (
+      {isOwn && hasToken && (() => {
+        // Derive the effective referral link — dashboard link is authoritative when
+        // available; fall back to the code already visible in public stats so the
+        // share UI never stays "Generating..." while the dashboard fetch is in-flight.
+        const effectiveLink: string | null =
+          referralDashboard.referralLink ||
+          (referralStats.referralCode ? `https://jetforge.io/r/${referralStats.referralCode}` : null);
+        return (
         <div className="border border-[#1a2a1a] rounded-xl p-5 mt-4">
           <h3 className="text-[#00ff88] font-semibold mb-4 flex items-center gap-2">
             <span>💰</span> Your Referral Dashboard
@@ -664,15 +701,15 @@ Timestamp: ${Date.now()}`;
           {/* Referral Link + Share */}
           <div className="mb-5">
             <div className="text-gray-400 text-xs mb-2">Your referral link</div>
-            {referralDashboard.referralLink ? (
+            {effectiveLink ? (
               <>
                 <div className="flex items-center gap-2 bg-[#0f1a0f] border border-[#1a2a1a] rounded-lg p-3 mb-3">
                   <code className="text-[#00ff88] text-sm flex-1 truncate font-mono">
-                    {referralDashboard.referralLink}
+                    {effectiveLink}
                   </code>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(referralDashboard.referralLink);
+                      navigator.clipboard.writeText(effectiveLink);
                       alert('Referral link copied!');
                     }}
                     className="text-gray-400 hover:text-white text-xs px-3 py-1.5 border border-[#1a2a1a] rounded-lg hover:border-[#00ff88] transition-all whitespace-nowrap"
@@ -706,7 +743,7 @@ Timestamp: ${Date.now()}`;
                 <div className="flex gap-2 flex-wrap mb-5">
                   <button
                     onClick={() => {
-                      const fullText = encodeURIComponent(shareMessage + '\n\n' + referralDashboard.referralLink);
+                      const fullText = encodeURIComponent(shareMessage + '\n\n' + effectiveLink);
                       window.open(`https://twitter.com/intent/tweet?text=${fullText}`, '_blank');
                     }}
                     className="flex items-center gap-1.5 bg-black border border-[#333] text-white text-xs px-3 py-2 rounded-lg hover:border-white transition-all"
@@ -717,7 +754,7 @@ Timestamp: ${Date.now()}`;
                   <button
                     onClick={() => {
                       const text = encodeURIComponent(shareMessage);
-                      const url = encodeURIComponent(referralDashboard.referralLink);
+                      const url = encodeURIComponent(effectiveLink || '');
                       window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
                     }}
                     className="flex items-center gap-1.5 bg-[#0088cc] border border-[#0088cc] text-white text-xs px-3 py-2 rounded-lg hover:bg-[#006699] transition-all"
@@ -727,7 +764,7 @@ Timestamp: ${Date.now()}`;
                   </button>
                   <button
                     onClick={() => {
-                      const fullMessage = shareMessage + '\n\n' + referralDashboard.referralLink;
+                      const fullMessage = shareMessage + '\n\n' + effectiveLink;
                       if (navigator.share) {
                         navigator.share({
                           title: 'JetForge Referral',
@@ -787,7 +824,8 @@ Timestamp: ${Date.now()}`;
             }
           </button>
         </div>
-      )}
+        );
+      })()}
 
       {/* Cashback section - shown to any connected wallet that has been referred */}
       {viewer && (cashback.active || cashback.cashbackEarned > 0) && (
