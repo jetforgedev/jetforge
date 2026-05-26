@@ -319,7 +319,6 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           symbol,
           description: form.description.trim(),
           imageUrl:    displayImageUrl  || undefined,
-          metadataUri: metadataUri     || undefined,
           websiteUrl:  form.websiteUrl  || undefined,
           twitterUrl:  form.twitterUrl  || undefined,
           telegramUrl: form.telegramUrl || undefined,

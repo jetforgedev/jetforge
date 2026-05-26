@@ -56,7 +56,6 @@ export interface TokenData {
   symbol: string;
   description?: string;
   imageUrl?: string;
-  metadataUri?: string;
   websiteUrl?: string;
   twitterUrl?: string;
   telegramUrl?: string;
@@ -98,7 +97,6 @@ export interface TradeData {
     name: string;
     symbol: string;
     imageUrl?: string;
-  metadataUri?: string;
   };
 }
 
@@ -134,7 +132,6 @@ export interface CreateTokenPayload {
   symbol: string;
   description?: string;
   imageUrl?: string;
-  metadataUri?: string;
   websiteUrl?: string;
   twitterUrl?: string;
   telegramUrl?: string;
