@@ -4,6 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { prisma } from "../index";
 import { BONDING_CURVE_CONSTANTS, config } from "../config";
 import { getSolanaConnection } from "../solana/connection";
+import { getSolPriceUsd } from "./coingecko";
 
 export const tokensRouter = Router();
 
@@ -52,6 +53,8 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
   if (tokens.length === 0) return [];
   const mints = tokens.map((t: any) => t.mint);
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
+  // Fetch SOL/USD once per call — result is cached for 10 min inside getSolPriceUsd
+  const solPriceUsd = await getSolPriceUsd();
 
   const [holderRows, recentTradeRows, lastTradeRows] = await Promise.all([
     // Holder count: indexed Holder table grouped by mint — O(log n) per mint,
@@ -101,6 +104,10 @@ async function enrichTokens(tokens: any[]): Promise<any[]> {
       trades15m: trades15mByMint[token.mint] ?? 0,
       lastTradeAt: lastTradeByMint[token.mint] ?? null,
       currentPrice: computePrice(token.virtualSolReserves, token.virtualTokenReserves),
+      // priceUsd: SOL-per-token × SOL/USD.
+      // computePrice returns lamports/micro-token; ÷1000 converts to SOL/token
+      // (lamports×1e6 / tokens×1e9 = ÷1000).
+      priceUsd: (computePrice(token.virtualSolReserves, token.virtualTokenReserves) / 1000) * solPriceUsd,
       graduationProgress:
         (Number(token.realSolReserves) /
           Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) *

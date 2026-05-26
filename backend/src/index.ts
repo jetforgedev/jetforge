@@ -4,8 +4,8 @@ import { createServer } from "http";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
-import { PrismaClient } from "@prisma/client";
 import rateLimit from "express-rate-limit";
+import { prisma } from "./lib/prisma";
 
 import { config } from "./config";
 import { createRouter } from "./api/router";
@@ -23,10 +23,9 @@ const httpServer = createServer(app);
 // express-rate-limit rejects (clients could spoof X-Forwarded-For).
 app.set("trust proxy", 1);
 
-// Initialize Prisma
-export const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["query", "error"] : ["error"],
-});
+// Re-export shared prisma instance so existing `import { prisma } from '../index'`
+// imports in api routes continue to work without changes.
+export { prisma } from "./lib/prisma";
 
 // Middleware
 app.use(

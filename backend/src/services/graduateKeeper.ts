@@ -26,9 +26,7 @@ import {
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { config, BONDING_CURVE_CONSTANTS } from "../config";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const TREASURY_PUBKEY = new PublicKey(config.solana.treasuryAddress);
 

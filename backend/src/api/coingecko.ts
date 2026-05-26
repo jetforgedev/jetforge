@@ -6,9 +6,11 @@ export const coingeckoRouter = Router();
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 // Cache SOL/USD price (updated every 10 min)
+// Exported so other API modules (e.g. tokens.ts) can compute priceUsd without
+// a separate fetch — all callers share the same in-process cache.
 let cachedSolPriceUsd = 150;
 let lastSolPriceFetch = 0;
-async function getSolPriceUsd(): Promise<number> {
+export async function getSolPriceUsd(): Promise<number> {
   if (Date.now() - lastSolPriceFetch < 10 * 60 * 1000) return cachedSolPriceUsd;
   try {
     const r = await fetch(
