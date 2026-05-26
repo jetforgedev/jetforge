@@ -420,7 +420,17 @@ export default function HomePage() {
 
       queryClient.setQueriesData<{ tokens: TokenData[]; pagination: any }>(
         { queryKey: ["tokens"], type: "active" },
-        (old) => old?.tokens ? { ...old, tokens: old.tokens.map(patch) } : old
+        (old) => {
+          if (!old?.tokens) return old;
+          const updated = old.tokens.map(patch);
+          // Re-sort so the hottest token rises to position #1 immediately,
+          // without waiting for the 15 s API refetch.
+          const key = (t: TokenData) =>
+            (typeof t.trades === "number" ? t.trades : 0) * 1000 +
+            (typeof t.volume24h === "number" ? t.volume24h : 0);
+          const sorted = [...updated].sort((a, b) => key(b) - key(a));
+          return { ...old, tokens: sorted };
+        }
       );
       queryClient.setQueriesData<TokenData[]>(
         { queryKey: ["king-of-hill"] },
