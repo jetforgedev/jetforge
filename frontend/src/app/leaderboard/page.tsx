@@ -162,7 +162,9 @@ export default function LeaderboardPage() {
                 <div>#</div>
                 <div>Token</div>
                 <div className="text-right">MCap</div>
-                <div className="text-right">Vol {period.toUpperCase()}</div>
+                <div className="text-right">
+                  {tokenTab === "trades" ? "Trades" : `Vol ${period.toUpperCase()}`}
+                </div>
                 <div className="text-right">Progress</div>
               </div>
 
@@ -225,10 +227,17 @@ export default function LeaderboardPage() {
                         <span className="text-white text-xs">{fmtVol(Number(token.marketCapSol))}</span>
                         <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
                       </div>
-                      <div className="text-right font-mono">
-                        <span className="text-[#888] text-xs">{fmtVol(Number((token as any).volumePeriod ?? token.volume24h))}</span>
-                        <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
-                      </div>
+                      {tokenTab === "trades" ? (
+                        <div className="text-right font-mono">
+                          <span className="text-[#00ff88] text-xs">{((token as any).trades ?? 0).toLocaleString()}</span>
+                          <span className="text-[#555] text-[10px] ml-0.5">txns</span>
+                        </div>
+                      ) : (
+                        <div className="text-right font-mono">
+                          <span className="text-[#888] text-xs">{fmtVol(Number((token as any).volumePeriod ?? token.volume24h))}</span>
+                          <span className="text-[#555] text-[10px] ml-0.5">SOL</span>
+                        </div>
+                      )}
                       <div className="flex justify-end">
                         <GradProgress pct={token.graduationProgress ?? 0} />
                       </div>
