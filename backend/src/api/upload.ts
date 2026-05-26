@@ -96,7 +96,7 @@ async function uploadToArweave(
   try {
     const irys = await getIrys();
     const receipt = await irys.upload(buffer, { tags });
-    return `https://arweave.net/${receipt.id}`;
+    return `https://gateway.irys.xyz/${receipt.id}`;
   } catch (err: any) {
     console.warn("[upload] Arweave upload failed:", err.message?.slice(0, 100));
     return null;
