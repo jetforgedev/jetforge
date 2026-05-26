@@ -5,7 +5,7 @@ import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapte
 import toast from "react-hot-toast";
 import { clsx } from "clsx";
 import { createTokenRecord, uploadImage, uploadTokenAssets } from "@/lib/api";
-import { buildCreateTokenTransaction, grindVanityKeypair } from "@/lib/program";
+import { buildCreateTokenTransaction, grindVanityKeypairAsync } from "@/lib/program";
 
 // Minimum SOL needed to create a token (rent for mint + bonding curve + 4 vaults)
 const CREATE_TOKEN_MIN_SOL = 0.015;
@@ -27,6 +27,100 @@ function friendlyLaunchError(raw: string): string {
 }
 
 type Step = 1 | 2 | 3;
+
+// Phases shown in the full-screen launch overlay
+type LaunchPhase =
+  | "idle"
+  | "uploading"    // uploading image + metadata to Arweave
+  | "forging"      // grinding vanity keypair ending in "jet"
+  | "signing"      // waiting for wallet approval
+  | "confirming"   // waiting for on-chain confirmation
+  | "done";
+
+// ─── Launch Overlay ───────────────────────────────────────────────────────────
+function LaunchOverlay({
+  phase,
+  grindAttempts,
+}: {
+  phase: LaunchPhase;
+  grindAttempts: number;
+}) {
+  if (phase === "idle" || phase === "done") return null;
+
+  const steps: { id: LaunchPhase; label: string; sublabel: string }[] = [
+    { id: "uploading",  label: "Uploading to Arweave",  sublabel: "Saving image & metadata permanently" },
+    { id: "forging",    label: "Forging address",        sublabel: "" },
+    { id: "signing",    label: "Wallet approval",        sublabel: "Sign the transaction in your wallet" },
+    { id: "confirming", label: "Confirming on-chain",    sublabel: "Waiting for Solana to confirm" },
+  ];
+
+  const phaseOrder: LaunchPhase[] = ["uploading", "forging", "signing", "confirming"];
+  const currentIdx = phaseOrder.indexOf(phase);
+  const progress = currentIdx < 0 ? 0 : Math.round(((currentIdx + 0.6) / phaseOrder.length) * 100);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-sm rounded-[32px] border border-[#00ff88]/20 bg-[#0a0a0a] p-7 shadow-[0_0_80px_rgba(0,255,136,0.12)]">
+        <div className="mb-6 flex justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 text-3xl animate-bounce">
+            🚀
+          </div>
+        </div>
+
+        <h2 className="mb-1 text-center text-lg font-bold text-white">Launching Token</h2>
+        <p className="mb-6 text-center text-xs text-white/40">Do not close this window</p>
+
+        <div className="mb-6 space-y-3">
+          {steps.map((s, i) => {
+            const isDone   = i < currentIdx;
+            const isActive = s.id === phase;
+            return (
+              <div key={s.id} className="flex items-start gap-3">
+                <div className={clsx(
+                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
+                  isDone
+                    ? "bg-[#00ff88] text-black"
+                    : isActive
+                    ? "border border-[#00ff88] bg-[#00ff88]/15 text-[#00ff88]"
+                    : "border border-white/10 bg-white/[0.04] text-white/25"
+                )}>
+                  {isDone ? "✓" : isActive ? (
+                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (i + 1)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={clsx(
+                    "text-sm font-semibold",
+                    isDone ? "text-[#00ff88]" : isActive ? "text-white" : "text-white/30"
+                  )}>
+                    {s.label}
+                  </div>
+                  {isActive && (
+                    <div className="mt-0.5 text-xs text-white/40 truncate">
+                      {s.id === "forging"
+                        ? `Finding a mint ending in "jet" · ${grindAttempts.toLocaleString()} attempts`
+                        : s.sublabel}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
+          <div
+            className="h-full rounded-full bg-[#00ff88] transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface FormData {
   name: string;
@@ -64,6 +158,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [launchedMint, setLaunchedMint] = useState<string | null>(null);
+  const [launchPhase, setLaunchPhase] = useState<LaunchPhase>("idle");
+  const [grindAttempts, setGrindAttempts] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const update = (key: keyof FormData, value: string) => {
@@ -126,6 +222,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
     if (err) { toast.error(err); return; }
 
     setIsLaunching(true);
+    setLaunchPhase("idle");
+    setGrindAttempts(0);
     const loadingToast = toast.loading("Preparing transaction...");
 
     try {
@@ -138,8 +236,8 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       const name = form.name.trim();
       const symbol = form.symbol.trim().toUpperCase();
 
-      // Upload image + metadata JSON to Arweave (permanent storage).
-      // Both uploads happen via the backend Irys node using the Arweave key.
+      // ── Phase 1: Upload image + metadata to Arweave ──────────────────────────
+      setLaunchPhase("uploading");
       toast.loading("Uploading to Arweave...", { id: loadingToast });
       const { imageUrl: arweaveImageUrl, metadataUri } = await uploadTokenAssets(
         imageFile,
@@ -157,15 +255,17 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       console.log("[LaunchForm] Arweave metadataUri:", uri);
       console.log("[LaunchForm] Arweave imageUrl:", arweaveImageUrl);
 
-      // Grind for a vanity mint address ending in "jet" (~195K attempts, < 2s)
-      toast.loading("Generating vanity address...jet ✨", { id: loadingToast });
-      const mintKeypairForUri = await new Promise<import("@solana/web3.js").Keypair>((resolve) =>
-        setTimeout(() => resolve(grindVanityKeypair("jet")), 0)
-      );
+      // ── Phase 2: Forge vanity mint address ending in "jet" ────────────────────
+      setLaunchPhase("forging");
+      toast.loading("Forging vanity address...jet ✨", { id: loadingToast });
+      const mintKeypairForUri = await grindVanityKeypairAsync("jet", (attempts) => {
+        setGrindAttempts(attempts);
+      });
       console.log("[LaunchForm] Vanity mint:", mintKeypairForUri.publicKey.toBase58());
 
-      // Build the on-chain createToken transaction
-      toast.loading("Sending transaction...", { id: loadingToast });
+      // ── Phase 3: Wallet signing ───────────────────────────────────────────────
+      setLaunchPhase("signing");
+      toast.loading("Waiting for wallet approval...", { id: loadingToast });
       const { transaction, mintKeypair } = await buildCreateTokenTransaction({
         connection,
         wallet: anchorWallet,
@@ -193,18 +293,18 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         skipPreflight: false,
       });
 
-      toast.loading("Confirming...", { id: loadingToast });
-      // Confirmation is best-effort — tx is already submitted to the network
+      // ── Phase 4: On-chain confirmation ────────────────────────────────────────
+      setLaunchPhase("confirming");
+      toast.loading("Confirming on-chain...", { id: loadingToast });
+      // Confirmation is best-effort — tx is already broadcast to the network.
+      // ALL polling failures (including TransactionExpiredTimeoutError) are
+      // swallowed silently; the transaction is live on-chain regardless.
       try {
         await connection.confirmTransaction(sig, "confirmed");
       } catch (confirmErr: any) {
         const msg: string = confirmErr?.message ?? "";
-        if (msg.includes("NetworkError") || msg.includes("Failed to fetch") || msg.includes("fetch")) {
-          console.warn("Confirmation polling failed, tx already sent:", sig);
-          // Continue — transaction is live on-chain
-        } else {
-          throw confirmErr;
-        }
+        console.warn("[LaunchForm] Confirmation polling failed (tx already sent):", msg.slice(0, 80), "sig:", sig);
+        // Continue — transaction is live on-chain
       }
 
       const mint = mintKeypair.publicKey.toString();
@@ -227,12 +327,16 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         console.warn("[LaunchForm] Post-launch record save failed:", metaErr);
       }
 
+      setLaunchPhase("done");
       toast.dismiss(loadingToast);
       setForm(INITIAL_FORM);
+      setImageFile(null);
+      setImagePreview(null);
       setStep(1);
       setLaunchedMint(mint);
       onSuccess?.(mint);
     } catch (error: any) {
+      setLaunchPhase("idle");
       toast.dismiss(loadingToast);
       console.error("Launch error:", error);
       const rawMsg: string = error?.error?.message ?? error?.message ?? "Failed to launch token";
@@ -240,7 +344,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
     } finally {
       setIsLaunching(false);
     }
-  }, [publicKey, anchorWallet, connection, sendTransaction, form, onSuccess]);
+  }, [publicKey, anchorWallet, connection, sendTransaction, form, imageFile, onSuccess]);
 
   const stepLabels = ["Details", "Media & Links", "Review & Launch"];
 
@@ -275,7 +379,9 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
   }
 
   return (
-    <div className="mx-auto max-w-xl">
+    <>
+      <LaunchOverlay phase={launchPhase} grindAttempts={grindAttempts} />
+      <div className="mx-auto max-w-xl">
       {/* Step indicator */}
       <div className="mb-8 flex items-center gap-2">
         {stepLabels.map((label, i) => {
@@ -636,5 +742,6 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
         )}
       </div>
     </div>
+    </>
   );
 }

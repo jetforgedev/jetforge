@@ -394,6 +394,36 @@ export function grindVanityKeypair(suffix: string): Keypair {
   }
 }
 
+/**
+ * Non-blocking async version — yields to the event loop every 2000 iterations
+ * so the UI stays responsive and a progress counter can be displayed.
+ */
+export function grindVanityKeypairAsync(
+  suffix: string,
+  onProgress?: (attempts: number) => void
+): Promise<Keypair> {
+  const lower = suffix.toLowerCase();
+  let attempts = 0;
+  return new Promise((resolve) => {
+    function chunk() {
+      const chunkSize = 2000;
+      for (let i = 0; i < chunkSize; i++) {
+        const kp = Keypair.generate();
+        attempts++;
+        if (kp.publicKey.toBase58().toLowerCase().endsWith(lower)) {
+          console.log("[grind] Found vanity address after " + attempts + " attempts");
+          onProgress?.(attempts);
+          resolve(kp);
+          return;
+        }
+      }
+      onProgress?.(attempts);
+      setTimeout(chunk, 0); // yield to event loop
+    }
+    chunk();
+  });
+}
+
 export interface CreateTokenParams {
   connection: Connection;
   wallet: AnchorWallet;
