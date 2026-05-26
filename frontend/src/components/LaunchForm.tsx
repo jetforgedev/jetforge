@@ -239,7 +239,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
       // ── Phase 1: Upload image + metadata to Arweave ──────────────────────────
       setLaunchPhase("uploading");
       toast.loading("Uploading to Arweave...", { id: loadingToast });
-      const { arweaveImageUrl, metadataUri } = await uploadTokenAssets(
+      const { imageUrl: localImageUrl, arweaveImageUrl, metadataUri } = await uploadTokenAssets(
         imageFile,
         {
           name,
@@ -251,9 +251,11 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           telegramUrl: form.telegramUrl || undefined,
         }
       );
+      // Use local URL for immediate display; arweave URL is embedded in metadataUri on-chain
+      const displayImageUrl = localImageUrl || arweaveImageUrl;
       const uri = metadataUri;
+      console.log("[LaunchForm] local imageUrl:", localImageUrl);
       console.log("[LaunchForm] Arweave metadataUri:", uri);
-      console.log("[LaunchForm] Arweave imageUrl:", arweaveImageUrl);
 
       // ── Phase 2: Forge vanity mint address ending in "jet" ────────────────────
       setLaunchPhase("forging");
@@ -316,7 +318,7 @@ export function LaunchForm({ onSuccess }: LaunchFormProps) {
           name,
           symbol,
           description: form.description.trim(),
-          imageUrl:    arweaveImageUrl || undefined,
+          imageUrl:    displayImageUrl  || undefined,
           metadataUri: metadataUri     || undefined,
           websiteUrl:  form.websiteUrl  || undefined,
           twitterUrl:  form.twitterUrl  || undefined,
