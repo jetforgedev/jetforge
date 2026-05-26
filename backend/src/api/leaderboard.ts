@@ -80,7 +80,8 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
       });
 
       const mints = volumeByMint.map((r: any) => r.mint);
-      const volMap = new Map(volumeByMint.map((r: any) => [r.mint, Number(r._sum.solAmount || 0n)]));
+      // solAmount is stored in lamports — convert to SOL here so volumePeriod is in SOL everywhere
+      const volMap = new Map(volumeByMint.map((r: any) => [r.mint, Number(r._sum.solAmount || 0n) / 1e9]));
 
       const rows = await prisma.token.findMany({
         where: { mint: { in: mints }, ...baseWhere },
@@ -122,7 +123,8 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         const vols = await prisma.trade.groupBy({
           by: ["mint"], where: tradeWhere, _sum: { solAmount: true },
         });
-        periodVolMap = new Map(vols.map((v: any) => [v.mint, Number(v._sum.solAmount || 0n)]));
+        // solAmount is in lamports — convert to SOL so volumePeriod is always in SOL
+        periodVolMap = new Map(vols.map((v: any) => [v.mint, Number(v._sum.solAmount || 0n) / 1e9]));
       }
 
       tokens = rows.map((t: any, i: number) => ({

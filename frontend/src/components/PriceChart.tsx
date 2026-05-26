@@ -56,7 +56,7 @@ function countLeadingZeros(val: number): number {
 // Significant digits string after the leading zeros (e.g. 0.0000000024, zeros=8 → "2.4")
 function getSigPart(val: number, zeros: number): string {
   const shifted = val * Math.pow(10, zeros + 1);
-  return parseFloat(shifted.toPrecision(3)).toString();
+  return parseFloat(shifted.toPrecision(4)).toString();
 }
 // Plain-text formatter for chart Y-axis labels — uses Unicode subscript digits
 // so the label is self-contained text (no HTML). Examples:
