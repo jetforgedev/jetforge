@@ -25,8 +25,10 @@ import {
   getAssociatedTokenAddressSync,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { config } from "../config";
+import { config, BONDING_CURVE_CONSTANTS } from "../config";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 const PROGRAM_ID = new PublicKey(config.solana.programId);
 const TREASURY_PUBKEY = new PublicKey(config.solana.treasuryAddress);
 
@@ -94,6 +96,19 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     return;
   }
 
+  // DB-level guard: if already marked graduated in our database, skip entirely.
+  // This catches restarts where inFlight was cleared but the token was already processed.
+  try {
+    const dbToken = await prisma.token.findUnique({ where: { mint: mintStr }, select: { isGraduated: true } });
+    if (dbToken?.isGraduated === true) {
+      console.log(`[KEEPER] Token ${mintStr.slice(0, 8)}… already graduated in DB — skipping`);
+      return;
+    }
+  } catch (dbErr: any) {
+    // Non-fatal: if DB check fails, continue and let on-chain checks decide
+    console.warn(`[KEEPER] DB graduation check failed for ${mintStr.slice(0, 8)}…: ${dbErr.message?.slice(0, 60)}`);
+  }
+
   const treasuryKeypair = getTreasuryKeypair();
   if (!treasuryKeypair) {
     console.warn("[KEEPER] TREASURY_PRIVATE_KEY not configured — cannot auto-graduate");
@@ -127,7 +142,8 @@ export async function callGraduateInstruction(mintStr: string): Promise<void> {
     const curveData      = Buffer.from(curveInfo.data);
     const realSolOnChain = curveData.readBigUInt64LE(88);
     const completeOnChain = curveData[112] === 1;
-    const GRAD_THRESHOLD  = BigInt("85000000000");
+    // Use the single source of truth from config — avoids drift if the threshold ever changes
+    const GRAD_THRESHOLD  = BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD;
 
     if (!completeOnChain) {
       console.warn(`[KEEPER] Token ${mintStr.slice(0, 8)}… complete=false on-chain — skipping (may be indexer lag)`);

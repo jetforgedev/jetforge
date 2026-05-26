@@ -370,6 +370,10 @@ export default function HomePage() {
   const socket = useSocket();
   const queryClient = useQueryClient();
 
+  // Ref so the WebSocket closure always sees the current tab without re-registering handlers
+  const activeTabRef = useRef<SortTab>("trending");
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
   // ── Real-time cache patches from WebSocket ─────────────────────────────────
   // Two events arrive per trade, in order:
   //  1. feed_price_update  — fires BEFORE the DB write (lowest latency)
@@ -423,8 +427,12 @@ export default function HomePage() {
         (old) => {
           if (!old?.tokens) return old;
           const updated = old.tokens.map(patch);
-          // Re-sort so the hottest token rises to position #1 immediately,
-          // without waiting for the 15 s API refetch.
+          // Only re-sort when the user is on the Trending tab — other tabs
+          // (New, Graduating, Graduated, Watchlist) have their own fixed orderings
+          // and should not be disturbed by live trade events.
+          if (activeTabRef.current !== "trending") {
+            return { ...old, tokens: updated };
+          }
           const key = (t: TokenData) =>
             (typeof t.trades === "number" ? t.trades : 0) * 1000 +
             (typeof t.volume24h === "number" ? t.volume24h : 0);
