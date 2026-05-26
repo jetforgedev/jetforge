@@ -59,17 +59,20 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
 
     let tokens: any[];
 
-    // For volume sort with a non-24h period: aggregate from Trade table
-    if (metric === "volume" && period !== "24h") {
-      const tradeWhere: any = since ? { timestamp: { gte: since } } : {};
-      if (excludeGraduated) {
-        // filter mints to non-graduated only via subquery approach
-        const graduated = await prisma.token.findMany({
-          where: { isGraduated: true }, select: { mint: true },
-        });
+    // Helper: build a tradeWhere filter respecting period + excludeGraduated
+    async function buildTradeWhere(sinceDate: Date | null, excGrad: boolean): Promise<any> {
+      const w: any = sinceDate ? { timestamp: { gte: sinceDate } } : {};
+      if (excGrad) {
+        const graduated = await prisma.token.findMany({ where: { isGraduated: true }, select: { mint: true } });
         const gradMints = graduated.map((t: any) => t.mint);
-        if (gradMints.length > 0) tradeWhere.mint = { notIn: gradMints };
+        if (gradMints.length > 0) w.mint = { notIn: gradMints };
       }
+      return w;
+    }
+
+    // ── Volume sort (non-24h): aggregate from Trade table by period ────────────
+    if (metric === "volume" && period !== "24h") {
+      const tradeWhere = await buildTradeWhere(since, excludeGraduated);
 
       const volumeByMint = await prisma.trade.groupBy({
         by: ["mint"],
@@ -88,7 +91,6 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         select: tokenSelect,
       });
 
-      // Restore trade-sorted order
       const rowMap = new Map(rows.map((r: any) => [r.mint, r]));
       tokens = mints.map((m: string) => rowMap.get(m)).filter(Boolean).map((t: any, i: number) => ({
         rank: i + 1, mint: t.mint, name: t.name, symbol: t.symbol,
@@ -102,11 +104,48 @@ leaderboardRouter.get("/tokens", async (req: Request, res: Response) => {
         virtualTokenReserves: t.virtualTokenReserves.toString(),
         graduationProgress: (Number(t.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
       }));
+
+    // ── Trades sort: always aggregate from Trade table so period filter works ──
+    } else if (metric === "trades") {
+      const tradeWhere = await buildTradeWhere(since, excludeGraduated);
+
+      const tradesByMint = await prisma.trade.groupBy({
+        by: ["mint"],
+        where: tradeWhere,
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: limit,
+      });
+
+      const mints = tradesByMint.map((r: any) => r.mint);
+      // Period trade count per mint
+      const countMap = new Map(tradesByMint.map((r: any) => [r.mint, r._count.id]));
+
+      const rows = await prisma.token.findMany({
+        where: { mint: { in: mints }, ...baseWhere },
+        select: tokenSelect,
+      });
+
+      const rowMap = new Map(rows.map((r: any) => [r.mint, r]));
+      tokens = mints.map((m: string) => rowMap.get(m)).filter(Boolean).map((t: any, i: number) => ({
+        rank: i + 1, mint: t.mint, name: t.name, symbol: t.symbol,
+        imageUrl: t.imageUrl, creator: t.creator, createdAt: t.createdAt,
+        marketCapSol: t.marketCapSol,
+        volumePeriod: Number(t.volume24h), // volume column stays as 24h reference
+        volume24h: t.volume24h,
+        trades: countMap.get(t.mint) ?? 0, // period-accurate count
+        isGraduated: t.isGraduated,
+        realSolReserves: t.realSolReserves.toString(),
+        virtualSolReserves: t.virtualSolReserves.toString(),
+        virtualTokenReserves: t.virtualTokenReserves.toString(),
+        graduationProgress: (Number(t.realSolReserves) / Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD)) * 100,
+      }));
+
+    // ── All other sorts (marketcap, new, volume 24h) ───────────────────────────
     } else {
       let orderBy: any;
       switch (metric) {
         case "marketcap": orderBy = [{ marketCapSol: "desc" }, { createdAt: "desc" }]; break;
-        case "trades":    orderBy = [{ tradeHistory: { _count: "desc" } }, { createdAt: "desc" }]; break;
         case "new":       orderBy = { createdAt: "desc" }; break;
         default:          orderBy = [{ volume24h: "desc" }, { createdAt: "desc" }]; break;
       }
