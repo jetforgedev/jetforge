@@ -61,6 +61,23 @@ Tokens trade on the bonding curve until the market capitalization reaches 85 SOL
 - BONKfun / LetsBonk (https://letsbonk.fun) — community-focused Solana launchpad
 - Raydium LaunchLab (https://raydium.io) — native launchpad by Raydium DEX
 
+## Blog Articles (Guides & Education)
+- How to launch a token on Solana in 60 seconds: https://jetforge.io/blog/how-to-launch-a-token-on-solana
+- What is a bonding curve (how Solana launchpads work): https://jetforge.io/blog/what-is-a-bonding-curve
+- JetForge vs pump.fun comparison: https://jetforge.io/blog/jetforge-vs-pumpfun
+- JetForge referral program explained: https://jetforge.io/blog/jetforge-referral-program
+- Best pump.fun alternatives 2026: https://jetforge.io/blog/best-pumpfun-alternatives
+- How to avoid Solana rug pulls: https://jetforge.io/blog/how-to-avoid-solana-rug-pulls
+- What is an SPL token (Solana token standard explained): https://jetforge.io/blog/what-is-an-spl-token
+- Solana meme coin guide 2026 (how to buy, trade & launch): https://jetforge.io/blog/solana-meme-coin-guide
+- Best Solana token launchpads 2026: https://jetforge.io/blog/best-solana-token-launchpads-2026
+
+## Referral Program
+- Referrer (A) earns 10% of platform fees from every trade their referrals make — permanently
+- Referred user (B) earns 10% cashback on their own trades — for the first 30 days
+- Share link format: https://jetforge.io/r/[code]
+- More info: https://jetforge.io/referral
+
 ## Wikidata
 https://www.wikidata.org/wiki/Q139801889
 

@@ -19,6 +19,41 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "best-solana-token-launchpads-2026",
+    title: "Best Solana Token Launchpads in 2026 — Complete Comparison",
+    desc: "Ranking every major Solana launchpad by fees, creator rewards, anti-rug protection, and graduation mechanics. Which platform should you use in 2026?",
+    tag: "Comparison",
+    readTime: "10 min read",
+  },
+  {
+    slug: "solana-meme-coin-guide",
+    title: "Solana Meme Coin Guide 2026 — How to Buy, Trade & Launch",
+    desc: "Everything you need to know about Solana meme coins in 2026: how to buy safely, how bonding curves work, how to spot rug pulls, and how to launch your own.",
+    tag: "Guide",
+    readTime: "12 min read",
+  },
+  {
+    slug: "best-pumpfun-alternatives",
+    title: "Best pump.fun Alternatives in 2026 — Top Solana Launchpads",
+    desc: "pump.fun pays creators 0%. JetForge pays 40%. Here's a full comparison of the best pump.fun alternatives with fee breakdowns and feature comparisons.",
+    tag: "Comparison",
+    readTime: "8 min read",
+  },
+  {
+    slug: "how-to-avoid-solana-rug-pulls",
+    title: "How to Avoid Solana Rug Pulls — Token Safety Guide 2026",
+    desc: "The 6 red flags to check before buying any Solana meme coin — whale concentration, creator history, social links, LP burn status, and how JetForge's Anti-Rug Score helps.",
+    tag: "Safety",
+    readTime: "9 min read",
+  },
+  {
+    slug: "what-is-an-spl-token",
+    title: "What Is an SPL Token? Solana Token Standard Explained (2026)",
+    desc: "SPL tokens are Solana's native fungible token standard — the equivalent of ERC-20 on Ethereum. Learn how they work, how to create one, and how bonding curves price them.",
+    tag: "Education",
+    readTime: "7 min read",
+  },
+  {
     slug: "jetforge-referral-program",
     title: "Earn Passive SOL Income: JetForge's Referral Program Explained",
     desc: "Share your referral link and earn 10% of platform fees from every trade your referrals make — forever. Here's how it works.",

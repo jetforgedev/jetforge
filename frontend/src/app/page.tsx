@@ -719,6 +719,82 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* ── SEO content section — server-rendered, crawlable by Google ─────── */}
+      <section className="mt-16 border-t border-white/5 pt-12 pb-4 space-y-12">
+        <div className="max-w-4xl">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white mb-4">
+            What is JetForge? Solana's Fair-Launch Token Launchpad
+          </h2>
+          <p className="text-white/55 leading-7 text-sm">
+            JetForge is a no-code Solana token launchpad built on a fair-launch bonding curve. Anyone
+            can create and launch an SPL token in under 60 seconds — no coding, no presales, no developer
+            allocations. Every token starts trading immediately on an on-chain automated market maker (AMM)
+            where price is determined entirely by supply and demand. When a token's bonding curve reaches
+            85 SOL, it automatically graduates to Raydium DEX for open-market trading.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { icon: "🚀", heading: "Launch in 60 Seconds", body: "Connect Phantom or Solflare, fill a form, sign one transaction. Your Solana token is live on a bonding curve instantly — no coding required." },
+            { icon: "📊", heading: "Real-Time OHLCV Charts", body: "Full candlestick charts with 7 intervals (1s to 1d), live WebSocket data, volume bars, and whale alerts on every token." },
+            { icon: "🛡️", heading: "Anti-Rug Score", body: "Every token gets a 0–100 risk score based on creator history, whale concentration, and trading patterns — so buyers can make informed decisions." },
+            { icon: "💰", heading: "Creator Fee Earnings", body: "Token creators earn 40% of all trading fees, automatically deposited to an on-chain vault. Withdraw any time — no lockup." },
+          ].map(({ icon, heading, body }) => (
+            <div key={heading} className="rounded-2xl border border-white/8 bg-white/[0.025] p-5 space-y-2">
+              <div className="text-2xl">{icon}</div>
+              <h3 className="font-bold text-white text-sm">{heading}</h3>
+              <p className="text-xs text-white/50 leading-5">{body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-6 max-w-4xl">
+          <div className="space-y-3">
+            <h3 className="font-bold text-white text-sm uppercase tracking-widest text-[10px] text-white/40">How It Works</h3>
+            <ul className="space-y-2 text-sm text-white/55">
+              <li className="flex gap-2"><span className="text-[#00ff88]">1.</span> Connect your Solana wallet (Phantom or Solflare)</li>
+              <li className="flex gap-2"><span className="text-[#00ff88]">2.</span> Fill in token name, symbol, image, and description</li>
+              <li className="flex gap-2"><span className="text-[#00ff88]">3.</span> Pay ~0.025 SOL network rent and click Launch</li>
+              <li className="flex gap-2"><span className="text-[#00ff88]">4.</span> Your token is live — share and start trading</li>
+            </ul>
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-bold text-white text-[10px] uppercase tracking-widest text-white/40">Key Features</h3>
+            <ul className="space-y-1.5 text-sm text-white/55">
+              <li>• Bonding curve AMM — no order books</li>
+              <li>• Auto-graduation to Raydium at 85 SOL</li>
+              <li>• Buyback &amp; burn from trading fees</li>
+              <li>• Portfolio tracker per wallet</li>
+              <li>• Creator &amp; trader leaderboards</li>
+              <li>• WebSocket live trade feed</li>
+              <li>• King of the Hill — top 24h token</li>
+            </ul>
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-bold text-white text-[10px] uppercase tracking-widest text-white/40">Learn More</h3>
+            <ul className="space-y-1.5 text-sm">
+              <li><a href="/blog/how-to-launch-a-token-on-solana" className="text-[#00ff88] hover:underline">How to launch a token on Solana →</a></li>
+              <li><a href="/blog/what-is-a-bonding-curve" className="text-white/50 hover:text-white transition-colors">What is a bonding curve? →</a></li>
+              <li><a href="/blog/jetforge-vs-pumpfun" className="text-white/50 hover:text-white transition-colors">JetForge vs pump.fun →</a></li>
+              <li><a href="/blog/how-to-avoid-solana-rug-pulls" className="text-white/50 hover:text-white transition-colors">How to avoid Solana rug pulls →</a></li>
+              <li><a href="/blog/solana-meme-coin-guide" className="text-white/50 hover:text-white transition-colors">Solana meme coin guide →</a></li>
+              <li><a href="/faq" className="text-white/50 hover:text-white transition-colors">Frequently asked questions →</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#00ff88]/15 bg-[#00ff88]/5 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between max-w-4xl">
+          <div>
+            <div className="font-bold text-white mb-1">Ready to launch your Solana token?</div>
+            <p className="text-sm text-white/50">No coding. Fair launch. Auto-graduation to Raydium. 40% of fees back to you.</p>
+          </div>
+          <a href="/launch" className="shrink-0 inline-flex items-center gap-2 bg-[#00ff88] text-black font-bold px-6 py-3 rounded-xl hover:bg-[#00dd77] transition-colors text-sm whitespace-nowrap">
+            Launch a Token →
+          </a>
+        </div>
+      </section>
+
     </div>
   );
 }
