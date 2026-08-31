@@ -78,6 +78,8 @@ const PROGRAM_ID = new PublicKey(config.solana.programId);
 const GRADUATION_THRESHOLD = Number(BONDING_CURVE_CONSTANTS.GRADUATION_THRESHOLD);
 
 let connection: Connection;
+// Guards against WebSocket + polling both creating a Raydium pool for the same mint.
+const poolInFlight = new Set<string>();
 let subscriptionId: number | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let isRunning = false;
@@ -581,21 +583,45 @@ async function handleGraduationEvent(
       return;
     }
 
-    // Create Raydium CPMM pool asynchronously — non-blocking
-    // Pool creation can take several seconds; we don't want to block the indexer
-    createRaydiumPool(mint, liquiditySol, liquidityTokens)
-      .then(async (poolId) => {
-        if (poolId) {
-          await prisma.token.update({
-            where: { mint },
-            data: { raydiumPoolId: poolId },
-          });
-          console.log(`[RAYDIUM] Stored pool ID for ${mint.slice(0, 8)}…: ${poolId}`);
-          // Broadcast updated pool ID so open token pages can update their links
-          io.to(`token:${mint}`).emit("pool_created", { mint, poolId });
+    // Create Raydium CPMM pool asynchronously — non-blocking, but with retries
+    // and alerting so a failure never silently strands the graduation funds
+    // (95% SOL + 300M tokens) in the treasury.
+    if (poolInFlight.has(mint)) {
+      console.log(`[RAYDIUM] Pool creation already in-flight for ${mint.slice(0, 8)}…`);
+    } else {
+      poolInFlight.add(mint);
+      void (async () => {
+        const MAX = 5;
+        try {
+          for (let attempt = 1; attempt <= MAX; attempt++) {
+            try {
+              const result = await createRaydiumPool(mint, liquiditySol, liquidityTokens);
+              if (result) {
+                await prisma.token.update({
+                  where: { mint },
+                  data: { raydiumPoolId: result.poolId, raydiumLpBurned: result.lpBurned },
+                });
+                console.log(`[RAYDIUM] Stored pool ID for ${mint.slice(0, 8)}…: ${result.poolId} lpBurned=${result.lpBurned}`);
+                io.to(`token:${mint}`).emit("pool_created", { mint, poolId: result.poolId });
+                return;
+              }
+              console.warn(`[RAYDIUM] Pool creation attempt ${attempt}/${MAX} returned null for ${mint.slice(0, 8)}…`);
+            } catch (err) {
+              console.error(`[RAYDIUM] Pool creation attempt ${attempt}/${MAX} error:`, err);
+            }
+            if (attempt < MAX) await new Promise((r) => setTimeout(r, 15_000 * attempt));
+          }
+          console.error(`[RAYDIUM] Pool creation FAILED after ${MAX} attempts for ${mint}`);
+          await telegram.notifyOps(
+            `Raydium pool creation FAILED after ${MAX} attempts for mint ${mint}. ` +
+            `~${Number(liquiditySol) / 1e9} SOL + ${Number(liquidityTokens) / 1e6} tokens are stranded ` +
+            `in the treasury — manual pool creation required.`
+          ).catch(() => {});
+        } finally {
+          poolInFlight.delete(mint);
         }
-      })
-      .catch((err) => console.error("[RAYDIUM] Async pool creation error:", err));
+      })();
+    }
 
   } catch (error) {
     console.error("Error handling graduation event:", error);

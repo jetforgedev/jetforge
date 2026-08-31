@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{create_account, CreateAccount};
-use anchor_spl::token::{initialize_mint2, InitializeMint2};
+use anchor_spl::token::{initialize_mint2, set_authority, InitializeMint2, SetAuthority};
+use anchor_spl::token::spl_token::instruction::AuthorityType;
 
 use crate::state::{
     BondingCurveState, INITIAL_VIRTUAL_SOL, INITIAL_VIRTUAL_TOKENS, REAL_TOKEN_RESERVES_INIT,
@@ -423,8 +424,9 @@ pub fn create_token(
         // uses: None
         data.push(0u8);
 
-        // is_mutable: true (creator can update later)
-        data.push(1u8);
+        // is_mutable: false — metadata is frozen at launch so the creator can
+        // never rug-rename the token (change name/symbol/URI) after people buy.
+        data.push(0u8);
         // collection_details: None
         data.push(0u8);
 
@@ -463,6 +465,36 @@ pub fn create_token(
             ctx.accounts.token_metadata_program.to_account_info(),
         ],
         &[bc_seeds],
+    )?;
+
+    // ── 13. Revoke mint + freeze authority (trustless, fixed supply) ─────────
+    // Done LAST, after metadata creation (which needs the mint authority to
+    // sign). After this the supply can never grow and no holder can be frozen —
+    // the bonding curve keeps full control of trading via its token-account
+    // authority (burn/transfer do not require mint authority).
+    set_authority(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            SetAuthority {
+                current_authority: ctx.accounts.bonding_curve.to_account_info(),
+                account_or_mint: ctx.accounts.mint.to_account_info(),
+            },
+            &[bc_seeds],
+        ),
+        AuthorityType::MintTokens,
+        None,
+    )?;
+    set_authority(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            SetAuthority {
+                current_authority: ctx.accounts.bonding_curve.to_account_info(),
+                account_or_mint: ctx.accounts.mint.to_account_info(),
+            },
+            &[bc_seeds],
+        ),
+        AuthorityType::FreezeAccount,
+        None,
     )?;
 
     emit!(TokenCreatedEvent {

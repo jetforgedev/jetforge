@@ -37,6 +37,10 @@ model Token {
   isGraduated     Boolean  @default(false)
   graduatedAt     DateTime?
   raydiumPoolId   String?
+  // True only once the pool's LP tokens are confirmed burned to the incinerator.
+  // A graduated token with raydiumPoolId set but raydiumLpBurned=false means the
+  // liquidity is NOT locked yet and needs operator reconciliation.
+  raydiumLpBurned Boolean  @default(false)
 
   // Relations
   tradeHistory    Trade[]
@@ -152,8 +156,10 @@ model CreatorPost {
 model ReferralAccount {
   wallet          String   @id
   referralCode    String   @unique
-  pendingBalance  Float    @default(0)
-  totalEarned     Float    @default(0)
+  // Money stored as fixed-point Decimal (SOL, 9 dp) — never Float — so balances
+  // and threshold comparisons are exact.
+  pendingBalance  Decimal  @default(0) @db.Decimal(20, 9)
+  totalEarned     Decimal  @default(0) @db.Decimal(20, 9)
   totalReferrals  Int      @default(0)
   lastWithdrawnAt DateTime?
   createdAt       DateTime @default(now())
@@ -164,9 +170,39 @@ model ReferralLink {
   id              String   @id @default(cuid())
   referredWallet  String   @unique
   referrerWallet  String
-  cashbackBalance Float    @default(0)
-  cashbackEarned  Float    @default(0)
+  cashbackBalance Decimal  @default(0) @db.Decimal(20, 9)
+  cashbackEarned  Decimal  @default(0) @db.Decimal(20, 9)
   createdAt       DateTime @default(now())
+}
+
+// Append-only ledger of every SOL payout (referral withdrawal / cashback claim).
+// Gives payouts an auditable trail and an idempotency key so a claim can never
+// be paid twice: the row is created (debiting the balance in the same tx) BEFORE
+// the on-chain transfer, then marked COMPLETED or FAILED.
+model Payout {
+  id         String       @id @default(cuid())
+  wallet     String
+  kind       PayoutKind
+  amountSol  Decimal      @db.Decimal(20, 9)
+  status     PayoutStatus @default(PENDING)
+  txSig      String?
+  error      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([wallet])
+  @@index([status])
+}
+
+enum PayoutKind {
+  REFERRAL
+  CASHBACK
+}
+
+enum PayoutStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 

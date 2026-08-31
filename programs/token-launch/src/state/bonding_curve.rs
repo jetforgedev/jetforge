@@ -39,7 +39,9 @@ pub const TREASURY_FEE_SHARE: u64 = 40;
 pub const BUYBACK_FEE_SHARE: u64 = 20;
 
 /// Minimum SOL accumulated before a buyback-and-burn is triggered.
-/// MAINNET-READY: 1 SOL buyback threshold.
+/// Current value: 100_000_000 lamports = 0.1 SOL.
+/// NOTE: revisit before mainnet — a higher threshold (e.g. 1 SOL) reduces the
+/// number of tiny, gas-inefficient buyback transactions.
 pub const BUYBACK_THRESHOLD: u64 = 100_000_000;
 
 /// Fee share denominator
@@ -119,7 +121,12 @@ impl BondingCurveState {
         let sol_out = (self.virtual_sol_reserves as u128)
             .checked_sub(new_virtual_sol)?;
 
-        // Cap at real SOL reserves — can never extract more than was deposited
+        // Cap at real SOL reserves — can never extract more than was deposited.
+        // NOTE(audit #11): in the rare case the raw curve output exceeds real
+        // reserves, the capped value is what apply_sell later subtracts from the
+        // virtual reserves too, so virtual reserves diverge slightly from the
+        // strict x*y=k invariant. This is a safety cap (prevents draining more
+        // than deposited), not a fund-loss path; kept intentionally.
         let sol_out_capped = sol_out.min(self.real_sol_reserves as u128);
 
         u64::try_from(sol_out_capped).ok()

@@ -31,6 +31,11 @@ async function sendMessage(text: string, disablePreview = true): Promise<void> {
   }
 }
 
+// -- Generic operational alert (failures needing operator attention) -------
+export async function notifyOps(text: string): Promise<void> {
+  await sendMessage(`\u{26A0}\u{FE0F} <b>JetForge Ops</b>\n\n${text}`);
+}
+
 function progressBar(current: number, target: number, length = 10): string {
   const pct = Math.min(current / target, 1);
   const filled = Math.round(pct * length);

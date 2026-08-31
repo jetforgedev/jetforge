@@ -206,7 +206,8 @@ creatorsRouter.get("/:wallet", async (req: Request, res: Response) => {
 });
 
 import jwt from 'jsonwebtoken';
-const JWT_SECRET = process.env.JWT_SECRET || 'jetforge-secret-change-in-prod';
+import { secrets } from '../config';
+const JWT_SECRET = secrets.jwtSecret;
 
 function requireAuth(req: any, res: any, next: any) {
   const auth = req.headers.authorization;

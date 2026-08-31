@@ -3,6 +3,7 @@ import * as telegram from "../services/telegramService";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 
 // ─── Magic-byte validation ────────────────────────────────────────────────────
@@ -301,7 +302,15 @@ uploadRouter.get("/balance", async (_req: Request, res: Response) => {
 // ─── POST /api/upload/fund ───────────────────────────────────────────────────
 uploadRouter.post("/fund", async (req: Request, res: Response) => {
   const { secret, winstonAmount } = req.body;
-  if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: "Forbidden" });
+  // If ADMIN_SECRET is unset the route stays locked (never allow undefined===undefined).
+  const admin = process.env.ADMIN_SECRET || "";
+  if (!admin) return res.status(503).json({ error: "Admin funding is not configured" });
+  const provided = typeof secret === "string" ? secret : "";
+  const a = Buffer.from(admin);
+  const b = Buffer.from(provided);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
   try {
     const irys = await getIrys();
     const amount = BigInt(winstonAmount ?? "50000000000");
