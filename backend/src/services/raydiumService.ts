@@ -27,6 +27,14 @@ import {
 } from "@solana/spl-token";
 import BN from "bn.js";
 import { config } from "../config";
+import * as telegram from "./telegramService";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export interface PoolResult {
+  poolId: string;
+  lpBurned: boolean;
+}
 
 const WSOL_MINT = "So11111111111111111111111111111111111111112";
 const TOKEN_PROGRAM_STR = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -58,7 +66,7 @@ export async function createRaydiumPool(
   mint: string,
   solLamports: bigint,
   tokenAmount: bigint
-): Promise<string | null> {
+): Promise<PoolResult | null> {
   const treasuryKeypair = getTreasuryKeypair();
   if (!treasuryKeypair) {
     console.warn("[RAYDIUM] TREASURY_PRIVATE_KEY not configured — skipping pool creation");
@@ -164,10 +172,20 @@ export async function createRaydiumPool(
     console.log(`[RAYDIUM] Pool ID: ${poolId}`);
     console.log(`[RAYDIUM] LP Mint: ${lpMint.toBase58()}`);
 
-    // Burn LP tokens — send treasury's LP tokens to incinerator
-    await burnLpTokens(connection, treasuryKeypair, lpMint);
+    // Burn LP tokens — MANDATORY. Liquidity is only "locked" once this confirms.
+    // A failure here means the treasury still holds redeemable LP, so we surface
+    // it (alert + lpBurned=false persisted by the caller) for reconciliation
+    // instead of silently swallowing it.
+    const lpBurned = await burnLpTokens(connection, treasuryKeypair, lpMint);
+    if (!lpBurned) {
+      console.error(`[RAYDIUM] LP burn NOT confirmed for ${mint.slice(0, 8)}… — liquidity is NOT locked`);
+      await telegram.notifyOps(
+        `LP burn FAILED for pool <code>${poolId}</code> (mint ${mint}). ` +
+        `Treasury still holds redeemable LP — liquidity is NOT locked. Manual reconciliation required.`
+      ).catch(() => {});
+    }
 
-    return poolId;
+    return { poolId, lpBurned };
   } catch (error: any) {
     console.error("[RAYDIUM] Pool creation failed:", error?.message ?? error);
     // Try to get program logs for SendTransactionError
@@ -204,50 +222,51 @@ async function burnLpTokens(
   connection: Connection,
   treasury: Keypair,
   lpMint: PublicKey
-): Promise<void> {
-  try {
-    // Get treasury's LP token account
-    const treasuryLpAta = await getOrCreateAssociatedTokenAccount(
-      connection,
-      treasury,
-      lpMint,
-      treasury.publicKey
-    );
+): Promise<boolean> {
+  const MAX_ATTEMPTS = 6;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      // Read the treasury LP balance at "finalized" so freshly-minted LP is
+      // visible (a "confirmed" read right after pool creation can still be 0).
+      const treasuryLpAta = await getOrCreateAssociatedTokenAccount(
+        connection, treasury, lpMint, treasury.publicKey, false, "finalized"
+      );
 
-    if (treasuryLpAta.amount === 0n) {
-      console.log("[RAYDIUM] No LP tokens to burn");
-      return;
+      if (treasuryLpAta.amount === 0n) {
+        // Not yet visible — back off and retry. Only after exhausting all
+        // attempts do we give up (returning false → caller alerts + flags it),
+        // rather than silently reporting "nothing to burn / locked".
+        if (attempt < MAX_ATTEMPTS) {
+          await sleep(2000 * attempt);
+          continue;
+        }
+        console.error("[RAYDIUM] LP balance still 0 after retries — cannot confirm burn");
+        return false;
+      }
+
+      // Incinerator ATA — allowOwnerOffCurve because it has no private key.
+      const incineratorLpAta = await getOrCreateAssociatedTokenAccount(
+        connection, treasury, lpMint, INCINERATOR, true, "finalized", undefined, TOKEN_PROGRAM_ID
+      );
+
+      const burnTx = new Transaction().add(
+        createTransferInstruction(
+          treasuryLpAta.address,
+          incineratorLpAta.address,
+          treasury.publicKey,
+          treasuryLpAta.amount,
+          [],
+          TOKEN_PROGRAM_ID
+        )
+      );
+
+      const sig = await sendAndConfirmTransaction(connection, burnTx, [treasury]);
+      console.log(`[RAYDIUM] LP burned to incinerator. Tx: ${sig} amount=${Number(treasuryLpAta.amount)} — liquidity locked`);
+      return true;
+    } catch (err: any) {
+      console.error(`[RAYDIUM] LP burn attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err?.message?.slice(0, 140) ?? err);
+      if (attempt < MAX_ATTEMPTS) await sleep(2000 * attempt);
     }
-
-    // Create/get incinerator's LP token account.
-    // allowOwnerOffCurve=true is required — the incinerator is not on the ed25519 curve.
-    const incineratorLpAta = await getOrCreateAssociatedTokenAccount(
-      connection,
-      treasury,          // treasury pays for the incinerator ATA creation
-      lpMint,
-      INCINERATOR,
-      true,              // allowOwnerOffCurve — incinerator has no private key
-      "confirmed",
-      undefined,
-      TOKEN_PROGRAM_ID,
-    );
-
-    const burnTx = new Transaction().add(
-      createTransferInstruction(
-        treasuryLpAta.address,
-        incineratorLpAta.address,
-        treasury.publicKey,
-        treasuryLpAta.amount,
-        [],
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    const sig = await sendAndConfirmTransaction(connection, burnTx, [treasury]);
-    console.log(`[RAYDIUM] LP tokens burned (sent to incinerator). Tx: ${sig}`);
-    console.log(`[RAYDIUM] Burned ${Number(treasuryLpAta.amount)} LP tokens — liquidity permanently locked`);
-  } catch (err: any) {
-    // Non-fatal: pool is still created even if LP burn fails
-    console.error("[RAYDIUM] LP burn failed (non-fatal):", err?.message ?? err);
   }
+  return false;
 }

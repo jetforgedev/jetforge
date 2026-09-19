@@ -22,6 +22,31 @@ export const config = {
   coingeckoApiKey: process.env.COINGECKO_API_KEY || "",
 };
 
+const isProd = process.env.NODE_ENV === "production";
+
+// ─── Secrets ──────────────────────────────────────────────────────────────────
+// In production these MUST be provided via env — no baked-in fallback is allowed
+// (a default JWT secret lets anyone forge a token for any wallet and drain
+// referral/cashback payouts). In dev a clearly-marked ephemeral value is used.
+function requiredSecret(name: string, devFallback: string): string {
+  const v = process.env[name];
+  if (v && v.trim() !== "") return v;
+  if (isProd) {
+    throw new Error(
+      `${name} is not set — refusing to start in production without it.`
+    );
+  }
+  console.warn(`[config] ${name} not set — using INSECURE dev fallback (do NOT use in production).`);
+  return devFallback;
+}
+
+export const secrets = {
+  jwtSecret: requiredSecret("JWT_SECRET", "dev-only-insecure-jwt-secret"),
+  // Optional: only required when the /api/upload/fund admin route is used.
+  // Empty string here means "not configured" and the route stays locked.
+  adminSecret: process.env.ADMIN_SECRET || "",
+};
+
 // Fail fast if DATABASE_URL is missing — Prisma silently fails at query time otherwise.
 if (!config.database.url) {
   throw new Error(

@@ -66,7 +66,20 @@ const writeLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many requests, please slow down." },
 });
-app.use(["/api/tokens", "/api/comments", "/api/upload"], writeLimiter);
+app.use(["/api/tokens", "/api/comments", "/api/upload", "/api/referral", "/api/auth"], writeLimiter);
+
+// Extra-strict limiter for real-money payout endpoints: 5 req/min per IP.
+// Combined with the atomic compare-and-set debit in referral.ts, this makes the
+// old concurrent-withdraw race both impossible and unprofitable to probe.
+const payoutLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many payout requests, please slow down." },
+});
+app.use(["/api/referral/withdraw", "/api/referral/cashback/claim"], payoutLimiter);
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
