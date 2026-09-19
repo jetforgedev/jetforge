@@ -6,6 +6,11 @@
     "backend",
     "frontend"
   ],
+  "//dependencies": "react/react-dom are pinned at the workspace root so they hoist beside the (also-hoisted) `next` package. Without this, npm's hoisting can place `next` at the root while `react` stays under frontend/node_modules, which breaks `next build`/`next start` (Cannot find module 'react').",
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18"
+  },
   "scripts": {
     "dev:backend": "yarn workspace token-dex-backend dev",
     "dev:frontend": "yarn workspace token-dex-frontend dev",
