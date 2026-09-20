@@ -1,0 +1,62 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which app to redeploy"
+        required: true
+        default: "both"
+        type: choice
+        options:
+          - both
+          - frontend
+          - backend
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            TARGET="${{ github.event.inputs.target || 'both' }}"
+            cd /var/www/jetforge
+
+            echo ">>> git pull"
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            if [ "$TARGET" = "both" ] || [ "$TARGET" = "backend" ]; then
+              echo ">>> backend build"
+              cd /var/www/jetforge/backend
+              npm ci --omit=dev=false
+              npx prisma generate
+              npm run build
+              pm2 restart jetforge-backend --update-env
+            fi
+
+            if [ "$TARGET" = "both" ] || [ "$TARGET" = "frontend" ]; then
+              echo ">>> frontend build"
+              cd /var/www/jetforge/frontend
+              npm ci
+              npm run build
+              pm2 restart jetforge-frontend --update-env
+            fi
+
+            pm2 save
+            echo ">>> deploy complete"

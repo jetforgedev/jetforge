@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import TokenClientPage from "./_TokenClientPage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 async function getTokenSSR(mint: string) {
   try {
