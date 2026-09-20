@@ -6,12 +6,16 @@ Disallow: /api/
 Disallow: /_next/static/
 Disallow: /uploads/
 
+# Block low-SEO-value dynamic pages (per-token, per-wallet, redirects)
+Disallow: /token/
+Disallow: /portfolio/
+Disallow: /r/
+
 # Block parameterized URLs that aren't real pages
 Disallow: /*?q=
 Disallow: /*?ref=
 
 # Allow important crawlable pages
-Allow: /token/
 Allow: /creators/
 Allow: /leaderboard
 Allow: /launch
@@ -46,4 +50,3 @@ User-agent: Bingbot
 Allow: /
 
 Sitemap: https://jetforge.io/sitemap.xml
-

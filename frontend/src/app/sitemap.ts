@@ -1,22 +1,26 @@
 import { MetadataRoute } from "next";
 
 const BASE_URL = "https://jetforge.io";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `${BASE_URL}/api`;
 
-async function fetchTokenMints(): Promise<string[]> {
+async function fetchCreatorWallets(): Promise<string[]> {
   try {
-    const res = await fetch(`${BASE_URL}/api/tokens?sort=new&limit=200&page=1`, {
+    const res = await fetch(`${API_URL}/creators?metric=volume&limit=50`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.tokens ?? []).map((t: any) => t.mint);
+    const rows = Array.isArray(data) ? data : data.creators ?? [];
+    return rows
+      .map((c: any) => c.wallet ?? c.creator)
+      .filter((w: unknown): w is string => typeof w === "string" && w.length > 0);
   } catch {
     return [];
   }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const mints = await fetchTokenMints();
+  const creators = await fetchCreatorWallets();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE_URL,                                                            lastModified: new Date(), changeFrequency: "always",  priority: 1.0 },
@@ -44,13 +48,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/docs/api`,                                              lastModified: new Date("2026-05-24"), changeFrequency: "monthly", priority: 0.7 },
   ];
 
-  const tokenRoutes: MetadataRoute.Sitemap = mints.map((mint) => ({
-    url: `${BASE_URL}/token/${mint}`,
+  const creatorRoutes: MetadataRoute.Sitemap = creators.map((wallet) => ({
+    url: `${BASE_URL}/creators/${wallet}`,
     lastModified: new Date(),
-    changeFrequency: "always" as const,
-    priority: 0.7,
+    changeFrequency: "daily" as const,
+    priority: 0.6,
   }));
 
-  return [...staticRoutes, ...tokenRoutes];
+  return [...staticRoutes, ...creatorRoutes];
 }
-
